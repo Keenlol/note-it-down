@@ -145,7 +145,15 @@ export function countExercises(text: string): number {
 }
 
 export function normalizeName(name: string): string {
-  return name.toLowerCase().replace(/\s+/g, ' ').trim()
+  // Remove ALL spaces so "push up" === "pushup", "bench press" === "benchpress"
+  return name.toLowerCase().replace(/\s+/g, '')
+}
+
+export function totalVolume(text: string): number {
+  return text.split('\n').reduce((sum, line) => {
+    const p = parseLine(line)
+    return sum + (p.exercise?.volume ?? 0)
+  }, 0)
 }
 
 export function isKnownName(

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { CornerDownLeft } from 'lucide-react'
+import { ArrowDown, ArrowUp, CornerDownLeft } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, type ParsedLine, type Exercise } from '../utils/parser'
 
 export interface Suggestion {
@@ -21,26 +21,49 @@ interface Props {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
 }
 
-function buildTrend(current: Exercise, prev: Exercise): string | null {
-  const parts: string[] = []
+function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
+  const items: React.ReactNode[] = []
+
+  const setsDiff = current.sets - prev.sets
+  if (setsDiff !== 0) {
+    const Icon = setsDiff > 0 ? ArrowUp : ArrowDown
+    const abs = Math.abs(setsDiff)
+    items.push(
+      <span key="s" className="trend-item">
+        <Icon size={10} strokeWidth={2.5} />
+        {abs} set{abs !== 1 ? 's' : ''}
+      </span>
+    )
+  }
 
   const repsDiff = current.reps - prev.reps
   if (repsDiff !== 0) {
+    const Icon = repsDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(repsDiff)
-    parts.push(`${repsDiff > 0 ? '↑' : '↓'} ${abs} rep${abs !== 1 ? 's' : ''}`)
+    items.push(
+      <span key="r" className="trend-item">
+        <Icon size={10} strokeWidth={2.5} />
+        {abs} rep{abs !== 1 ? 's' : ''}
+      </span>
+    )
   }
 
-  // Skip weight diff if both are bodyweight (both use assumed BW kg)
+  // Skip weight diff when both are bodyweight (both use assumed BW constant)
   const weightDiff = current.weightKg - prev.weightKg
   if (Math.abs(weightDiff) >= 0.5 && !(current.bodyweight && prev.bodyweight)) {
+    const Icon = weightDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(weightDiff)
-    const display = abs < 10
-      ? `${Math.round(abs * 10) / 10}kg`
-      : `${Math.round(abs)}kg`
-    parts.push(`${weightDiff > 0 ? '↑' : '↓'} ${display}`)
+    const display = abs < 10 ? `${Math.round(abs * 10) / 10}kg` : `${Math.round(abs)}kg`
+    items.push(
+      <span key="w" className="trend-item">
+        <Icon size={10} strokeWidth={2.5} />
+        {display}
+      </span>
+    )
   }
 
-  return parts.length > 0 ? parts.join('   ') : null
+  if (items.length === 0) return null
+  return <span key="trend" className="trend">{items}</span>
 }
 
 function renderLine(
@@ -81,9 +104,7 @@ function renderLine(
   // Trend indicator: compare against previous session
   if (parsed.exercise && prevExercise) {
     const trend = buildTrend(parsed.exercise, prevExercise)
-    if (trend) {
-      out.push(<span key="trend" className="trend">{trend}</span>)
-    }
+    if (trend) out.push(trend)
   }
 
   return out

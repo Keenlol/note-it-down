@@ -156,6 +156,7 @@ export function App() {
   )
   const [cursorPos, setCursorPos] = useState(0)
   const [pastCursorPos, setPastCursorPos] = useState(0)
+  const [dataVersion, setDataVersion] = useState(0)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pastSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -237,6 +238,7 @@ export function App() {
     saveTimer.current = setTimeout(() => {
       saveDay(todayKey(), text)
       setSaveStatus('saved')
+      setDataVersion(v => v + 1)
     }, 400)
   }, [])
 
@@ -247,6 +249,7 @@ export function App() {
     const dateSnapshot = viewDate
     pastSaveTimer.current = setTimeout(() => {
       saveDay(dateSnapshot, text)
+      setDataVersion(v => v + 1)
     }, 400)
   }, [viewDate])
 
@@ -317,6 +320,7 @@ export function App() {
     saveTimer.current = setTimeout(() => {
       saveDay(todayKey(), newText)
       setSaveStatus('saved')
+      setDataVersion(v => v + 1)
     }, 400)
 
     requestAnimationFrame(() => {
@@ -356,6 +360,7 @@ export function App() {
     const dateSnapshot = viewDate
     pastSaveTimer.current = setTimeout(() => {
       saveDay(dateSnapshot, newText)
+      setDataVersion(v => v + 1)
     }, 400)
 
     requestAnimationFrame(() => {
@@ -396,7 +401,7 @@ export function App() {
 
   return (
     <div className="app">
-      <Heatmap onDayClick={handleDayClick} selectedDate={viewDate} />
+      <Heatmap onDayClick={handleDayClick} selectedDate={viewDate} dataVersion={dataVersion} />
 
       <div
         className="content"
