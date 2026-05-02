@@ -63,15 +63,12 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
   }
 
   if (items.length === 0) return null
-  return <span key="trend" className="trend">{items}</span>
+  return <>{items}</>
 }
 
-function renderLine(
-  raw: string,
-  parsed: ParsedLine,
-  isUnknown: boolean,
-  prevExercise?: Exercise | null,
-): React.ReactNode[] {
+// Overlay: renders styled text + ghost. Trends are NOT included here —
+// they're rendered as separate absolutely-positioned elements on the right.
+function renderLine(raw: string, parsed: ParsedLine, isUnknown: boolean): React.ReactNode[] {
   if (raw.length === 0) return []
 
   const cls: (string | null)[] = new Array(raw.length).fill(null)
@@ -100,13 +97,6 @@ function renderLine(
       segStart = i
     }
   }
-
-  // Trend indicator: compare against previous session
-  if (parsed.exercise && prevExercise) {
-    const trend = buildTrend(parsed.exercise, prevExercise)
-    if (trend) out.push(trend)
-  }
-
   return out
 }
 
@@ -115,7 +105,6 @@ function renderOverlay(
   suggestion: Suggestion | null,
   knownPast: Set<string>,
   todayCounts: Map<string, number>,
-  previousExercises: Map<string, Exercise>,
 ): React.ReactNode[] {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
@@ -126,10 +115,7 @@ function renderOverlay(
     const unknown = parsed.exercise
       ? !isKnownName(parsed.exercise.name, knownPast, todayCounts)
       : false
-    const prevExercise = parsed.exercise
-      ? (previousExercises.get(normalizeName(parsed.exercise.name)) ?? null)
-      : null
-    nodes.push(<span key={`l${i}`}>{renderLine(line, parsed, unknown, prevExercise)}</span>)
+    nodes.push(<span key={`l${i}`}>{renderLine(line, parsed, unknown)}</span>)
 
     // Regular (non-preset) ghost: inline suffix on same line
     if (suggestion?.lineIndex === i && !suggestion.presetLines) {
@@ -160,6 +146,17 @@ export function Editor({
     ta.style.height = ta.scrollHeight + 'px'
   }, [value, textareaRef])
 
+  // Compute right-side trend badges for every exercise line that has a prior session
+  const lineTrends: { lineIndex: number; node: React.ReactNode }[] = []
+  value.split('\n').forEach((line, i) => {
+    const parsed = parseLine(line)
+    if (!parsed.exercise) return
+    const prev = previousExercises.get(normalizeName(parsed.exercise.name))
+    if (!prev) return
+    const node = buildTrend(parsed.exercise, prev)
+    if (node) lineTrends.push({ lineIndex: i, node })
+  })
+
   const reportCursor = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
     onCursorChange(e.currentTarget.selectionStart)
   }
@@ -178,9 +175,21 @@ export function Editor({
   return (
     <div className="editor-wrap">
       <div ref={overlayRef} className="editor-overlay" aria-hidden="true">
-        {renderOverlay(value, suggestion, knownPast, todayCounts, previousExercises)}
+        {renderOverlay(value, suggestion, knownPast, todayCounts)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
+
+      {/* Trend badges: floated to the right edge, one per exercise line */}
+      {lineTrends.map(({ lineIndex, node }) => (
+        <div
+          key={lineIndex}
+          className="trend-abs"
+          aria-hidden="true"
+          style={{ top: `calc(${lineIndex} * var(--editor-lh) * 1em)` }}
+        >
+          <span className="trend">{node}</span>
+        </div>
+      ))}
 
       {/* Preset ghost block: positioned below the note line, outside normal text flow */}
       {suggestion?.presetLines && (

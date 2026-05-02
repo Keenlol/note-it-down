@@ -82,10 +82,6 @@ html, body {
   outline-offset: 1px;
 }
 
-.heatmap-cell.today {
-  outline: 1.5px solid var(--accent);
-  outline-offset: 1px;
-}
 
 .heatmap-months {
   display: grid;
@@ -246,19 +242,32 @@ html, body {
   gap: 3px;
 }
 
-/* Trend indicator: italic orange at end of exercise line */
+/* Trend badge: absolutely positioned on the right edge of its line */
+.trend-abs {
+  position: absolute;
+  right: 0;
+  pointer-events: none;
+  user-select: none;
+  height: calc(var(--editor-lh) * 1em);
+  display: flex;
+  align-items: center;
+  font-family: var(--editor-font);
+  font-size: var(--editor-size);
+}
+
 .trend {
   font-style: italic;
   color: rgba(249, 115, 22, 0.75);
   font-size: 0.82em;
-  margin-left: 0.6em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
 }
 
 .trend-item {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  margin-right: 0.35em;
 }
 
 .trend-item svg {

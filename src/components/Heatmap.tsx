@@ -24,15 +24,16 @@ function cellColor(cell: Cell, maxVolume: number): string {
   const ratio = maxVolume > 0 ? Math.min(cell.volume / maxVolume, 1) : 0
 
   if (cell.isToday) {
-    // 20% opacity baseline, cranks up to 100% at max volume
-    const opacity = 0.2 + ratio * 0.8
+    // 30% opacity baseline (even with 0 volume), scales to 100% at max volume
+    const opacity = 0.3 + ratio * 0.7
     return `rgba(249, 115, 22, ${opacity.toFixed(2)})`
   }
 
   if (cell.volume === 0) return '#1e1e1e'
 
-  // Scale grey from dim (#1e1e1e ≈ 12%) to bright (#aaaaaa ≈ 67%)
-  const lightness = Math.round(12 + ratio * 55)
+  // Non-empty cells: minimum 20% lightness so any workout is clearly visible
+  // over the empty #1e1e1e (~12%). Scales to ~67% at max volume.
+  const lightness = Math.round(20 + ratio * 47)
   return `hsl(0, 0%, ${lightness}%)`
 }
 
@@ -97,11 +98,7 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion }: Props) {
             {col.map((cell, d) => (
               <div
                 key={d}
-                className={[
-                  'heatmap-cell',
-                  cell.isToday ? 'today' : '',
-                  cell.date === selectedDate ? 'selected' : '',
-                ].filter(Boolean).join(' ')}
+                className={`heatmap-cell${cell.date === selectedDate ? ' selected' : ''}`}
                 style={{ background: cellColor(cell, maxVolume) }}
                 onClick={() => cell.date && onDayClick(cell.date)}
                 title={cell.date ?? undefined}
