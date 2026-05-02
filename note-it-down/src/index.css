@@ -1,0 +1,197 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0d0d0d;
+  --text: #e8e8e8;
+  --text-dim: rgba(232, 232, 232, 0.35);
+  --accent: #f97316;
+  --cell-empty: #1e1e1e;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --editor-size: 16px;
+  --editor-lh: 1.65;
+  --pad: 24px;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+#app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── App shell ── */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.content {
+  padding: 0 var(--pad);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Heatmap ── */
+
+.heatmap-wrap {
+  padding: 20px var(--pad) 4px;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 3px;
+}
+
+.heatmap-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.heatmap-cell:hover {
+  opacity: 0.75;
+}
+
+.heatmap-cell.selected {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.heatmap-months {
+  display: grid;
+  grid-template-columns: repeat(16, 17px);
+  margin-top: 6px;
+  font-size: 10px;
+  color: rgba(232, 232, 232, 0.4);
+  letter-spacing: 0.02em;
+}
+
+.month-label {
+  white-space: nowrap;
+}
+
+/* ── Title row ── */
+
+.title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 28px;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.title.past {
+  font-size: 22px;
+  font-weight: 600;
+  color: rgba(232, 232, 232, 0.45);
+}
+
+.save-icon {
+  font-size: 18px;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.3s;
+  user-select: none;
+}
+
+.save-icon.visible {
+  opacity: 1;
+}
+
+/* ── Editor ── */
+
+.editor-wrap {
+  position: relative;
+  flex: 1;
+}
+
+/* Shared typography — overlay and textarea must be pixel-identical */
+.editor-overlay,
+.editor-textarea {
+  font-family: var(--editor-font);
+  font-size: var(--editor-size);
+  line-height: var(--editor-lh);
+  letter-spacing: normal;
+  word-spacing: normal;
+  white-space: pre-wrap;
+  word-break: break-word;
+  width: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+}
+
+.editor-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  color: var(--text);
+  user-select: none;
+}
+
+.editor-textarea {
+  position: relative;
+  display: block;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
+  resize: none;
+  overflow: hidden;
+  min-height: 120px;
+  z-index: 1;
+  /* iOS: prevent zoom on focus */
+  font-size: max(16px, var(--editor-size));
+}
+
+.editor-textarea::placeholder {
+  color: rgba(232, 232, 232, 0.18);
+}
+
+.editor-textarea.read-only {
+  cursor: default;
+}
+
+/* Highlighted exercise numbers */
+.num {
+  color: var(--accent);
+}
+
+/* Ghost suggestion text */
+.ghost {
+  color: var(--text-dim);
+}
