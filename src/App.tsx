@@ -3,7 +3,7 @@ import { Check, ArrowRight } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { Editor, type Suggestion } from './components/Editor'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
-import { normalizeName, parseLine, type ParsedLine } from './utils/parser'
+import { normalizeName, parseLine, type ParsedLine, type Exercise } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
 
@@ -67,6 +67,62 @@ function getSuggestion(
   }
 
   return best ? { suffix: best.suffix, lineIndex } : null
+}
+
+// Note-triggered preset: when cursor is on a non-exercise line that matches a past note,
+// suggest ALL exercises from the latest past day containing that note.
+function getPresetSuggestion(
+  currentText: string,
+  cursorPos: number,
+  pastDays: ParsedDay[],
+): Suggestion | null {
+  if (pastDays.length === 0) return null
+
+  const linesBefore = currentText.slice(0, cursorPos).split('\n')
+  const lineIndex = linesBefore.length - 1
+  const currentLine = linesBefore[lineIndex]
+
+  const allLines = currentText.split('\n')
+  if (currentLine.length !== allLines[lineIndex]?.length) return null
+
+  // Only trigger on non-exercise, non-empty lines
+  if (parseLine(currentLine).exercise !== null) return null
+  if (currentLine.trim() === '') return null
+
+  const noteText = currentLine.toLowerCase().trim()
+
+  // Names already typed today (excluding current line)
+  const todayNames = new Set<string>()
+  allLines.forEach((line, i) => {
+    if (i === lineIndex) return
+    const p = parseLine(line)
+    if (p.exercise?.name) todayNames.add(normalizeName(p.exercise.name))
+  })
+
+  // Find the latest past day containing exactly this note text
+  for (const day of pastDays) { // newest first
+    const hasNote = day.parsedLines.some(
+      p => p.exercise === null && p.raw.toLowerCase().trim() === noteText
+    )
+    if (!hasNote) continue
+
+    const exercises = day.parsedLines
+      .filter(p => {
+        if (!p.exercise) return false
+        return !todayNames.has(normalizeName(p.exercise.name))
+      })
+      .map(p => p.raw)
+
+    if (exercises.length === 0) continue
+
+    return {
+      suffix: '\n' + exercises.join('\n'),
+      lineIndex,
+      presetLines: exercises,
+    }
+  }
+
+  return null
 }
 
 function formatDisplayDate(dateStr: string): string {
@@ -196,7 +252,8 @@ export function App() {
 
   const suggestion = useMemo<Suggestion | null>(() => {
     if (viewDate !== null) return null
-    return getSuggestion(todayText, cursorPos, pastDays)
+    return getPresetSuggestion(todayText, cursorPos, pastDays)
+        ?? getSuggestion(todayText, cursorPos, pastDays)
   }, [todayText, cursorPos, pastDays, viewDate])
 
   // For past-day editing: suggest only from the day immediately before viewDate
@@ -210,8 +267,27 @@ export function App() {
 
   const pastSuggestion = useMemo<Suggestion | null>(() => {
     if (!viewDate) return null
-    return getSuggestion(pastText, pastCursorPos, dayBeforeParsed)
+    return getPresetSuggestion(pastText, pastCursorPos, dayBeforeParsed)
+        ?? getSuggestion(pastText, pastCursorPos, dayBeforeParsed)
   }, [pastText, pastCursorPos, dayBeforeParsed, viewDate])
+
+  // Most recent prior occurrence of each exercise, for trend indicators.
+  // For today: search all past days. For a past day: search only days before it.
+  const previousExercises = useMemo<Map<string, Exercise>>(() => {
+    const map = new Map<string, Exercise>()
+    const sources = viewDate
+      ? pastDays.filter(d => d.date < viewDate)  // days strictly before viewed date
+      : pastDays                                  // all past days (for today)
+    for (const day of sources) {  // newest-first → first hit = most recent
+      for (const p of day.parsedLines) {
+        if (p.exercise) {
+          const key = normalizeName(p.exercise.name)
+          if (!map.has(key)) map.set(key, p.exercise)
+        }
+      }
+    }
+    return map
+  }, [pastDays, viewDate])
 
   const handleTabConfirm = useCallback(() => {
     if (!suggestion || !textareaRef.current) return
@@ -350,6 +426,7 @@ export function App() {
             suggestion={pastSuggestion}
             knownPast={knownPast}
             todayCounts={todayCounts}
+            previousExercises={previousExercises}
             textareaRef={pastTextareaRef}
           />
         ) : (
@@ -361,6 +438,7 @@ export function App() {
             suggestion={suggestion}
             knownPast={knownPast}
             todayCounts={todayCounts}
+            previousExercises={previousExercises}
             textareaRef={textareaRef}
           />
         )}

@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { CornerDownLeft } from 'lucide-react'
-import { parseLine, isKnownName, type ParsedLine } from '../utils/parser'
+import { parseLine, isKnownName, normalizeName, type ParsedLine, type Exercise } from '../utils/parser'
 
 export interface Suggestion {
   suffix: string
   lineIndex: number
+  presetLines?: string[]   // set when this is a note-triggered preset block
 }
 
 interface Props {
@@ -15,11 +16,39 @@ interface Props {
   suggestion: Suggestion | null
   knownPast: Set<string>
   todayCounts: Map<string, number>
+  previousExercises: Map<string, Exercise>
   readOnly?: boolean
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
 }
 
-function renderLine(raw: string, parsed: ParsedLine, isUnknown: boolean): React.ReactNode[] {
+function buildTrend(current: Exercise, prev: Exercise): string | null {
+  const parts: string[] = []
+
+  const repsDiff = current.reps - prev.reps
+  if (repsDiff !== 0) {
+    const abs = Math.abs(repsDiff)
+    parts.push(`${repsDiff > 0 ? '↑' : '↓'} ${abs} rep${abs !== 1 ? 's' : ''}`)
+  }
+
+  // Skip weight diff if both are bodyweight (both use assumed BW kg)
+  const weightDiff = current.weightKg - prev.weightKg
+  if (Math.abs(weightDiff) >= 0.5 && !(current.bodyweight && prev.bodyweight)) {
+    const abs = Math.abs(weightDiff)
+    const display = abs < 10
+      ? `${Math.round(abs * 10) / 10}kg`
+      : `${Math.round(abs)}kg`
+    parts.push(`${weightDiff > 0 ? '↑' : '↓'} ${display}`)
+  }
+
+  return parts.length > 0 ? parts.join('   ') : null
+}
+
+function renderLine(
+  raw: string,
+  parsed: ParsedLine,
+  isUnknown: boolean,
+  prevExercise?: Exercise | null,
+): React.ReactNode[] {
   if (raw.length === 0) return []
 
   const cls: (string | null)[] = new Array(raw.length).fill(null)
@@ -48,6 +77,15 @@ function renderLine(raw: string, parsed: ParsedLine, isUnknown: boolean): React.
       segStart = i
     }
   }
+
+  // Trend indicator: compare against previous session
+  if (parsed.exercise && prevExercise) {
+    const trend = buildTrend(parsed.exercise, prevExercise)
+    if (trend) {
+      out.push(<span key="trend" className="trend">{trend}</span>)
+    }
+  }
+
   return out
 }
 
@@ -56,6 +94,7 @@ function renderOverlay(
   suggestion: Suggestion | null,
   knownPast: Set<string>,
   todayCounts: Map<string, number>,
+  previousExercises: Map<string, Exercise>,
 ): React.ReactNode[] {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
@@ -66,9 +105,13 @@ function renderOverlay(
     const unknown = parsed.exercise
       ? !isKnownName(parsed.exercise.name, knownPast, todayCounts)
       : false
-    nodes.push(<span key={`l${i}`}>{renderLine(line, parsed, unknown)}</span>)
+    const prevExercise = parsed.exercise
+      ? (previousExercises.get(normalizeName(parsed.exercise.name)) ?? null)
+      : null
+    nodes.push(<span key={`l${i}`}>{renderLine(line, parsed, unknown, prevExercise)}</span>)
 
-    if (suggestion?.lineIndex === i) {
+    // Regular (non-preset) ghost: inline suffix on same line
+    if (suggestion?.lineIndex === i && !suggestion.presetLines) {
       nodes.push(
         <span key={`g${i}`} className="ghost">
           {suggestion.suffix}
@@ -81,7 +124,11 @@ function renderOverlay(
   return nodes
 }
 
-export function Editor({ value, onChange, onCursorChange, onTabConfirm, suggestion, knownPast, todayCounts, readOnly, textareaRef }: Props) {
+export function Editor({
+  value, onChange, onCursorChange, onTabConfirm,
+  suggestion, knownPast, todayCounts, previousExercises,
+  readOnly, textareaRef,
+}: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   // Auto-resize textarea to content
@@ -110,9 +157,27 @@ export function Editor({ value, onChange, onCursorChange, onTabConfirm, suggesti
   return (
     <div className="editor-wrap">
       <div ref={overlayRef} className="editor-overlay" aria-hidden="true">
-        {renderOverlay(value, suggestion, knownPast, todayCounts)}
+        {renderOverlay(value, suggestion, knownPast, todayCounts, previousExercises)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
+
+      {/* Preset ghost block: positioned below the note line, outside normal text flow */}
+      {suggestion?.presetLines && (
+        <div
+          className="ghost ghost-preset-block"
+          aria-hidden="true"
+          style={{ top: `calc(${suggestion.lineIndex + 1} * var(--editor-lh) * 1em)` }}
+        >
+          {suggestion.presetLines.map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+          <div className="ghost-preset-hint">
+            <CornerDownLeft size={11} strokeWidth={2} style={{ verticalAlign: 'middle' }} />
+            {' '}enter to fill all
+          </div>
+        </div>
+      )}
+
       <textarea
         ref={textareaRef}
         className={`editor-textarea${readOnly ? ' read-only' : ''}`}

@@ -218,6 +218,38 @@ html, body {
   top: -1px;
 }
 
+/* Preset ghost block: floats below the note line */
+.ghost-preset-block {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--editor-font);
+  font-size: var(--editor-size);
+  line-height: var(--editor-lh);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ghost-preset-hint {
+  margin-top: 3px;
+  font-size: 0.78em;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Trend indicator: italic orange at end of exercise line */
+.trend {
+  font-style: italic;
+  color: rgba(249, 115, 22, 0.7);
+  font-size: 0.82em;
+  margin-left: 0.6em;
+  letter-spacing: 0.01em;
+}
+
 /* Subtle dotted underline for exercise names not seen before */
 .unknown-name {
   text-decoration: underline dotted;
