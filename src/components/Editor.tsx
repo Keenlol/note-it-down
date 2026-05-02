@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { CornerDownLeft } from 'lucide-react'
 import { parseLine, isKnownName, type ParsedLine } from '../utils/parser'
 
 export interface Suggestion {
@@ -68,7 +69,12 @@ function renderOverlay(
     nodes.push(<span key={`l${i}`}>{renderLine(line, parsed, unknown)}</span>)
 
     if (suggestion?.lineIndex === i) {
-      nodes.push(<span key={`g${i}`} className="ghost">{suggestion.suffix}</span>)
+      nodes.push(
+        <span key={`g${i}`} className="ghost">
+          {suggestion.suffix}
+          <CornerDownLeft size={12} strokeWidth={2} className="ghost-enter-icon" />
+        </span>
+      )
     }
   })
 
@@ -95,6 +101,10 @@ export function Editor({ value, onChange, onCursorChange, onTabConfirm, suggesti
       e.preventDefault()
       if (suggestion) onTabConfirm()
     }
+    if (e.key === 'Enter' && suggestion) {
+      e.preventDefault()
+      onTabConfirm()
+    }
   }
 
   return (
@@ -120,7 +130,7 @@ export function Editor({ value, onChange, onCursorChange, onTabConfirm, suggesti
         autoCapitalize="off"
         autoComplete="off"
         autoCorrect="off"
-        placeholder="Bench 12kg 12x4&#10;Squat 60 8 4&#10;notes go here too"
+        placeholder=""
       />
     </div>
   )

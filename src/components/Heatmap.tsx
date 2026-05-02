@@ -15,7 +15,7 @@ interface Props {
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const WEEKS = 16
+const WEEKS = 21
 
 function cellColor(cell: Cell): string {
   if (cell.isFuture || cell.date === null) return 'transparent'
