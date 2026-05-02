@@ -127,6 +127,18 @@ html, body {
   user-select: none;
 }
 
+.jump-today {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.8;
+  align-self: center;
+}
+
 .save-icon.visible {
   opacity: 1;
 }

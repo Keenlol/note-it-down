@@ -17,14 +17,12 @@ function getSuggestion(
   const lineIndex = linesBeforeCursor.length - 1
   const currentLine = linesBeforeCursor[lineIndex]
 
-  // Only suggest when cursor is at end of current line
   const allLines = currentText.split('\n')
   if (currentLine.length !== allLines[lineIndex]?.length) return null
 
   const refLines = refText.split('\n')
 
   if (currentLine === '') {
-    // Empty line: suggest the reference line at the same index
     const refLine = refLines[lineIndex]
     if (refLine?.trim()) return { suffix: refLine, lineIndex }
     return null
@@ -32,7 +30,6 @@ function getSuggestion(
 
   const lower = currentLine.toLowerCase()
 
-  // Prefer same-index line match
   if (lineIndex < refLines.length) {
     const refLine = refLines[lineIndex]
     if (refLine.toLowerCase().startsWith(lower) && refLine.length > currentLine.length) {
@@ -40,7 +37,6 @@ function getSuggestion(
     }
   }
 
-  // Fall back to any line in the reference
   for (const refLine of refLines) {
     if (refLine.toLowerCase().startsWith(lower) && refLine.length > currentLine.length) {
       return { suffix: refLine.slice(currentLine.length), lineIndex }
@@ -56,30 +52,66 @@ function formatDisplayDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
+function offsetDate(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setDate(date.getDate() + days)
+  return dateToKey(date)
+}
+
 export function App() {
   const [todayText, setTodayText] = useState(() => loadDay(todayKey())?.rawText ?? '')
-  const [viewDate, setViewDate] = useState<string | null>(null) // null = today
+  const [viewDate, setViewDate] = useState<string | null>(null)
+  const [pastText, setPastText] = useState('')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(() =>
     loadDay(todayKey()) ? 'saved' : 'idle'
   )
   const [cursorPos, setCursorPos] = useState(0)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const pastSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pastTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
 
-  // Load yesterday's text for suggestions (only changes at midnight, so memoize by day)
   const referenceText = useMemo(() => {
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
     return loadDay(dateToKey(yesterday))?.rawText ?? ''
   }, [])
 
-  // Load saved text for today on mount (handles re-opens during same day)
   useEffect(() => {
     const saved = loadDay(todayKey())
     if (saved) setTodayText(saved.rawText)
   }, [])
+
+  // Load past day text whenever viewDate changes
+  useEffect(() => {
+    if (viewDate) {
+      setPastText(loadDay(viewDate)?.rawText ?? '')
+    }
+  }, [viewDate])
+
+  const navigateDay = useCallback((direction: -1 | 1) => {
+    const current = viewDate ?? todayKey()
+    const next = offsetDate(current, direction)
+    const today = todayKey()
+    if (next > today) return
+    setViewDate(next === today ? null : next)
+    setCursorPos(0)
+  }, [viewDate])
+
+  // Arrow key navigation (skip when focus is inside textarea)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'ArrowLeft') navigateDay(-1)
+      if (e.key === 'ArrowRight') navigateDay(1)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [navigateDay])
 
   const handleChange = useCallback((text: string) => {
     setTodayText(text)
@@ -90,6 +122,16 @@ export function App() {
       setSaveStatus('saved')
     }, 400)
   }, [])
+
+  const handlePastChange = useCallback((text: string) => {
+    if (!viewDate) return
+    setPastText(text)
+    clearTimeout(pastSaveTimer.current)
+    const dateSnapshot = viewDate
+    pastSaveTimer.current = setTimeout(() => {
+      saveDay(dateSnapshot, text)
+    }, 400)
+  }, [viewDate])
 
   const suggestion = useMemo<Suggestion | null>(() => {
     if (viewDate !== null) return null
@@ -135,27 +177,48 @@ export function App() {
     })
   }, [suggestion, todayText])
 
-  const pastText = useMemo(() => {
-    if (!viewDate) return ''
-    return loadDay(viewDate)?.rawText ?? ''
-  }, [viewDate])
+  const handleDayClick = useCallback((date: string) => {
+    const today = todayKey()
+    setViewDate(prev => {
+      if (date === today) return null        // clicking today → go to today
+      if (prev === date) return null         // clicking selected past → deselect → today
+      return date
+    })
+    setCursorPos(0)
+  }, [])
 
-  const isViewingPast = viewDate !== null
-
-  const handleDayClick = (date: string) => {
-    setViewDate(prev => (prev === date ? null : date))
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
   }
 
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      navigateDay(dx > 0 ? -1 : 1)
+    }
+  }
+
+  const isViewingPast = viewDate !== null
   const titleText = isViewingPast ? formatDisplayDate(viewDate!) : 'Today'
 
   return (
     <div className="app">
       <Heatmap onDayClick={handleDayClick} selectedDate={viewDate} />
 
-      <div className="content">
+      <div
+        className="content"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="title-row">
           <h1 className={`title${isViewingPast ? ' past' : ''}`}>{titleText}</h1>
-          {!isViewingPast && (
+          {isViewingPast ? (
+            <button className="jump-today" onClick={() => { setViewDate(null); setCursorPos(0) }}>
+              Today →
+            </button>
+          ) : (
             <span className={`save-icon${saveStatus === 'saved' ? ' visible' : ''}`}>✓</span>
           )}
         </div>
@@ -164,11 +227,10 @@ export function App() {
           <Editor
             key={viewDate}
             value={pastText}
-            onChange={() => {}}
+            onChange={handlePastChange}
             onCursorChange={() => {}}
             onTabConfirm={() => {}}
             suggestion={null}
-            readOnly
             textareaRef={pastTextareaRef}
           />
         ) : (
@@ -181,7 +243,6 @@ export function App() {
             textareaRef={textareaRef}
           />
         )}
-
       </div>
     </div>
   )

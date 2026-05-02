@@ -81,7 +81,7 @@ export function Heatmap({ onDayClick, selectedDate }: Props) {
                 key={d}
                 className={`heatmap-cell${cell.date === selectedDate ? ' selected' : ''}`}
                 style={{ background: cellColor(cell) }}
-                onClick={() => cell.date && !cell.isToday && onDayClick(cell.date)}
+                onClick={() => cell.date && onDayClick(cell.date)}
                 title={cell.date ?? undefined}
               />
             ))}
