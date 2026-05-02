@@ -1,49 +1,71 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Heatmap } from './components/Heatmap'
 import { Editor, type Suggestion } from './components/Editor'
-import { dateToKey, loadDay, saveDay, todayKey } from './utils/storage'
+import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
+import { normalizeName, parseLine, type ParsedLine } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
+
+interface ParsedDay {
+  date: string
+  rawText: string
+  parsedLines: ParsedLine[]
+}
 
 function getSuggestion(
   currentText: string,
   cursorPos: number,
-  refText: string,
+  pastDays: ParsedDay[],
 ): Suggestion | null {
-  if (!refText.trim()) return null
+  if (pastDays.length === 0) return null
 
-  const textBefore = currentText.slice(0, cursorPos)
-  const linesBeforeCursor = textBefore.split('\n')
-  const lineIndex = linesBeforeCursor.length - 1
-  const currentLine = linesBeforeCursor[lineIndex]
+  const linesBefore = currentText.slice(0, cursorPos).split('\n')
+  const lineIndex = linesBefore.length - 1
+  const currentLine = linesBefore[lineIndex]
 
   const allLines = currentText.split('\n')
   if (currentLine.length !== allLines[lineIndex]?.length) return null
 
-  const refLines = refText.split('\n')
+  // Today's already-typed exercise names (excluding the line at cursor)
+  const todayNames = new Set<string>()
+  allLines.forEach((line, i) => {
+    if (i === lineIndex) return
+    const p = parseLine(line)
+    if (p.exercise && p.exercise.name) todayNames.add(normalizeName(p.exercise.name))
+  })
 
-  if (currentLine === '') {
-    const refLine = refLines[lineIndex]
-    if (refLine?.trim()) return { suffix: refLine, lineIndex }
-    return null
-  }
+  const lowerPrefix = currentLine.toLowerCase()
+  let best: { suffix: string; score: number } | null = null
 
-  const lower = currentLine.toLowerCase()
+  for (const day of pastDays) {
+    // Score: overlap between today's already-typed names and this day's exercise names
+    let score = 0
+    for (const p of day.parsedLines) {
+      if (p.exercise && p.exercise.name && todayNames.has(normalizeName(p.exercise.name))) score++
+    }
 
-  if (lineIndex < refLines.length) {
-    const refLine = refLines[lineIndex]
-    if (refLine.toLowerCase().startsWith(lower) && refLine.length > currentLine.length) {
-      return { suffix: refLine.slice(currentLine.length), lineIndex }
+    // Find first usable line in this day (in original order)
+    let usableLine: string | null = null
+    for (const p of day.parsedLines) {
+      if (!p.exercise || !p.exercise.name) continue
+      if (todayNames.has(normalizeName(p.exercise.name))) continue
+
+      if (currentLine === '') {
+        usableLine = p.raw
+        break
+      } else if (p.raw.toLowerCase().startsWith(lowerPrefix) && p.raw.length > currentLine.length) {
+        usableLine = p.raw
+        break
+      }
+    }
+    if (!usableLine) continue
+
+    if (!best || score > best.score) {
+      best = { suffix: usableLine.slice(currentLine.length), score }
     }
   }
 
-  for (const refLine of refLines) {
-    if (refLine.toLowerCase().startsWith(lower) && refLine.length > currentLine.length) {
-      return { suffix: refLine.slice(currentLine.length), lineIndex }
-    }
-  }
-
-  return null
+  return best ? { suffix: best.suffix, lineIndex } : null
 }
 
 function formatDisplayDate(dateStr: string): string {
@@ -57,6 +79,15 @@ function offsetDate(dateStr: string, days: number): string {
   const date = new Date(y, m - 1, d)
   date.setDate(date.getDate() + days)
   return dateToKey(date)
+}
+
+function namesFromText(text: string): string[] {
+  const out: string[] = []
+  for (const line of text.split('\n')) {
+    const p = parseLine(line)
+    if (p.exercise && p.exercise.name) out.push(normalizeName(p.exercise.name))
+  }
+  return out
 }
 
 export function App() {
@@ -75,18 +106,46 @@ export function App() {
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
-  const referenceText = useMemo(() => {
-    const yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
-    return loadDay(dateToKey(yesterday))?.rawText ?? ''
-  }, [])
+  // All past days, parsed once. Refreshed when viewDate changes
+  // (so edits to a past day are reflected when we navigate away).
+  const pastDays = useMemo<ParsedDay[]>(() => {
+    const today = todayKey()
+    return getAllDayKeys()
+      .filter(k => k !== today)
+      .reverse() // newest first
+      .map(date => {
+        const rawText = loadDay(date)?.rawText ?? ''
+        return { date, rawText, parsedLines: rawText.split('\n').map(parseLine) }
+      })
+  }, [viewDate])
+
+  // Names from past days only — always considered known.
+  const knownPast = useMemo(() => {
+    const set = new Set<string>()
+    for (const day of pastDays) {
+      for (const p of day.parsedLines) {
+        if (p.exercise && p.exercise.name) set.add(normalizeName(p.exercise.name))
+      }
+    }
+    return set
+  }, [pastDays])
+
+  // Counts of exercise names in the currently-edited text.
+  // A name is "known via today" if it appears on at least 2 lines.
+  const todayCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    const source = viewDate ? pastText : todayText
+    for (const n of namesFromText(source)) {
+      map.set(n, (map.get(n) ?? 0) + 1)
+    }
+    return map
+  }, [todayText, viewDate, pastText])
 
   useEffect(() => {
     const saved = loadDay(todayKey())
     if (saved) setTodayText(saved.rawText)
   }, [])
 
-  // Load past day text whenever viewDate changes
   useEffect(() => {
     if (viewDate) {
       setPastText(loadDay(viewDate)?.rawText ?? '')
@@ -102,7 +161,6 @@ export function App() {
     setCursorPos(0)
   }, [viewDate])
 
-  // Arrow key navigation (skip when focus is inside textarea)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLTextAreaElement) return
@@ -135,8 +193,8 @@ export function App() {
 
   const suggestion = useMemo<Suggestion | null>(() => {
     if (viewDate !== null) return null
-    return getSuggestion(todayText, cursorPos, referenceText)
-  }, [todayText, cursorPos, referenceText, viewDate])
+    return getSuggestion(todayText, cursorPos, pastDays)
+  }, [todayText, cursorPos, pastDays, viewDate])
 
   const handleTabConfirm = useCallback(() => {
     if (!suggestion || !textareaRef.current) return
@@ -180,8 +238,8 @@ export function App() {
   const handleDayClick = useCallback((date: string) => {
     const today = todayKey()
     setViewDate(prev => {
-      if (date === today) return null        // clicking today → go to today
-      if (prev === date) return null         // clicking selected past → deselect → today
+      if (date === today) return null
+      if (prev === date) return null
       return date
     })
     setCursorPos(0)
@@ -231,6 +289,8 @@ export function App() {
             onCursorChange={() => {}}
             onTabConfirm={() => {}}
             suggestion={null}
+            knownPast={knownPast}
+            todayCounts={todayCounts}
             textareaRef={pastTextareaRef}
           />
         ) : (
@@ -240,6 +300,8 @@ export function App() {
             onCursorChange={setCursorPos}
             onTabConfirm={handleTabConfirm}
             suggestion={suggestion}
+            knownPast={knownPast}
+            todayCounts={todayCounts}
             textareaRef={textareaRef}
           />
         )}

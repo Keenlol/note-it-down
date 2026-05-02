@@ -207,3 +207,10 @@ html, body {
 .ghost {
   color: var(--text-dim);
 }
+
+/* Subtle dotted underline for exercise names not seen before */
+.unknown-name {
+  text-decoration: underline dotted;
+  text-decoration-color: rgba(232, 232, 232, 0.28);
+  text-underline-offset: 3px;
+}
