@@ -21,8 +21,8 @@ interface Props {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
 }
 
-const POS_COLOR = 'rgba(74, 222, 128, 0.9)'   // green – improvement
-const NEG_COLOR = 'rgba(248, 113, 113, 0.9)'  // red   – decline
+const POS_COLOR = 'rgb(45, 149, 47)'   // green – improvement
+const NEG_COLOR = 'rgb(200, 57, 57)'  // red   – decline
 
 function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
   const items: React.ReactNode[] = []

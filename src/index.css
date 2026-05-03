@@ -297,7 +297,7 @@ html, body {
 
 .trend {
   font-style: italic;
-  font-size: var(--editor-size);
+  font-size: 1rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
