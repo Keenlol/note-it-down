@@ -4,12 +4,18 @@
   "short_name": "Note It Down",
   "description": "A minimal workout tracker. Type exercises naturally, track your progress.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#0d0d0d",
   "theme_color": "#0d0d0d",
   "orientation": "portrait",
   "lang": "en",
+  "dir": "ltr",
   "categories": ["health", "fitness", "sports"],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "icons": [
     {
       "src": "/icon-192.png",
@@ -28,6 +34,31 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/Screenshot_1.png",
+      "sizes": "1260x2465",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Today's workout log"
+    },
+    {
+      "src": "/Screenshot_2.png",
+      "sizes": "1260x2455",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Exercise history heatmap"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "description": "Open today's workout log",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
