@@ -157,9 +157,9 @@ export function App() {
   const [cursorPos, setCursorPos] = useState(0)
   const [pastCursorPos, setPastCursorPos] = useState(0)
   const [dataVersion, setDataVersion] = useState(0)
-  const [swipeDragX, setSwipeDragX] = useState(0)
-  const [swipeAnim, setSwipeAnim] = useState<{ phase: 'out' | 'in'; dir: 1 | -1 } | null>(null)
-  const [noteVisible, setNoteVisible] = useState(true)
+  const [titleStyle, setTitleStyle] = useState<React.CSSProperties>({})
+  const [noteOpacity, setNoteOpacity] = useState(1)
+  const [isSwipeAnimating, setIsSwipeAnimating] = useState(false)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pastSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -388,17 +388,24 @@ export function App() {
   }, [])
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    clearTimeout(swipeTimer.current)
+    // If interrupted mid-animation, reset cleanly
+    if (isSwipeAnimating) {
+      setIsSwipeAnimating(false)
+      setTitleStyle({})
+      setNoteOpacity(1)
+    }
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (swipeAnim) return
+    if (isSwipeAnimating) return
     const dx = e.touches[0].clientX - touchStartX.current
     const dy = e.touches[0].clientY - touchStartY.current
-    // Only track clearly horizontal movement
     if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-      setSwipeDragX(dx * 0.45)
+      // Follow finger with no transition so it's instant
+      setTitleStyle({ transform: `translateX(${dx * 0.45}px)` })
     }
   }
 
@@ -406,35 +413,57 @@ export function App() {
     const dx = e.changedTouches[0].clientX - touchStartX.current
     const dy = e.changedTouches[0].clientY - touchStartY.current
 
-    if (!swipeAnim && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    if (!isSwipeAnimating && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       const navDir: -1 | 1 = dx > 0 ? -1 : 1
+      const dir:    1 | -1 = dx > 0 ? 1  : -1  // visual direction of gesture
 
-      // Boundary check — don't animate if already at the edge
+      // Boundary: can't go forward from today
       const current = viewDate ?? todayKey()
       const next = offsetDate(current, navDir)
       if (next > todayKey()) {
-        setSwipeDragX(0)
+        // Snap back with transition from wherever drag ended
+        setTitleStyle({ transform: 'translateX(0)', transition: 'transform 0.15s ease' })
+        swipeTimer.current = setTimeout(() => setTitleStyle({}), 160)
         return
       }
 
-      const dir: 1 | -1 = dx > 0 ? 1 : -1  // visual direction of swipe gesture
+      setIsSwipeAnimating(true)
 
-      setSwipeDragX(0)
-      setSwipeAnim({ phase: 'out', dir })
-      setNoteVisible(false)
+      // EXIT: animate from current drag position (no reset to 0 → no jitter)
+      setTitleStyle({
+        transform: `translateX(${dir * 120}px)`,
+        opacity: 0,
+        transition: 'transform 0.08s ease, opacity 0.07s ease',
+      })
+      setNoteOpacity(0)
 
       clearTimeout(swipeTimer.current)
       swipeTimer.current = setTimeout(() => {
+        // Advance date & instantly place incoming title off the opposite side
         navigateDay(navDir)
-        setSwipeAnim({ phase: 'in', dir })
-        setNoteVisible(true)
+        setTitleStyle({ transform: `translateX(${-dir * 50}px)`, opacity: 0 })
+
+        // Two RAF hops so the browser paints the "from" state before transitioning
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setTitleStyle({
+              transform: 'translateX(0)',
+              opacity: 1,
+              transition: 'transform 0.08s ease, opacity 0.08s ease',
+            })
+            setNoteOpacity(1)
+          })
+        })
 
         swipeTimer.current = setTimeout(() => {
-          setSwipeAnim(null)
-        }, 320)
-      }, 200)
+          setTitleStyle({})
+          setIsSwipeAnimating(false)
+        }, 100)
+      }, 90)
     } else {
-      setSwipeDragX(0)  // snap back
+      // Snap back smoothly from wherever drag ended
+      setTitleStyle({ transform: 'translateX(0)', transition: 'transform 0.15s ease' })
+      swipeTimer.current = setTimeout(() => setTitleStyle({}), 160)
     }
   }
 
@@ -451,21 +480,7 @@ export function App() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div
-          className={`title-row${
-            swipeAnim
-              ? ` title-slide-${swipeAnim.phase === 'out' ? 'out' : 'in'}-${
-                  swipeAnim.phase === 'out'
-                    ? (swipeAnim.dir > 0 ? 'right' : 'left')
-                    : (swipeAnim.dir > 0 ? 'left' : 'right')
-                }`
-              : ''
-          }`}
-          style={swipeAnim ? undefined : {
-            transform: `translateX(${swipeDragX}px)`,
-            transition: swipeDragX === 0 ? 'transform 0.25s ease' : 'none',
-          }}
-        >
+        <div className="title-row" style={titleStyle}>
           <h1 className={`title${isViewingPast ? ' past' : ''}`}>{titleText}</h1>
           {isViewingPast ? (
             <button className="jump-today" onClick={() => { setViewDate(null); setCursorPos(0) }}>
@@ -478,7 +493,7 @@ export function App() {
           )}
         </div>
 
-        <div style={{ opacity: noteVisible ? 1 : 0, transition: 'opacity 0.18s ease', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ opacity: noteOpacity, transition: 'opacity 0.08s ease', flex: 1, display: 'flex', flexDirection: 'column' }}>
           {isViewingPast ? (
             <Editor
               key={viewDate}

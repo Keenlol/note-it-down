@@ -86,7 +86,7 @@ html, body {
 }
 
 .heatmap-cell.tapping {
-  animation: cell-tap 0.22s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  animation: cell-tap 0.15s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 .heatmap-cell.selected {
@@ -108,29 +108,7 @@ html, body {
   white-space: nowrap;
 }
 
-/* ── Title row + swipe animations ── */
-
-@keyframes title-slide-out-right {
-  from { transform: translateX(0);    opacity: 1; }
-  to   { transform: translateX(80px); opacity: 0; }
-}
-@keyframes title-slide-out-left {
-  from { transform: translateX(0);     opacity: 1; }
-  to   { transform: translateX(-80px); opacity: 0; }
-}
-@keyframes title-slide-in-left {
-  from { transform: translateX(-80px); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
-}
-@keyframes title-slide-in-right {
-  from { transform: translateX(80px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
-}
-
-.title-slide-out-right { animation: title-slide-out-right 0.2s  ease         forwards; }
-.title-slide-out-left  { animation: title-slide-out-left  0.2s  ease         forwards; }
-.title-slide-in-left   { animation: title-slide-in-left   0.28s ease         forwards; }
-.title-slide-in-right  { animation: title-slide-in-right  0.28s ease         forwards; }
+/* ── Title row ── */
 
 .title-row {
   display: flex;
@@ -292,7 +270,7 @@ html, body {
   align-items: center;
   font-family: var(--editor-font);
   font-size: var(--editor-size);
-  animation: trend-fade-in 0.3s ease 0.15s both;
+  animation: trend-fade-in 0.12s ease 0.06s both;
 }
 
 .trend {
