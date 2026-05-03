@@ -21,6 +21,9 @@ interface Props {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
 }
 
+const POS_COLOR = 'rgba(74, 222, 128, 0.9)'   // green – improvement
+const NEG_COLOR = 'rgba(248, 113, 113, 0.9)'  // red   – decline
+
 function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
   const items: React.ReactNode[] = []
 
@@ -29,7 +32,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const Icon = setsDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(setsDiff)
     items.push(
-      <span key="s" className="trend-item">
+      <span key="s" className="trend-item" style={{ color: setsDiff > 0 ? POS_COLOR : NEG_COLOR }}>
         <Icon size={13} strokeWidth={2.5} />
         {abs} set{abs !== 1 ? 's' : ''}
       </span>
@@ -41,7 +44,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const Icon = repsDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(repsDiff)
     items.push(
-      <span key="r" className="trend-item">
+      <span key="r" className="trend-item" style={{ color: repsDiff > 0 ? POS_COLOR : NEG_COLOR }}>
         <Icon size={13} strokeWidth={2.5} />
         {abs} rep{abs !== 1 ? 's' : ''}
       </span>
@@ -55,7 +58,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const abs = Math.abs(weightDiff)
     const display = abs < 10 ? `${Math.round(abs * 10) / 10}kg` : `${Math.round(abs)}kg`
     items.push(
-      <span key="w" className="trend-item">
+      <span key="w" className="trend-item" style={{ color: weightDiff > 0 ? POS_COLOR : NEG_COLOR }}>
         <Icon size={13} strokeWidth={2.5} />
         {display}
       </span>

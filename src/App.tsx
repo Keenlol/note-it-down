@@ -157,9 +157,13 @@ export function App() {
   const [cursorPos, setCursorPos] = useState(0)
   const [pastCursorPos, setPastCursorPos] = useState(0)
   const [dataVersion, setDataVersion] = useState(0)
+  const [swipeDragX, setSwipeDragX] = useState(0)
+  const [swipeAnim, setSwipeAnim] = useState<{ phase: 'out' | 'in'; dir: 1 | -1 } | null>(null)
+  const [noteVisible, setNoteVisible] = useState(true)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pastSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const swipeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pastTextareaRef = useRef<HTMLTextAreaElement>(null)
   const touchStartX = useRef(0)
@@ -388,11 +392,49 @@ export function App() {
     touchStartY.current = e.touches[0].clientY
   }
 
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (swipeAnim) return
+    const dx = e.touches[0].clientX - touchStartX.current
+    const dy = e.touches[0].clientY - touchStartY.current
+    // Only track clearly horizontal movement
+    if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      setSwipeDragX(dx * 0.45)
+    }
+  }
+
   const handleTouchEnd = (e: React.TouchEvent) => {
     const dx = e.changedTouches[0].clientX - touchStartX.current
     const dy = e.changedTouches[0].clientY - touchStartY.current
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      navigateDay(dx > 0 ? -1 : 1)
+
+    if (!swipeAnim && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      const navDir: -1 | 1 = dx > 0 ? -1 : 1
+
+      // Boundary check — don't animate if already at the edge
+      const current = viewDate ?? todayKey()
+      const next = offsetDate(current, navDir)
+      if (next > todayKey()) {
+        setSwipeDragX(0)
+        return
+      }
+
+      const dir: 1 | -1 = dx > 0 ? 1 : -1  // visual direction of swipe gesture
+
+      setSwipeDragX(0)
+      setSwipeAnim({ phase: 'out', dir })
+      setNoteVisible(false)
+
+      clearTimeout(swipeTimer.current)
+      swipeTimer.current = setTimeout(() => {
+        navigateDay(navDir)
+        setSwipeAnim({ phase: 'in', dir })
+        setNoteVisible(true)
+
+        swipeTimer.current = setTimeout(() => {
+          setSwipeAnim(null)
+        }, 320)
+      }, 200)
+    } else {
+      setSwipeDragX(0)  // snap back
     }
   }
 
@@ -406,9 +448,24 @@ export function App() {
       <div
         className="content"
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="title-row">
+        <div
+          className={`title-row${
+            swipeAnim
+              ? ` title-slide-${swipeAnim.phase === 'out' ? 'out' : 'in'}-${
+                  swipeAnim.phase === 'out'
+                    ? (swipeAnim.dir > 0 ? 'right' : 'left')
+                    : (swipeAnim.dir > 0 ? 'left' : 'right')
+                }`
+              : ''
+          }`}
+          style={swipeAnim ? undefined : {
+            transform: `translateX(${swipeDragX}px)`,
+            transition: swipeDragX === 0 ? 'transform 0.25s ease' : 'none',
+          }}
+        >
           <h1 className={`title${isViewingPast ? ' past' : ''}`}>{titleText}</h1>
           {isViewingPast ? (
             <button className="jump-today" onClick={() => { setViewDate(null); setCursorPos(0) }}>
@@ -421,32 +478,34 @@ export function App() {
           )}
         </div>
 
-        {isViewingPast ? (
-          <Editor
-            key={viewDate}
-            value={pastText}
-            onChange={handlePastChange}
-            onCursorChange={setPastCursorPos}
-            onTabConfirm={handlePastTabConfirm}
-            suggestion={pastSuggestion}
-            knownPast={knownPast}
-            todayCounts={todayCounts}
-            previousExercises={previousExercises}
-            textareaRef={pastTextareaRef}
-          />
-        ) : (
-          <Editor
-            value={todayText}
-            onChange={handleChange}
-            onCursorChange={setCursorPos}
-            onTabConfirm={handleTabConfirm}
-            suggestion={suggestion}
-            knownPast={knownPast}
-            todayCounts={todayCounts}
-            previousExercises={previousExercises}
-            textareaRef={textareaRef}
-          />
-        )}
+        <div style={{ opacity: noteVisible ? 1 : 0, transition: 'opacity 0.18s ease', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {isViewingPast ? (
+            <Editor
+              key={viewDate}
+              value={pastText}
+              onChange={handlePastChange}
+              onCursorChange={setPastCursorPos}
+              onTabConfirm={handlePastTabConfirm}
+              suggestion={pastSuggestion}
+              knownPast={knownPast}
+              todayCounts={todayCounts}
+              previousExercises={previousExercises}
+              textareaRef={pastTextareaRef}
+            />
+          ) : (
+            <Editor
+              value={todayText}
+              onChange={handleChange}
+              onCursorChange={setCursorPos}
+              onTabConfirm={handleTabConfirm}
+              suggestion={suggestion}
+              knownPast={knownPast}
+              todayCounts={todayCounts}
+              previousExercises={previousExercises}
+              textareaRef={textareaRef}
+            />
+          )}
+        </div>
       </div>
     </div>
   )
