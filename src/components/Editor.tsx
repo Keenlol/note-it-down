@@ -30,7 +30,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const abs = Math.abs(setsDiff)
     items.push(
       <span key="s" className="trend-item">
-        <Icon size={10} strokeWidth={2.5} />
+        <Icon size={13} strokeWidth={2.5} />
         {abs} set{abs !== 1 ? 's' : ''}
       </span>
     )
@@ -42,7 +42,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const abs = Math.abs(repsDiff)
     items.push(
       <span key="r" className="trend-item">
-        <Icon size={10} strokeWidth={2.5} />
+        <Icon size={13} strokeWidth={2.5} />
         {abs} rep{abs !== 1 ? 's' : ''}
       </span>
     )
@@ -56,7 +56,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const display = abs < 10 ? `${Math.round(abs * 10) / 10}kg` : `${Math.round(abs)}kg`
     items.push(
       <span key="w" className="trend-item">
-        <Icon size={10} strokeWidth={2.5} />
+        <Icon size={13} strokeWidth={2.5} />
         {display}
       </span>
     )

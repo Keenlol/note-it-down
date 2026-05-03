@@ -12,7 +12,7 @@
   --cell-empty: #1e1e1e;
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   --editor-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-  --editor-size: 16px;
+  --editor-size: 1.25rem;
   --editor-lh: 1.65;
   --pad: 24px;
 }
@@ -51,7 +51,7 @@ html, body {
 /* ── Heatmap ── */
 
 .heatmap-wrap {
-  padding: 20px var(--pad) 4px;
+  padding: var(--pad) var(--pad) 0;
 }
 
 .heatmap-grid {
@@ -60,14 +60,15 @@ html, body {
 }
 
 .heatmap-col {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
 .heatmap-cell {
-  width: 14px;
-  height: 14px;
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 2px;
   cursor: pointer;
   transition: opacity 0.15s;
@@ -85,9 +86,9 @@ html, body {
 
 .heatmap-months {
   display: grid;
-  grid-template-columns: repeat(21, 17px);
+  grid-template-columns: repeat(21, 1fr);
   margin-top: 6px;
-  font-size: 10px;
+  font-size: 0.7rem;
   color: rgba(232, 232, 232, 0.4);
   letter-spacing: 0.02em;
 }
@@ -102,12 +103,12 @@ html, body {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  margin-top: 28px;
+  margin-top: var(--pad);
   margin-bottom: 20px;
 }
 
 .title {
-  font-size: 36px;
+  font-size: 2.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -115,7 +116,7 @@ html, body {
 }
 
 .title.past {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 600;
   color: rgba(232, 232, 232, 0.45);
 }
@@ -133,7 +134,7 @@ html, body {
   background: none;
   border: none;
   color: var(--accent);
-  font-size: 13px;
+  font-size: 0.8rem;
   font-family: var(--font);
   cursor: pointer;
   padding: 0;
@@ -258,7 +259,7 @@ html, body {
 .trend {
   font-style: italic;
   color: rgba(249, 115, 22, 0.75);
-  font-size: 0.82em;
+  font-size: var(--editor-size);
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
