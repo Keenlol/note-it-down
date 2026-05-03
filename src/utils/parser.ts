@@ -109,6 +109,20 @@ export function parseLine(line: string): ParsedLine {
     }
   }
 
+  // Two-number shorthand: exactly 2 bare numbers with no weight context
+  // → assume bodyweight; larger number = reps, smaller = sets
+  if (weightKg === undefined && reps === undefined && sets === undefined && !bodyweight) {
+    const bares = toks.filter((t): t is Tok & { kind: 'bare'; n: number } => t.kind === 'bare')
+    if (bares.length === 2) {
+      bodyweight = true
+      weightKg = ASSUMED_BW_KG
+      const sorted = bares.map(t => t.n).sort((a, b) => a - b)
+      sets = sorted[0]   // smaller → sets
+      reps = sorted[1]   // larger  → reps
+      used.push(bares[0], bares[1])
+    }
+  }
+
   // Pass 2: bare numbers fill remaining slots in order (weight → reps → sets)
   for (const t of toks) {
     if (t.kind !== 'bare') continue

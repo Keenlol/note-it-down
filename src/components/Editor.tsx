@@ -149,15 +149,23 @@ export function Editor({
     ta.style.height = ta.scrollHeight + 'px'
   }, [value, textareaRef])
 
-  // Compute right-side trend badges for every exercise line that has a prior session
+  // Compute right-side badges per line
   const lineTrends: { lineIndex: number; node: React.ReactNode }[] = []
+  const lineNewItems: number[] = []  // line indices of new/unknown exercises
+
   value.split('\n').forEach((line, i) => {
     const parsed = parseLine(line)
     if (!parsed.exercise) return
-    const prev = previousExercises.get(normalizeName(parsed.exercise.name))
-    if (!prev) return
-    const node = buildTrend(parsed.exercise, prev)
-    if (node) lineTrends.push({ lineIndex: i, node })
+    const norm = normalizeName(parsed.exercise.name)
+    const prev = previousExercises.get(norm)
+    const isNew = !isKnownName(parsed.exercise.name, knownPast, todayCounts)
+
+    if (prev) {
+      const node = buildTrend(parsed.exercise, prev)
+      if (node) lineTrends.push({ lineIndex: i, node })
+    } else if (isNew) {
+      lineNewItems.push(i)
+    }
   })
 
   const reportCursor = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
@@ -191,6 +199,18 @@ export function Editor({
           style={{ top: `calc(${lineIndex} * var(--editor-lh) * 1em)` }}
         >
           <span className="trend">{node}</span>
+        </div>
+      ))}
+
+      {/* New-exercise label: right-aligned, fades in like trend badges */}
+      {lineNewItems.map(lineIndex => (
+        <div
+          key={`new-${lineIndex}`}
+          className="new-exercise-badge"
+          aria-hidden="true"
+          style={{ top: `calc(${lineIndex} * var(--editor-lh) * 1em)` }}
+        >
+          <span className="new-label">New exercise!</span>
         </div>
       ))}
 

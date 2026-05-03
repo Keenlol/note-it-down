@@ -283,9 +283,9 @@ export function App() {
   const previousExercises = useMemo<Map<string, Exercise>>(() => {
     const map = new Map<string, Exercise>()
     const sources = viewDate
-      ? pastDays.filter(d => d.date < viewDate)  // days strictly before viewed date
-      : pastDays                                  // all past days (for today)
-    for (const day of sources) {  // newest-first → first hit = most recent
+      ? pastDays.filter(d => d.date < viewDate)
+      : pastDays
+    for (const day of sources) {
       for (const p of day.parsedLines) {
         if (p.exercise) {
           const key = normalizeName(p.exercise.name)

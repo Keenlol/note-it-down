@@ -298,3 +298,25 @@ html, body {
   text-decoration-color: rgba(232, 232, 232, 0.28);
   text-underline-offset: 3px;
 }
+
+/* ── New-exercise badge ── */
+.new-exercise-badge {
+  position: absolute;
+  right: 0;
+  height: calc(var(--editor-lh) * 1em);
+  display: flex;
+  align-items: center;
+  font-family: var(--editor-font);
+  font-size: var(--editor-size);
+  pointer-events: none;
+  user-select: none;
+}
+
+.new-label {
+  font-style: italic;
+  font-size: 0.8em;
+  color: rgba(232, 232, 232, 0.3);
+  pointer-events: none;
+  user-select: none;
+}
+
