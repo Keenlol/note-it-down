@@ -162,6 +162,11 @@ export function App() {
   const [isSwipeAnimating, setIsSwipeAnimating] = useState(false)
   const [reveal, setReveal] = useState(false)
 
+  const hasExercises = useMemo(
+    () => todayText.split('\n').some(line => parseLine(line).exercise !== null),
+    [todayText]
+  )
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pastSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const swipeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -488,7 +493,7 @@ export function App() {
               Today <ArrowRight size={13} strokeWidth={2} style={{ verticalAlign: 'middle', marginLeft: 2 }} />
             </button>
           ) : (
-            <span className={`save-icon${saveStatus === 'saved' ? ' visible' : ''}`}>
+            <span className={`save-icon${saveStatus === 'saved' && hasExercises ? ' visible' : ''}`}>
               <Check size={18} strokeWidth={2.5} />
             </span>
           )}
