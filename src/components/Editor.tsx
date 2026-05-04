@@ -17,12 +17,15 @@ interface Props {
   knownPast: Set<string>
   todayCounts: Map<string, number>
   previousExercises: Map<string, Exercise>
+  reveal?: boolean
   readOnly?: boolean
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
 }
 
-const POS_COLOR = 'rgb(45, 149, 47)'   // green – improvement
-const NEG_COLOR = 'rgb(200, 57, 57)'  // red   – decline
+const POS_COLOR = 'rgb(45, 149, 47)'    // green – improvement
+const NEG_COLOR = 'rgb(200, 57, 57)'   // red   – decline
+const POS_BG    = 'rgba(45, 149, 47, 0.1)'
+const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
 
 function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
   const items: React.ReactNode[] = []
@@ -32,7 +35,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const Icon = setsDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(setsDiff)
     items.push(
-      <span key="s" className="trend-item" style={{ color: setsDiff > 0 ? POS_COLOR : NEG_COLOR }}>
+      <span key="s" className="trend-item" style={{ color: setsDiff > 0 ? POS_COLOR : NEG_COLOR, background: setsDiff > 0 ? POS_BG : NEG_BG }}>
         <Icon size={13} strokeWidth={2.5} />
         {abs} set{abs !== 1 ? 's' : ''}
       </span>
@@ -44,7 +47,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const Icon = repsDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(repsDiff)
     items.push(
-      <span key="r" className="trend-item" style={{ color: repsDiff > 0 ? POS_COLOR : NEG_COLOR }}>
+      <span key="r" className="trend-item" style={{ color: repsDiff > 0 ? POS_COLOR : NEG_COLOR, background: repsDiff > 0 ? POS_BG : NEG_BG }}>
         <Icon size={13} strokeWidth={2.5} />
         {abs} rep{abs !== 1 ? 's' : ''}
       </span>
@@ -58,7 +61,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
     const abs = Math.abs(weightDiff)
     const display = abs < 10 ? `${Math.round(abs * 10) / 10}kg` : `${Math.round(abs)}kg`
     items.push(
-      <span key="w" className="trend-item" style={{ color: weightDiff > 0 ? POS_COLOR : NEG_COLOR }}>
+      <span key="w" className="trend-item" style={{ color: weightDiff > 0 ? POS_COLOR : NEG_COLOR, background: weightDiff > 0 ? POS_BG : NEG_BG }}>
         <Icon size={13} strokeWidth={2.5} />
         {display}
       </span>
@@ -67,6 +70,38 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
 
   if (items.length === 0) return null
   return <>{items}</>
+}
+
+// Reveal overlay: exercise lines show formatted values (all orange), non-exercise lines render normally.
+// This is a second overlay that crossfades over the normal one on hold.
+function renderRevealOverlay(text: string): React.ReactNode[] {
+  const lines = text.split('\n')
+  const nodes: React.ReactNode[] = []
+
+  lines.forEach((line, i) => {
+    if (i > 0) nodes.push('\n')
+    const parsed = parseLine(line)
+    if (parsed.exercise) {
+      const ex = parsed.exercise
+      const w = ex.weightKg % 1 === 0
+        ? `${ex.weightKg}`
+        : `${Math.round(ex.weightKg * 10) / 10}`
+      nodes.push(
+        <span key={i}>
+          {ex.name}
+          {'  '}
+          <span className="num">{w}</span><span className="reveal-unit">kg</span>
+          {'  '}
+          <span className="num">{ex.reps}</span><span className="reveal-unit">reps x </span>
+          <span className="num">{ex.sets}</span><span className="reveal-unit">sets</span>
+        </span>
+      )
+    } else {
+      nodes.push(<span key={i}>{line}</span>)
+    }
+  })
+
+  return nodes
 }
 
 // Overlay: renders styled text + ghost. Trends are NOT included here —
@@ -137,7 +172,7 @@ function renderOverlay(
 export function Editor({
   value, onChange, onCursorChange, onTabConfirm,
   suggestion, knownPast, todayCounts, previousExercises,
-  readOnly, textareaRef,
+  reveal, readOnly, textareaRef,
 }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
@@ -185,13 +220,28 @@ export function Editor({
 
   return (
     <div className="editor-wrap">
-      <div ref={overlayRef} className="editor-overlay" aria-hidden="true">
+      <div
+        ref={overlayRef}
+        className="editor-overlay"
+        aria-hidden="true"
+        style={{ opacity: reveal ? 0 : 1, transition: 'opacity 0.15s ease' }}
+      >
         {renderOverlay(value, suggestion, knownPast, todayCounts)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
 
+      {/* Reveal overlay: crossfades in on hold, shows formatted values in orange */}
+      <div
+        className="editor-overlay"
+        aria-hidden="true"
+        style={{ opacity: reveal ? 1 : 0, transition: 'opacity 0.15s ease' }}
+      >
+        {renderRevealOverlay(value)}
+        {value.endsWith('\n') || value === '' ? '​' : ''}
+      </div>
+
       {/* Trend badges: floated to the right edge, one per exercise line */}
-      {lineTrends.map(({ lineIndex, node }) => (
+      {!reveal && lineTrends.map(({ lineIndex, node }) => (
         <div
           key={lineIndex}
           className="trend-abs"
@@ -203,7 +253,7 @@ export function Editor({
       ))}
 
       {/* New-exercise label: right-aligned, fades in like trend badges */}
-      {lineNewItems.map(lineIndex => (
+      {!reveal && lineNewItems.map(lineIndex => (
         <div
           key={`new-${lineIndex}`}
           className="new-exercise-badge"
@@ -215,7 +265,7 @@ export function Editor({
       ))}
 
       {/* Preset ghost block: positioned below the note line, outside normal text flow */}
-      {suggestion?.presetLines && (
+      {!reveal && suggestion?.presetLines && (
         <div
           className="ghost ghost-preset-block"
           aria-hidden="true"

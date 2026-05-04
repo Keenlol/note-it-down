@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ArrowRight } from 'lucide-react'
+import { Check, ArrowRight, Eye } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { Editor, type Suggestion } from './components/Editor'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
@@ -160,6 +160,7 @@ export function App() {
   const [titleStyle, setTitleStyle] = useState<React.CSSProperties>({})
   const [noteOpacity, setNoteOpacity] = useState(1)
   const [isSwipeAnimating, setIsSwipeAnimating] = useState(false)
+  const [reveal, setReveal] = useState(false)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pastSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -505,6 +506,7 @@ export function App() {
               knownPast={knownPast}
               todayCounts={todayCounts}
               previousExercises={previousExercises}
+              reveal={reveal}
               textareaRef={pastTextareaRef}
             />
           ) : (
@@ -517,11 +519,21 @@ export function App() {
               knownPast={knownPast}
               todayCounts={todayCounts}
               previousExercises={previousExercises}
+              reveal={reveal}
               textareaRef={textareaRef}
             />
           )}
         </div>
       </div>
+      <button
+        className="eye-btn"
+        onPointerDown={e => { e.preventDefault(); setReveal(true) }}
+        onPointerUp={() => setReveal(false)}
+        onPointerLeave={() => setReveal(false)}
+        aria-label="Reveal exercise details"
+      >
+        <Eye size={20} strokeWidth={1.8} />
+      </button>
     </div>
   )
 }

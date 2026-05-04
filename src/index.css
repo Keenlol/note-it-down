@@ -276,7 +276,7 @@ html, body {
 
 .trend {
   font-style: italic;
-  font-size: 1rem;
+  font-size: 0.75rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
@@ -286,6 +286,8 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  padding: 0.2em 0.45em;
+  border-radius: 4px;
 }
 
 .trend-item svg {
@@ -314,9 +316,38 @@ html, body {
 
 .new-label {
   font-style: italic;
-  font-size: 0.8em;
-  color: rgba(232, 232, 232, 0.3);
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: rgba(249, 115, 22, 0.2);
+  padding: 0.2em 0.45em;
+  border-radius: 4px;
   pointer-events: none;
   user-select: none;
+}
+
+/* Reveal mode unit labels (kg, reps, sets) */
+.reveal-unit {
+  color: rgba(249, 115, 22, 0.4);
+}
+
+/* ── Eye button ── */
+.eye-btn {
+  position: fixed;
+  bottom: calc(var(--pad) + env(safe-area-inset-bottom));
+  right: var(--pad);
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 8px;
+  z-index: 10;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: color 0.1s;
+}
+
+.eye-btn:active {
+  color: var(--text);
 }
 
