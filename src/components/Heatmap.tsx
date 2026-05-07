@@ -12,32 +12,36 @@ interface Cell {
 interface Props {
   onDayClick: (date: string) => void
   selectedDate: string | null
-  dataVersion: number   // increments on every save, forcing the memo to re-run
+  dataVersion: number                 // increments on every save, forcing the memo to re-run
+  filterVolume?: Map<string, number>  // per-day volume for a specific exercise; triggers orange mode
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKS = 21
 
-function cellColor(cell: Cell, maxVolume: number): string {
+function cellColor(cell: Cell, maxVolume: number, filtered: boolean): string {
   if (cell.isFuture || cell.date === null) return 'transparent'
 
   const ratio = maxVolume > 0 ? Math.min(cell.volume / maxVolume, 1) : 0
 
+  if (filtered) {
+    if (cell.volume === 0) return '#1e1e1e'
+    const opacity = 0.2 + ratio * 0.8
+    return `rgba(249, 115, 22, ${opacity.toFixed(2)})`
+  }
+
   if (cell.isToday) {
-    // 30% opacity baseline (even with 0 volume), scales to 100% at max volume
     const opacity = 0.3 + ratio * 0.7
     return `rgba(249, 115, 22, ${opacity.toFixed(2)})`
   }
 
   if (cell.volume === 0) return '#1e1e1e'
 
-  // Non-empty cells: minimum 20% lightness so any workout is clearly visible
-  // over the empty #1e1e1e (~12%). Scales to ~67% at max volume.
   const lightness = Math.round(20 + ratio * 47)
   return `hsl(0, 0%, ${lightness}%)`
 }
 
-export function Heatmap({ onDayClick, selectedDate, dataVersion }: Props) {
+export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume }: Props) {
   const [tappedCell, setTappedCell] = useState<string | null>(null)
 
   const { weeks, monthLabels, maxVolume } = useMemo(() => {
@@ -45,7 +49,6 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion }: Props) {
     today.setHours(0, 0, 0, 0)
     const todayStr = todayKey()
 
-    // Start from Sunday of (WEEKS-1) weeks ago
     const start = new Date(today)
     start.setDate(today.getDate() - (WEEKS - 1) * 7 - today.getDay())
 
@@ -69,28 +72,23 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion }: Props) {
           lastMonth = date.getMonth()
         }
 
-        const dayData = isFuture ? null : loadDay(dateStr)
-        col.push({
-          date: isFuture ? null : dateStr,
-          volume: dayData ? totalVolume(dayData.rawText) : 0,
-          isToday,
-          isFuture,
-        })
+        const volume = filterVolume
+          ? (filterVolume.get(dateStr) ?? 0)
+          : (isFuture ? 0 : (loadDay(dateStr) ? totalVolume(loadDay(dateStr)!.rawText) : 0))
+
+        col.push({ date: isFuture ? null : dateStr, volume, isToday, isFuture })
       }
       cols.push(col)
     }
 
-    // Find max volume across all cells (used for relative scaling)
     let max = 0
-    for (const col of cols) {
-      for (const cell of col) {
-        if (cell.volume > max) max = cell.volume
-      }
-    }
+    for (const col of cols) for (const cell of col) if (cell.volume > max) max = cell.volume
 
     return { weeks: cols, monthLabels: labels, maxVolume: max }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataVersion])
+  }, [dataVersion, filterVolume])
+
+  const filtered = !!filterVolume
 
   return (
     <div className="heatmap-wrap">
@@ -101,7 +99,7 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion }: Props) {
               <div
                 key={d}
                 className={`heatmap-cell${((cell.date !== null && cell.date === selectedDate) || (cell.isToday && selectedDate === null)) ? ' selected' : ''}${tappedCell === cell.date ? ' tapping' : ''}`}
-                style={{ background: cellColor(cell, maxVolume) }}
+                style={{ background: cellColor(cell, maxVolume, filtered) }}
                 onClick={() => {
                   if (cell.date) {
                     setTappedCell(cell.date)

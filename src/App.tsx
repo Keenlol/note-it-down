@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ArrowRight, Eye } from 'lucide-react'
+import { Check, ArrowRight, Eye, Dumbbell } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { Editor, type Suggestion } from './components/Editor'
+import { ExerciseSheet } from './components/ExerciseSheet'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, type ParsedLine, type Exercise } from './utils/parser'
+import { loadAliases } from './utils/aliases'
+import { exerciseVolumePerDay } from './utils/exercises'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
 
@@ -161,6 +164,14 @@ export function App() {
   const [noteOpacity, setNoteOpacity] = useState(1)
   const [isSwipeAnimating, setIsSwipeAnimating] = useState(false)
   const [reveal, setReveal] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
+  const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
+
+  const filterVolumeMap = useMemo(
+    () => focusedExercise ? exerciseVolumePerDay(focusedExercise, aliases) : undefined,
+    [focusedExercise, aliases, dataVersion],
+  )
 
   const hasExercises = useMemo(
     () => todayText.split('\n').some(line => parseLine(line).exercise !== null),
@@ -188,16 +199,22 @@ export function App() {
       })
   }, [viewDate])
 
-  // Names from past days only — always considered known.
+  // Names from past days only — always considered known. Resolves through aliases
+  // so nicknames are also treated as known.
   const knownPast = useMemo(() => {
     const set = new Set<string>()
     for (const day of pastDays) {
       for (const p of day.parsedLines) {
-        if (p.exercise && p.exercise.name) set.add(normalizeName(p.exercise.name))
+        if (p.exercise?.name) {
+          const norm = normalizeName(p.exercise.name)
+          const canonical = aliases[norm] ?? norm
+          set.add(norm)
+          set.add(canonical)
+        }
       }
     }
     return set
-  }, [pastDays])
+  }, [pastDays, aliases])
 
   // Counts of exercise names in the currently-edited text.
   // A name is "known via today" if it appears on at least 2 lines.
@@ -286,21 +303,26 @@ export function App() {
 
   // Most recent prior occurrence of each exercise, for trend indicators.
   // For today: search all past days. For a past day: search only days before it.
+  // Most recent prior occurrence of each exercise. Resolves through aliases so
+  // nicknames automatically inherit the canonical exercise's trend data.
   const previousExercises = useMemo<Map<string, Exercise>>(() => {
     const map = new Map<string, Exercise>()
-    const sources = viewDate
-      ? pastDays.filter(d => d.date < viewDate)
-      : pastDays
+    const sources = viewDate ? pastDays.filter(d => d.date < viewDate) : pastDays
     for (const day of sources) {
       for (const p of day.parsedLines) {
         if (p.exercise) {
-          const key = normalizeName(p.exercise.name)
-          if (!map.has(key)) map.set(key, p.exercise)
+          const norm = normalizeName(p.exercise.name)
+          const canonical = aliases[norm] ?? norm
+          if (!map.has(canonical)) map.set(canonical, p.exercise)
         }
       }
     }
+    // Forward alias lookups: if "bench" → "benchpress", also expose "bench" key
+    for (const [from, to] of Object.entries(aliases)) {
+      if (!map.has(from) && map.has(to)) map.set(from, map.get(to)!)
+    }
     return map
-  }, [pastDays, viewDate])
+  }, [pastDays, viewDate, aliases])
 
   const handleTabConfirm = useCallback(() => {
     if (!suggestion || !textareaRef.current) return
@@ -478,7 +500,22 @@ export function App() {
 
   return (
     <div className="app">
-      <Heatmap onDayClick={handleDayClick} selectedDate={viewDate} dataVersion={dataVersion} />
+      <div className="nav-bar">
+        <button
+          className={`nav-btn${sheetOpen ? ' active' : ''}`}
+          onClick={() => setSheetOpen(v => !v)}
+          aria-label="Exercises"
+        >
+          <Dumbbell size={19} strokeWidth={1.8} />
+        </button>
+      </div>
+
+      <Heatmap
+        onDayClick={handleDayClick}
+        selectedDate={viewDate}
+        dataVersion={dataVersion}
+        filterVolume={filterVolumeMap}
+      />
 
       <div
         className="content"
@@ -539,6 +576,16 @@ export function App() {
       >
         <Eye size={20} strokeWidth={1.8} />
       </button>
+
+      <ExerciseSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        aliases={aliases}
+        onAliasesChange={setAliases}
+        onFocusExercise={setFocusedExercise}
+        dataVersion={dataVersion}
+        onDataChange={() => setDataVersion(v => v + 1)}
+      />
     </div>
   )
 }
