@@ -330,47 +330,36 @@ html, body {
   color: rgba(249, 115, 22, 0.4);
 }
 
-/* ── Eye button ── */
-.eye-btn {
-  position: fixed;
-  bottom: calc(var(--pad) + env(safe-area-inset-bottom));
-  right: var(--pad);
+/* ── Bottom bar ── */
+
+.bottom-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  padding: 6px var(--pad) calc(10px + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+
+.bottom-btn {
   background: none;
   border: none;
-  color: var(--text-dim);
+  color: rgba(232, 232, 232, 0.38);
   cursor: pointer;
-  padding: 8px;
-  z-index: 10;
+  padding: 7px;
+  display: inline-flex;
+  align-items: center;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   transition: color 0.1s;
 }
 
-.eye-btn:active {
+.bottom-btn:active {
   color: var(--text);
 }
 
-/* ── Nav bar ── */
-
-.nav-bar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px var(--pad) 0;
-}
-
-.nav-btn {
-  background: none;
-  border: none;
-  color: rgba(232, 232, 232, 0.55);
-  cursor: pointer;
-  padding: 4px;
-  display: inline-flex;
-  align-items: center;
-  transition: color 0.15s;
-}
-
-.nav-btn.active {
+.bottom-btn.active {
   color: var(--accent);
 }
 
@@ -430,6 +419,15 @@ html, body {
   letter-spacing: -0.01em;
 }
 
+/* Keep both header states in DOM; whichever is active is in normal flow,
+   the other is absolutely positioned so it can't contribute to header height/width. */
+
+.merge-header-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .merge-init-btn {
   background: none;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -439,7 +437,8 @@ html, body {
   padding: 4px 11px;
   border-radius: 6px;
   cursor: pointer;
-  transition: color 0.1s, border-color 0.1s;
+  transition: color 0.1s, border-color 0.1s, opacity 0.15s;
+  white-space: nowrap;
 }
 
 .merge-init-btn:active {
@@ -447,10 +446,25 @@ html, body {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.merge-init-btn.merge-init-hidden {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
 .merge-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+}
+
+.merge-actions.merge-actions-hidden {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
 }
 
 .merge-cancel-btn {
@@ -541,7 +555,10 @@ html, body {
   cursor: pointer;
 }
 
-/* Merge selection circle */
+/* Merge selection circle — always in DOM, slides in/out so row height never changes.
+   Net horizontal space = gap(10px) + width + margin-right.
+   Hidden: 10 + 0 + (−10) = 0px. Shown: 10 + 16 + 0 = 26px.
+   Both properties transition together → content slides smoothly, no pop. */
 
 .merge-circle {
   flex-shrink: 0;
@@ -549,7 +566,18 @@ html, body {
   height: 16px;
   border-radius: 50%;
   border: 1.5px solid rgba(255, 255, 255, 0.18);
-  transition: border-color 0.1s, background 0.1s;
+  overflow: hidden;
+  margin-right: 0;
+  transition: width 0.22s ease, margin-right 0.22s ease,
+              opacity 0.22s ease, border-width 0.22s ease,
+              border-color 0.12s, background 0.12s;
+}
+
+.merge-circle.merge-circle-hidden {
+  width: 0;
+  opacity: 0;
+  border-width: 0;
+  margin-right: -10px;
 }
 
 .merge-circle.target {
@@ -566,11 +594,11 @@ html, body {
 
 .ex-row-left {
   display: flex;
-  align-items: center;
-  gap: 5px;
+  align-items: baseline;
   flex-wrap: wrap;
   flex: 1;
   min-width: 0;
+  gap: 0;
 }
 
 .ex-row-right {
@@ -584,23 +612,16 @@ html, body {
   font-size: 0.92rem;
   font-weight: 500;
   letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.nickname-tag {
-  font-size: 0.7rem;
-  color: rgba(232, 232, 232, 0.3);
-  background: rgba(232, 232, 232, 0.07);
-  padding: 0.15em 0.4em;
-  border-radius: 4px;
-  white-space: nowrap;
+.ex-nickname {
+  font-size: 0.92rem;
+  color: rgba(232, 232, 232, 0.28);
 }
 
 .ex-last {
-  font-size: 0.68rem;
-  color: rgba(232, 232, 232, 0.25);
+  font-size: 0.72rem;
+  color: rgba(232, 232, 232, 0.35);
   white-space: nowrap;
 }
 
@@ -619,7 +640,7 @@ html, body {
   padding: 2px;
   display: inline-flex;
   align-items: center;
-  transition: color 0.1s;
+  transition: color 0.1s, opacity 0.15s;
   flex-shrink: 0;
 }
 
@@ -669,7 +690,7 @@ html, body {
   background: rgba(220, 80, 80, 0.08);
 }
 
-/* Inline nickname input inside dropdown */
+/* Inline nickname input inside dropdown (shared .nickname-input used here) */
 
 .ex-dropdown-nick-row {
   display: flex;

@@ -138,16 +138,20 @@ export function ExerciseSheet({
       <div className="sheet-header">
         <div className="sheet-title-row">
           <span className="sheet-title">Exercises</span>
-          {mergeMode ? (
-            <div className="merge-actions">
+          {/* Both states always in DOM — whichever is "active" is in flow; the other is
+              absolutely positioned so it never contributes to layout size. */}
+          <div className="merge-header-right">
+            <button
+              className={`merge-init-btn${mergeMode ? ' merge-init-hidden' : ''}`}
+              onClick={() => setMergeMode(true)}
+            >Merge</button>
+            <div className={`merge-actions${mergeMode ? '' : ' merge-actions-hidden'}`}>
               <button className="merge-cancel-btn" onClick={cancelMerge}>Cancel</button>
               <button className="merge-confirm-btn" disabled={mergeCount < 2} onClick={confirmMerge}>
                 Merge {mergeCount >= 2 ? mergeCount : ''}
               </button>
             </div>
-          ) : (
-            <button className="merge-init-btn" onClick={() => setMergeMode(true)}>Merge</button>
-          )}
+          </div>
         </div>
         <div className="sort-chips">
           {SORT_OPTIONS.map(opt => (
@@ -181,14 +185,12 @@ export function ExerciseSheet({
               ].filter(Boolean).join(' ')}
               onClick={() => mergeMode && handleMergeTap(entry.norm)}
             >
-              {mergeMode && (
-                <div className={`merge-circle${isMergeTarget ? ' target' : isMergeSelected ? ' selected' : ''}`} />
-              )}
+              <div className={`merge-circle${!mergeMode ? ' merge-circle-hidden' : isMergeTarget ? ' target' : isMergeSelected ? ' selected' : ''}`} />
 
               <div className="ex-row-left">
                 <span className="ex-name">{entry.displayName}</span>
                 {entry.nicknames.map(n => (
-                  <span key={n} className="nickname-tag">{n}</span>
+                  <span key={n} className="ex-nickname">&nbsp;/ {n}</span>
                 ))}
               </div>
 

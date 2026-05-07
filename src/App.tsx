@@ -500,16 +500,6 @@ export function App() {
 
   return (
     <div className="app">
-      <div className="nav-bar">
-        <button
-          className={`nav-btn${sheetOpen ? ' active' : ''}`}
-          onClick={() => setSheetOpen(v => !v)}
-          aria-label="Exercises"
-        >
-          <Dumbbell size={19} strokeWidth={1.8} />
-        </button>
-      </div>
-
       <Heatmap
         onDayClick={handleDayClick}
         selectedDate={viewDate}
@@ -567,15 +557,24 @@ export function App() {
           )}
         </div>
       </div>
-      <button
-        className="eye-btn"
-        onPointerDown={e => { e.preventDefault(); setReveal(true) }}
-        onPointerUp={() => setReveal(false)}
-        onPointerLeave={() => setReveal(false)}
-        aria-label="Reveal exercise details"
-      >
-        <Eye size={20} strokeWidth={1.8} />
-      </button>
+      <div className="bottom-bar">
+        <button
+          className={`bottom-btn${sheetOpen ? ' active' : ''}`}
+          onClick={() => setSheetOpen(v => !v)}
+          aria-label="Exercises"
+        >
+          <Dumbbell size={19} strokeWidth={1.8} />
+        </button>
+        <button
+          className="bottom-btn"
+          onPointerDown={e => { e.preventDefault(); setReveal(true) }}
+          onPointerUp={() => setReveal(false)}
+          onPointerLeave={() => setReveal(false)}
+          aria-label="Reveal exercise details"
+        >
+          <Eye size={20} strokeWidth={1.8} />
+        </button>
+      </div>
 
       <ExerciseSheet
         open={sheetOpen}
