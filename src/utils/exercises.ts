@@ -1,5 +1,6 @@
 import { getAllDayKeys, loadDay, saveDay } from './storage'
-import { parseLine, normalizeName } from './parser'
+import { parseLine, normalizeName, totalVolume } from './parser'
+import { getBwOn } from './bodyweight'
 
 const ALIASES_KEY = 'nid-aliases'
 
@@ -167,9 +168,10 @@ export function exerciseVolumePerDay(
   for (const date of getAllDayKeys()) {
     const day = loadDay(date)
     if (!day) continue
+    const bw = getBwOn(date)
     let vol = 0
     for (const line of day.rawText.split('\n')) {
-      const p = parseLine(line)
+      const p = parseLine(line, bw)
       if (!p.exercise?.name) continue
       const norm = normalizeName(p.exercise.name)
       const canonical = aliases[norm] ?? norm
@@ -178,4 +180,11 @@ export function exerciseVolumePerDay(
     if (vol > 0) result.set(date, vol)
   }
   return result
+}
+
+/** Total volume for a single day, resolved with the correct bodyweight for that date. */
+export function getDayVolume(date: string): number {
+  const day = loadDay(date)
+  if (!day) return 0
+  return totalVolume(day.rawText, getBwOn(date))
 }

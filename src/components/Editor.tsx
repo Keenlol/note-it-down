@@ -17,6 +17,8 @@ interface Props {
   knownPast: Set<string>
   todayCounts: Map<string, number>
   previousExercises: Map<string, Exercise>
+  bodyweightKg?: number   // actual bodyweight for this date; defaults to 60
+  bwIsSet?: boolean       // false → show "set bodyweight" hint on bw lines
   reveal?: boolean
   readOnly?: boolean
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
@@ -74,14 +76,23 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
 
 // Reveal overlay: exercise lines show formatted values (all orange), non-exercise lines render normally.
 // This is a second overlay that crossfades over the normal one on hold.
-function renderRevealOverlay(text: string): React.ReactNode[] {
+function renderRevealOverlay(text: string, bodyweightKg: number): React.ReactNode[] {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
 
   lines.forEach((line, i) => {
     if (i > 0) nodes.push('\n')
-    const parsed = parseLine(line)
-    if (parsed.exercise) {
+    const parsed = parseLine(line, bodyweightKg)
+    if (parsed.bodyweightEntry !== undefined) {
+      // Show bodyweight entry lines as-is with the number orange
+      nodes.push(
+        <span key={i}>
+          {line.slice(0, parsed.highlights[0]?.start ?? line.length)}
+          <span className="num">{line.slice(parsed.highlights[0]?.start, parsed.highlights[0]?.end)}</span>
+          {line.slice(parsed.highlights[0]?.end ?? line.length)}
+        </span>
+      )
+    } else if (parsed.exercise) {
       const ex = parsed.exercise
       const w = ex.weightKg % 1 === 0
         ? `${ex.weightKg}`
@@ -143,13 +154,14 @@ function renderOverlay(
   suggestion: Suggestion | null,
   knownPast: Set<string>,
   todayCounts: Map<string, number>,
+  bodyweightKg: number,
 ): React.ReactNode[] {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
 
   lines.forEach((line, i) => {
     if (i > 0) nodes.push('\n')
-    const parsed = parseLine(line)
+    const parsed = parseLine(line, bodyweightKg)
     const unknown = parsed.exercise
       ? !isKnownName(parsed.exercise.name, knownPast, todayCounts)
       : false
@@ -172,6 +184,7 @@ function renderOverlay(
 export function Editor({
   value, onChange, onCursorChange, onTabConfirm,
   suggestion, knownPast, todayCounts, previousExercises,
+  bodyweightKg = 60, bwIsSet = true,
   reveal, readOnly, textareaRef,
 }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -186,10 +199,11 @@ export function Editor({
 
   // Compute right-side badges per line
   const lineTrends: { lineIndex: number; node: React.ReactNode }[] = []
-  const lineNewItems: number[] = []  // line indices of new/unknown exercises
+  const lineNewItems: number[] = []
+  let bwHintLine = -1  // first line using a bw expression when bw is not set
 
   value.split('\n').forEach((line, i) => {
-    const parsed = parseLine(line)
+    const parsed = parseLine(line, bodyweightKg)
     if (!parsed.exercise) return
     const norm = normalizeName(parsed.exercise.name)
     const prev = previousExercises.get(norm)
@@ -200,6 +214,11 @@ export function Editor({
       if (node) lineTrends.push({ lineIndex: i, node })
     } else if (isNew) {
       lineNewItems.push(i)
+    }
+
+    // Track first line using bw expression for the "set bodyweight" hint
+    if (!bwIsSet && parsed.exercise.bwExpr && bwHintLine < 0) {
+      bwHintLine = i
     }
   })
 
@@ -226,7 +245,7 @@ export function Editor({
         aria-hidden="true"
         style={{ opacity: reveal ? 0 : 1, transition: 'opacity 0.15s ease' }}
       >
-        {renderOverlay(value, suggestion, knownPast, todayCounts)}
+        {renderOverlay(value, suggestion, knownPast, todayCounts, bodyweightKg)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
 
@@ -236,7 +255,7 @@ export function Editor({
         aria-hidden="true"
         style={{ opacity: reveal ? 1 : 0, transition: 'opacity 0.15s ease' }}
       >
-        {renderRevealOverlay(value)}
+        {renderRevealOverlay(value, bodyweightKg)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
 
@@ -263,6 +282,17 @@ export function Editor({
           <span className="new-label">New exercise!</span>
         </div>
       ))}
+
+      {/* Bodyweight hint: shown on the first bw-expression line when bw not set */}
+      {!reveal && bwHintLine >= 0 && (
+        <div
+          className="new-exercise-badge"
+          aria-hidden="true"
+          style={{ top: `calc(${bwHintLine} * var(--editor-lh) * 1em)` }}
+        >
+          <span className="new-label bw-hint-label">type 'bodyweight 75' to set</span>
+        </div>
+      )}
 
       {/* Preset ghost block: positioned below the note line, outside normal text flow */}
       {!reveal && suggestion?.presetLines && (

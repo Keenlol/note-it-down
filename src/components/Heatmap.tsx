@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { dateToKey, loadDay, todayKey } from '../utils/storage'
-import { totalVolume } from '../utils/parser'
+import { dateToKey, todayKey } from '../utils/storage'
+import { getDayVolume } from '../utils/exercises'
 
 interface Cell {
   date: string | null
@@ -74,7 +74,7 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume }:
 
         const volume = filterVolume
           ? (filterVolume.get(dateStr) ?? 0)
-          : (isFuture ? 0 : (loadDay(dateStr) ? totalVolume(loadDay(dateStr)!.rawText) : 0))
+          : (isFuture ? 0 : getDayVolume(dateStr))
 
         col.push({ date: isFuture ? null : dateStr, volume, isToday, isFuture })
       }

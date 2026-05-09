@@ -325,6 +325,11 @@ html, body {
   user-select: none;
 }
 
+.bw-hint-label {
+  color: rgba(249, 115, 22, 0.5);
+  background: rgba(249, 115, 22, 0.08);
+}
+
 /* Reveal mode unit labels (kg, reps, sets) */
 .reveal-unit {
   color: rgba(249, 115, 22, 0.4);

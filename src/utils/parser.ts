@@ -1,12 +1,18 @@
 const LBS_TO_KG = 0.453592
 export const ASSUMED_BW_KG = 60
 
+export type BwExpr =
+  | { op: 'plain' }
+  | { op: 'add'; offset: number }  // bw+4, bw-3
+  | { op: 'mul'; factor: number }  // bw*1.5, 0.5*bw
+
 export interface Exercise {
   name: string
   weightKg: number
   reps: number
   sets: number
   bodyweight: boolean
+  bwExpr?: BwExpr   // present when bodyweight=true; describes the formula
   volume: number
 }
 
@@ -18,23 +24,44 @@ export interface Range {
 export interface ParsedLine {
   raw: string
   exercise: Exercise | null
-  highlights: Range[]   // numeric token ranges (orange)
-  nameRanges: Range[]   // word token ranges (for unknown-name underline)
+  bodyweightEntry?: number   // set when line is "bodyweight 82" / "bw 82"
+  highlights: Range[]        // numeric token ranges (orange)
+  nameRanges: Range[]        // word token ranges (for unknown-name underline)
 }
 
 type Tok =
-  | { kind: 'ws'; start: number; end: number }
-  | { kind: 'word'; start: number; end: number }
-  | { kind: 'bw'; start: number; end: number }
+  | { kind: 'ws';     start: number; end: number }
+  | { kind: 'word';   start: number; end: number }
+  | { kind: 'bw';     start: number; end: number }
+  | { kind: 'bwadd';  start: number; end: number; offset: number }
+  | { kind: 'bwmul';  start: number; end: number; factor: number }
   | { kind: 'weight'; start: number; end: number; kg: number }
-  | { kind: 'reps'; start: number; end: number; n: number }
-  | { kind: 'sets'; start: number; end: number; n: number }
-  | { kind: 'pair'; start: number; end: number; reps: number; sets: number }
-  | { kind: 'bare'; start: number; end: number; n: number }
+  | { kind: 'reps';   start: number; end: number; n: number }
+  | { kind: 'sets';   start: number; end: number; n: number }
+  | { kind: 'pair';   start: number; end: number; reps: number; sets: number }
+  | { kind: 'bare';   start: number; end: number; n: number }
 
 const PATTERNS: Array<{ re: RegExp; build: (m: RegExpExecArray, i: number) => Tok }> = [
   { re: /^\s+/, build: (m, i) => ({ kind: 'ws', start: i, end: i + m[0].length }) },
+
+  // n×bw  e.g. "0.5×bw", "1.5*bodyweight"  — must precede bare so "0.5" isn't eaten first
+  {
+    re: /^(\d+(?:\.\d+)?)\s*[x*×]\s*(?:bw|bodyweight)\b/i,
+    build: (m, i) => ({ kind: 'bwmul', start: i, end: i + m[0].length, factor: parseFloat(m[1]) }),
+  },
+  // bw×n  e.g. "bw*1.5", "bwx2"
+  {
+    re: /^(?:bw|bodyweight)\s*[x*×]\s*(\d+(?:\.\d+)?)/i,
+    build: (m, i) => ({ kind: 'bwmul', start: i, end: i + m[0].length, factor: parseFloat(m[1]) }),
+  },
+  // bw±n  e.g. "bw+4", "bw - 3", "bodyweight+10"
+  {
+    re: /^(?:bw|bodyweight)\s*([+-])\s*(\d+(?:\.\d+)?)/i,
+    build: (m, i) => ({ kind: 'bwadd', start: i, end: i + m[0].length, offset: m[1] === '-' ? -parseFloat(m[2]) : parseFloat(m[2]) }),
+  },
+  // plain bw — must come after bwadd/bwmul patterns
   { re: /^(?:bw|bodyweight)\b/i, build: (m, i) => ({ kind: 'bw', start: i, end: i + m[0].length }) },
+
   {
     re: /^(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+(?:\.\d+)?)(\s*(?:reps?|r|sets?|s))?\b/i,
     build: (m, i) => {
@@ -76,12 +103,37 @@ function tokenize(line: string): Tok[] {
   return toks
 }
 
-export function parseLine(line: string): ParsedLine {
+/**
+ * Detect standalone bodyweight entry: "bodyweight 82", "bw 75.5", "bw 82kg".
+ * Lines with more than one number fall through and are parsed as exercises.
+ */
+function parseBwEntryLine(line: string): ParsedLine | null {
+  // Group 1 = keyword+spaces prefix, Group 2 = full weight token (number+optional unit), Group 3 = number only
+  const m = /^(\s*(?:bodyweight|bw)\s+)((\d+(?:\.\d+)?)\s*(?:kg)?)\s*$/i.exec(line)
+  if (!m) return null
+  const weight = parseFloat(m[3])
+  const numStart = m[1].length
+  const numEnd = numStart + m[2].trimEnd().length
+  return {
+    raw: line,
+    exercise: null,
+    bodyweightEntry: weight,
+    highlights: [{ start: numStart, end: numEnd }],
+    nameRanges: [],
+  }
+}
+
+export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): ParsedLine {
+  // Bodyweight entry takes precedence
+  const bwEntry = parseBwEntryLine(line)
+  if (bwEntry) return bwEntry
+
   const toks = tokenize(line)
   let weightKg: number | undefined
   let reps: number | undefined
   let sets: number | undefined
   let bodyweight = false
+  let bwExpr: BwExpr | undefined
   const used: Tok[] = []
   const wordRanges: Range[] = []
 
@@ -91,7 +143,18 @@ export function parseLine(line: string): ParsedLine {
       wordRanges.push({ start: t.start, end: t.end })
     } else if (t.kind === 'bw') {
       bodyweight = true
-      if (weightKg === undefined) weightKg = ASSUMED_BW_KG
+      bwExpr = { op: 'plain' }
+      if (weightKg === undefined) weightKg = bodyweightKg
+      used.push(t)
+    } else if (t.kind === 'bwadd') {
+      bodyweight = true
+      bwExpr = { op: 'add', offset: t.offset }
+      if (weightKg === undefined) weightKg = bodyweightKg + t.offset
+      used.push(t)
+    } else if (t.kind === 'bwmul') {
+      bodyweight = true
+      bwExpr = { op: 'mul', factor: t.factor }
+      if (weightKg === undefined) weightKg = bodyweightKg * t.factor
       used.push(t)
     } else if (t.kind === 'weight') {
       if (weightKg === undefined) weightKg = t.kg
@@ -115,10 +178,11 @@ export function parseLine(line: string): ParsedLine {
     const bares = toks.filter((t): t is Tok & { kind: 'bare'; n: number } => t.kind === 'bare')
     if (bares.length === 2) {
       bodyweight = true
-      weightKg = ASSUMED_BW_KG
+      bwExpr = { op: 'plain' }
+      weightKg = bodyweightKg
       const sorted = bares.map(t => t.n).sort((a, b) => a - b)
-      sets = sorted[0]   // smaller → sets
-      reps = sorted[1]   // larger  → reps
+      sets = sorted[0]
+      reps = sorted[1]
       used.push(bares[0], bares[1])
     }
   }
@@ -136,8 +200,9 @@ export function parseLine(line: string): ParsedLine {
   }
 
   if (weightKg === undefined) {
-    weightKg = ASSUMED_BW_KG
+    weightKg = bodyweightKg
     bodyweight = true
+    bwExpr = { op: 'plain' }
   }
 
   const name = wordRanges
@@ -148,7 +213,7 @@ export function parseLine(line: string): ParsedLine {
 
   return {
     raw: line,
-    exercise: { name, weightKg, reps, sets, bodyweight, volume: weightKg * reps * sets },
+    exercise: { name, weightKg, reps, sets, bodyweight, bwExpr, volume: weightKg * reps * sets },
     highlights: used.map(t => ({ start: t.start, end: t.end })),
     nameRanges: wordRanges,
   }
@@ -159,13 +224,12 @@ export function countExercises(text: string): number {
 }
 
 export function normalizeName(name: string): string {
-  // Remove ALL spaces so "push up" === "pushup", "bench press" === "benchpress"
   return name.toLowerCase().replace(/\s+/g, '')
 }
 
-export function totalVolume(text: string): number {
+export function totalVolume(text: string, bodyweightKg = ASSUMED_BW_KG): number {
   return text.split('\n').reduce((sum, line) => {
-    const p = parseLine(line)
+    const p = parseLine(line, bodyweightKg)
     return sum + (p.exercise?.volume ?? 0)
   }, 0)
 }
@@ -177,13 +241,10 @@ export function isKnownName(
 ): boolean {
   const n = normalizeName(name)
   if (!n) return true
-  // Past: exact or prefix match (handles "bench p" → "bench press")
   if (knownPast.has(n)) return true
   for (const k of knownPast) {
     if (k.startsWith(n) || n.startsWith(k)) return true
   }
-  // Today: known if this name appears on at least one OTHER line today.
-  // (Each line has at most one name, so a count ≥ 2 means another line uses it.)
   if ((todayCounts.get(n) ?? 0) >= 2) return true
   return false
 }

@@ -7,6 +7,7 @@ import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/st
 import { normalizeName, parseLine, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
+import { getBwOn, setBwEntry, isBwSet } from './utils/bodyweight'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
 
@@ -150,6 +151,15 @@ function namesFromText(text: string): string[] {
   return out
 }
 
+/** Scan text for the first "bodyweight 82" entry line and return the weight, or null. */
+function extractBwFromText(text: string): number | null {
+  for (const line of text.split('\n')) {
+    const p = parseLine(line)
+    if (p.bodyweightEntry !== undefined) return p.bodyweightEntry
+  }
+  return null
+}
+
 export function App() {
   const [todayText, setTodayText] = useState(() => loadDay(todayKey())?.rawText ?? '')
   const [viewDate, setViewDate] = useState<string | null>(null)
@@ -167,11 +177,20 @@ export function App() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
+  const [bwVersion, setBwVersion] = useState(0)
 
   const filterVolumeMap = useMemo(
     () => focusedExercise ? exerciseVolumePerDay(focusedExercise, aliases) : undefined,
     [focusedExercise, aliases, dataVersion],
   )
+
+  // Bodyweight applicable on the currently-viewed date
+  const currentBw = useMemo(
+    () => getBwOn(viewDate ?? todayKey()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [viewDate, bwVersion],
+  )
+  const bwSet = useMemo(() => isBwSet(), [bwVersion])
 
   const hasExercises = useMemo(
     () => todayText.split('\n').some(line => parseLine(line).exercise !== null),
@@ -263,9 +282,12 @@ export function App() {
     setSaveStatus('saving')
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      saveDay(todayKey(), text)
+      const date = todayKey()
+      saveDay(date, text)
       setSaveStatus('saved')
       setDataVersion(v => v + 1)
+      const bw = extractBwFromText(text)
+      if (bw !== null) { setBwEntry(date, bw); setBwVersion(v => v + 1) }
     }, 400)
   }, [])
 
@@ -277,6 +299,8 @@ export function App() {
     pastSaveTimer.current = setTimeout(() => {
       saveDay(dateSnapshot, text)
       setDataVersion(v => v + 1)
+      const bw = extractBwFromText(text)
+      if (bw !== null) { setBwEntry(dateSnapshot, bw); setBwVersion(v => v + 1) }
     }, 400)
   }, [viewDate])
 
@@ -309,20 +333,24 @@ export function App() {
     const map = new Map<string, Exercise>()
     const sources = viewDate ? pastDays.filter(d => d.date < viewDate) : pastDays
     for (const day of sources) {
+      const bw = getBwOn(day.date)
       for (const p of day.parsedLines) {
-        if (p.exercise) {
-          const norm = normalizeName(p.exercise.name)
-          const canonical = aliases[norm] ?? norm
-          if (!map.has(canonical)) map.set(canonical, p.exercise)
-        }
+        if (!p.exercise) continue
+        // Re-parse bw exercises with the correct bodyweight for that date
+        const exercise = p.exercise.bodyweight
+          ? (parseLine(p.raw, bw).exercise ?? p.exercise)
+          : p.exercise
+        const norm = normalizeName(exercise.name)
+        const canonical = aliases[norm] ?? norm
+        if (!map.has(canonical)) map.set(canonical, exercise)
       }
     }
-    // Forward alias lookups: if "bench" → "benchpress", also expose "bench" key
     for (const [from, to] of Object.entries(aliases)) {
       if (!map.has(from) && map.has(to)) map.set(from, map.get(to)!)
     }
     return map
-  }, [pastDays, viewDate, aliases])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pastDays, viewDate, aliases, bwVersion])
 
   const handleTabConfirm = useCallback(() => {
     if (!suggestion || !textareaRef.current) return
@@ -538,6 +566,8 @@ export function App() {
               knownPast={knownPast}
               todayCounts={todayCounts}
               previousExercises={previousExercises}
+              bodyweightKg={currentBw}
+              bwIsSet={bwSet}
               reveal={reveal}
               textareaRef={pastTextareaRef}
             />
@@ -551,6 +581,8 @@ export function App() {
               knownPast={knownPast}
               todayCounts={todayCounts}
               previousExercises={previousExercises}
+              bodyweightKg={currentBw}
+              bwIsSet={bwSet}
               reveal={reveal}
               textareaRef={textareaRef}
             />
