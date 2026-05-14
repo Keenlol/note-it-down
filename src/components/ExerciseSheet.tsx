@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, MoreVertical } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, MoreVertical } from 'lucide-react'
 import {
   buildCatalog, mergeExercises, addNickname, deleteExercise,
-  relativeTime, type SortMode,
+  relativeTime, getExerciseHistory,
+  type SortMode, type HistoryEntry,
 } from '../utils/exercises'
+import { type Exercise } from '../utils/parser'
 
 interface Props {
   open: boolean
@@ -23,6 +25,94 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: 'za',     label: 'Z → A' },
 ]
 
+const POS_COLOR = 'rgb(45, 149, 47)'
+const NEG_COLOR = 'rgb(200, 57, 57)'
+const POS_BG    = 'rgba(45, 149, 47, 0.1)'
+const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
+
+function buildTrend(curr: Exercise, prev: Exercise): React.ReactNode | null {
+  const items: React.ReactNode[] = []
+
+  const sDiff = curr.sets - prev.sets
+  if (sDiff !== 0) {
+    const Icon = sDiff > 0 ? ArrowUp : ArrowDown
+    const abs = Math.abs(sDiff)
+    items.push(
+      <span key="s" className="trend-item" style={{ color: sDiff > 0 ? POS_COLOR : NEG_COLOR, background: sDiff > 0 ? POS_BG : NEG_BG }}>
+        <Icon size={11} strokeWidth={2.5} />{abs} set{abs !== 1 ? 's' : ''}
+      </span>
+    )
+  }
+
+  const rDiff = curr.reps - prev.reps
+  if (rDiff !== 0) {
+    const Icon = rDiff > 0 ? ArrowUp : ArrowDown
+    const abs = Math.abs(rDiff)
+    items.push(
+      <span key="r" className="trend-item" style={{ color: rDiff > 0 ? POS_COLOR : NEG_COLOR, background: rDiff > 0 ? POS_BG : NEG_BG }}>
+        <Icon size={11} strokeWidth={2.5} />{abs} rep{abs !== 1 ? 's' : ''}
+      </span>
+    )
+  }
+
+  // Skip weight diff when both are plain bodyweight (same resolved weight means same bw day)
+  const wDiff = curr.weightKg - prev.weightKg
+  if (Math.abs(wDiff) >= 0.5 && !(curr.bwExpr?.op === 'plain' && prev.bwExpr?.op === 'plain')) {
+    const Icon = wDiff > 0 ? ArrowUp : ArrowDown
+    const abs = Math.abs(wDiff)
+    const display = abs < 10 ? `${Math.round(abs * 10) / 10}kg` : `${Math.round(abs)}kg`
+    items.push(
+      <span key="w" className="trend-item" style={{ color: wDiff > 0 ? POS_COLOR : NEG_COLOR, background: wDiff > 0 ? POS_BG : NEG_BG }}>
+        <Icon size={11} strokeWidth={2.5} />{display}
+      </span>
+    )
+  }
+
+  if (items.length === 0) return null
+  return <>{items}</>
+}
+
+function shortDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const now = new Date()
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  if (date.getFullYear() !== now.getFullYear()) opts.year = 'numeric'
+  return date.toLocaleDateString('en-US', opts)
+}
+
+function formatWeight(ex: Exercise): string {
+  const w = ex.weightKg
+  return w % 1 === 0 ? `${w}kg` : `${Math.round(w * 10) / 10}kg`
+}
+
+function HistoryList({ entries }: { entries: HistoryEntry[] }) {
+  if (entries.length === 0) {
+    return <div className="history-empty">No entries found.</div>
+  }
+  return (
+    <div className="history-list">
+      {entries.map((entry, i) => {
+        const prev = entries[i + 1]
+        const trend = prev ? buildTrend(entry.exercise, prev.exercise) : null
+        return (
+          <div key={`${entry.date}-${i}`} className="history-entry">
+            <span className="history-date">{shortDate(entry.date)}</span>
+            <span className="history-values">
+              <span className="num">{formatWeight(entry.exercise)}</span>
+              <span className="history-sep"> × </span>
+              <span className="num">{entry.exercise.reps}</span>
+              <span className="history-sep"> × </span>
+              <span className="num">{entry.exercise.sets}</span>
+            </span>
+            {trend && <span className="history-trend">{trend}</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function ExerciseSheet({
   open, onClose, aliases, onAliasesChange, onFocusExercise, dataVersion, onDataChange,
 }: Props) {
@@ -30,6 +120,7 @@ export function ExerciseSheet({
   const [mergeMode, setMergeMode]         = useState(false)
   const [mergeTarget, setMergeTarget]     = useState<string | null>(null)
   const [mergeSelected, setMergeSelected] = useState<Set<string>>(new Set())
+  const [expandedExercise, setExpandedExercise] = useState<string | null>(null)
 
   // Dropdown state
   const [openDropdownFor, setOpenDropdownFor] = useState<string | null>(null)
@@ -62,6 +153,7 @@ export function ExerciseSheet({
       setMergeMode(false)
       setMergeTarget(null)
       setMergeSelected(new Set())
+      setExpandedExercise(null)
       onFocusExercise(null)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,6 +164,23 @@ export function ExerciseSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [aliases, sortMode, dataVersion],
   )
+
+  const history = useMemo(
+    () => expandedExercise ? getExerciseHistory(expandedExercise, aliases) : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [expandedExercise, aliases, dataVersion],
+  )
+
+  function toggleExpand(norm: string) {
+    if (expandedExercise === norm) {
+      setExpandedExercise(null)
+      onFocusExercise(null)
+    } else {
+      setExpandedExercise(norm)
+      onFocusExercise(norm)
+      setOpenDropdownFor(null)
+    }
+  }
 
   function openMenu(norm: string, e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
@@ -121,12 +230,13 @@ export function ExerciseSheet({
     onDataChange()
     setOpenDropdownFor(null)
     setDeleteConfirmFor(null)
-    onFocusExercise(null)
+    if (expandedExercise === norm) {
+      setExpandedExercise(null)
+      onFocusExercise(null)
+    }
   }
 
   const mergeCount = (mergeTarget ? 1 : 0) + mergeSelected.size
-
-  // The open dropdown entry
   const dropdownEntry = openDropdownFor ? catalog.find(e => e.norm === openDropdownFor) : null
 
   return (
@@ -138,8 +248,6 @@ export function ExerciseSheet({
       <div className="sheet-header">
         <div className="sheet-title-row">
           <span className="sheet-title">Exercises</span>
-          {/* Both states always in DOM — whichever is "active" is in flow; the other is
-              absolutely positioned so it never contributes to layout size. */}
           <div className="merge-header-right">
             <button
               className={`merge-init-btn${mergeMode ? ' merge-init-hidden' : ''}`}
@@ -173,36 +281,45 @@ export function ExerciseSheet({
         {catalog.map(entry => {
           const isMergeTarget   = mergeTarget === entry.norm
           const isMergeSelected = mergeSelected.has(entry.norm)
+          const isExpanded      = expandedExercise === entry.norm
 
           return (
             <div
               key={entry.norm}
-              className={[
-                'exercise-item',
-                mergeMode       ? 'merge-mode'     : '',
-                isMergeTarget   ? 'merge-target'   : '',
-                isMergeSelected ? 'merge-selected' : '',
-              ].filter(Boolean).join(' ')}
-              onClick={() => mergeMode && handleMergeTap(entry.norm)}
+              className={`exercise-item-wrap${isExpanded ? ' ex-expanded' : ''}`}
             >
-              <div className={`merge-circle${!mergeMode ? ' merge-circle-hidden' : isMergeTarget ? ' target' : isMergeSelected ? ' selected' : ''}`} />
+              {/* ── Main row ── */}
+              <div
+                className={[
+                  'exercise-item',
+                  mergeMode       ? 'merge-mode'     : '',
+                  isMergeTarget   ? 'merge-target'   : '',
+                  isMergeSelected ? 'merge-selected' : '',
+                ].filter(Boolean).join(' ')}
+                onClick={() => mergeMode ? handleMergeTap(entry.norm) : toggleExpand(entry.norm)}
+              >
+                <div className={`merge-circle${!mergeMode ? ' merge-circle-hidden' : isMergeTarget ? ' target' : isMergeSelected ? ' selected' : ''}`} />
 
-              <div className="ex-row-left">
-                <span className="ex-name">{entry.displayName}</span>
-                {entry.nicknames.map(n => (
-                  <span key={n} className="ex-nickname">&nbsp;/ {n}</span>
-                ))}
+                <div className="ex-row-left">
+                  <span className="ex-name">{entry.displayName}</span>
+                  {entry.nicknames.map(n => (
+                    <span key={n} className="ex-nickname">&nbsp;/ {n}</span>
+                  ))}
+                </div>
+
+                <div className="ex-row-right">
+                  <span className="ex-last">{relativeTime(entry.lastSeen)}</span>
+                  <span className="ex-count">{entry.count}×</span>
+                  {!mergeMode && (
+                    <button className="ex-menu-btn" onClick={e => openMenu(entry.norm, e)}>
+                      <MoreVertical size={15} strokeWidth={2} />
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="ex-row-right">
-                <span className="ex-last">{relativeTime(entry.lastSeen)}</span>
-                <span className="ex-count">{entry.count}×</span>
-                {!mergeMode && (
-                  <button className="ex-menu-btn" onClick={e => openMenu(entry.norm, e)}>
-                    <MoreVertical size={15} strokeWidth={2} />
-                  </button>
-                )}
-              </div>
+              {/* ── Expanded history ── */}
+              {isExpanded && <HistoryList entries={history} />}
             </div>
           )
         })}

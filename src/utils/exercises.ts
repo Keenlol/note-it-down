@@ -188,3 +188,40 @@ export function getDayVolume(date: string): number {
   if (!day) return 0
   return totalVolume(day.rawText, getBwOn(date))
 }
+
+export interface HistoryEntry {
+  date: string
+  exercise: import('./parser').Exercise
+}
+
+/**
+ * All logged sets for a given exercise, newest first.
+ * Resolves aliases (merged exercises included) and uses the correct
+ * bodyweight for each historical date.
+ */
+export function getExerciseHistory(
+  normCanonical: string,
+  aliases: Record<string, string>,
+): HistoryEntry[] {
+  const toMatch = new Set<string>([normCanonical])
+  for (const [from, to] of Object.entries(aliases)) {
+    if (to === normCanonical) toMatch.add(from)
+  }
+
+  const entries: HistoryEntry[] = []
+  for (const date of getAllDayKeys()) {
+    const day = loadDay(date)
+    if (!day) continue
+    const bw = getBwOn(date)
+    for (const line of day.rawText.split('\n')) {
+      const p = parseLine(line, bw)
+      if (!p.exercise?.name) continue
+      const norm = normalizeName(p.exercise.name)
+      const canonical = aliases[norm] ?? norm
+      if (toMatch.has(canonical)) entries.push({ date, exercise: p.exercise })
+    }
+  }
+
+  entries.sort((a, b) => b.date.localeCompare(a.date))
+  return entries
+}
