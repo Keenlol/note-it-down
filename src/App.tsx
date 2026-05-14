@@ -178,6 +178,8 @@ export function App() {
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
+  const [sheetHeight, setSheetHeight] = useState<number | undefined>(undefined)
+  const heatmapRef = useRef<HTMLDivElement>(null)
 
   const filterVolumeMap = useMemo(
     () => focusedExercise ? exerciseVolumePerDay(focusedExercise, aliases) : undefined,
@@ -245,6 +247,21 @@ export function App() {
     }
     return map
   }, [todayText, viewDate, pastText])
+
+  useEffect(() => {
+    const el = heatmapRef.current
+    if (!el) return
+    const update = () => {
+      const rect = el.getBoundingClientRect()
+      const vh = window.visualViewport?.height ?? window.innerHeight
+      setSheetHeight(vh - rect.bottom)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    window.addEventListener('resize', update)
+    return () => { ro.disconnect(); window.removeEventListener('resize', update) }
+  }, [])
 
   useEffect(() => {
     const saved = loadDay(todayKey())
@@ -528,12 +545,14 @@ export function App() {
 
   return (
     <div className="app">
-      <Heatmap
-        onDayClick={handleDayClick}
-        selectedDate={viewDate}
-        dataVersion={dataVersion}
-        filterVolume={filterVolumeMap}
-      />
+      <div ref={heatmapRef}>
+        <Heatmap
+          onDayClick={handleDayClick}
+          selectedDate={viewDate}
+          dataVersion={dataVersion}
+          filterVolume={filterVolumeMap}
+        />
+      </div>
 
       <div
         className="content"
@@ -616,6 +635,7 @@ export function App() {
         onFocusExercise={setFocusedExercise}
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
+        height={sheetHeight}
       />
     </div>
   )

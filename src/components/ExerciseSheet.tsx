@@ -16,6 +16,7 @@ interface Props {
   onFocusExercise: (norm: string | null) => void
   dataVersion: number
   onDataChange: () => void
+  height?: number
 }
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
@@ -114,7 +115,7 @@ function HistoryList({ entries }: { entries: HistoryEntry[] }) {
 }
 
 export function ExerciseSheet({
-  open, onClose, aliases, onAliasesChange, onFocusExercise, dataVersion, onDataChange,
+  open, onClose, aliases, onAliasesChange, onFocusExercise, dataVersion, onDataChange, height,
 }: Props) {
   const [sortMode, setSortMode]           = useState<SortMode>('count')
   const [mergeMode, setMergeMode]         = useState(false)
@@ -240,7 +241,7 @@ export function ExerciseSheet({
   const dropdownEntry = openDropdownFor ? catalog.find(e => e.norm === openDropdownFor) : null
 
   return (
-    <div className={`exercise-sheet${open ? ' open' : ''}`}>
+    <div className={`exercise-sheet${open ? ' open' : ''}`} style={height !== undefined ? { height: `${height}px` } : undefined}>
       <div className="sheet-handle-wrap" onClick={onClose}>
         <div className="sheet-handle" />
       </div>
