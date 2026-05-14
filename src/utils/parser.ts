@@ -213,7 +213,7 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
 
   return {
     raw: line,
-    exercise: { name, weightKg, reps, sets, bodyweight, bwExpr, volume: weightKg * reps * sets },
+    exercise: { name, weightKg, reps, sets, bodyweight, bwExpr, volume: reps * sets },
     highlights: used.map(t => ({ start: t.start, end: t.end })),
     nameRanges: wordRanges,
   }
