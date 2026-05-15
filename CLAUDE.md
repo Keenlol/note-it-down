@@ -16,6 +16,8 @@ No test suite — verify features manually in the browser.
 
 After successfully implementing a feature (when the user accepts it without asking for changes or adjustments), automatically create a git commit on the `main` branch with a concise commit message describing what was added. Stage only relevant source files — not `dist/`. After committing, always state in the response that a commit was made and include the commit message.
 
+**Never push.** The user handles all `git push` operations manually.
+
 ## Architecture
 
 Single-page React 19 + TypeScript app, no backend. All data lives in `localStorage`.

@@ -16,7 +16,9 @@ export function migratePresetNotes(): void {
         const trimmed = line.trim()
         if (trimmed === '') return line
         if (trimmed.startsWith('#')) return line
-        if (parseLine(line).exercise !== null) return line
+        const parsed = parseLine(line)
+        if (parsed.exercise !== null) return line
+        if (parsed.bodyweightEntry !== undefined) return line
         return '# ' + line
       })
       .join('\n')
