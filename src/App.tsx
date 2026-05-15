@@ -89,9 +89,9 @@ function getPresetSuggestion(
   const allLines = currentText.split('\n')
   if (currentLine.length !== allLines[lineIndex]?.length) return null
 
-  // Only trigger on non-exercise, non-empty lines
+  // Only trigger on non-exercise lines that start with '#'
   if (parseLine(currentLine).exercise !== null) return null
-  if (currentLine.trim() === '') return null
+  if (!currentLine.trim().startsWith('#')) return null
 
   const noteText = currentLine.toLowerCase().trim()
 
@@ -106,7 +106,7 @@ function getPresetSuggestion(
   // Find the latest past day containing exactly this note text
   for (const day of pastDays) { // newest first
     const hasNote = day.parsedLines.some(
-      p => p.exercise === null && p.raw.toLowerCase().trim() === noteText
+      p => p.exercise === null && p.raw.trim().startsWith('#') && p.raw.toLowerCase().trim() === noteText
     )
     if (!hasNote) continue
 
