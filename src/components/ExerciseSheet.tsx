@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, Check, MoreVertical } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronRight, MoreVertical } from 'lucide-react'
 import {
   buildCatalog, mergeExercises, addNickname, deleteExercise,
   relativeTime, getExerciseHistory,
@@ -302,6 +302,7 @@ export function ExerciseSheet({
                 <div className={`merge-circle${!mergeMode ? ' merge-circle-hidden' : isMergeTarget ? ' target' : isMergeSelected ? ' selected' : ''}`} />
 
                 <div className="ex-row-left">
+                  {!mergeMode && <ChevronRight size={13} strokeWidth={2.5} className={`ex-chevron${isExpanded ? ' ex-chevron-open' : ''}`} />}
                   <span className="ex-name">{entry.displayName}</span>
                   {entry.nicknames.map(n => (
                     <span key={n} className="ex-nickname">&nbsp;/ {n}</span>

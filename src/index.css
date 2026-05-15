@@ -610,11 +610,23 @@ html, body {
 
 .ex-row-left {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
   flex: 1;
   min-width: 0;
   gap: 0;
+}
+
+.ex-chevron {
+  flex-shrink: 0;
+  color: rgba(232, 232, 232, 0.22);
+  margin-right: 5px;
+  transition: transform 0.2s ease, color 0.15s;
+}
+
+.ex-chevron.ex-chevron-open {
+  transform: rotate(90deg);
+  color: rgba(232, 232, 232, 0.45);
 }
 
 .ex-row-right {
@@ -671,6 +683,10 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 7px;
+  /* ~10 entries (each ~20px tall + 7px gap) before scrolling kicks in */
+  max-height: calc(10 * (20px + 7px) - 7px + 14px); /* = 277px */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .history-empty {
