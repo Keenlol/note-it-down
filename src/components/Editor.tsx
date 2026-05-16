@@ -6,6 +6,8 @@ export interface Suggestion {
   suffix: string
   lineIndex: number
   presetLines?: string[]   // set when this is a note-triggered preset block
+  nameSuffix?: string      // inline ghost for preset name completion (Case B)
+  isHint?: boolean         // true = show-all mode, don't intercept Enter
 }
 
 interface Props {
@@ -168,12 +170,18 @@ function renderOverlay(
     nodes.push(<span key={`l${i}`}>{renderLine(line, parsed, unknown)}</span>)
 
     // Regular (non-preset) ghost: inline suffix on same line
-    if (suggestion?.lineIndex === i && !suggestion.presetLines) {
+    if (suggestion?.lineIndex === i && !suggestion.presetLines && !suggestion.nameSuffix) {
       nodes.push(
         <span key={`g${i}`} className="ghost">
           {suggestion.suffix}
           <CornerDownLeft size={12} strokeWidth={2} className="ghost-enter-icon" />
         </span>
+      )
+    }
+    // Case B preset: show name completion inline (exercises shown in block below)
+    if (suggestion?.lineIndex === i && suggestion.nameSuffix) {
+      nodes.push(
+        <span key={`gn${i}`} className="ghost">{suggestion.nameSuffix}</span>
       )
     }
   })
@@ -229,9 +237,9 @@ export function Editor({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault()
-      if (suggestion) onTabConfirm()
+      if (suggestion && !suggestion.isHint) onTabConfirm()
     }
-    if (e.key === 'Enter' && suggestion) {
+    if (e.key === 'Enter' && suggestion && !suggestion.isHint) {
       e.preventDefault()
       onTabConfirm()
     }
@@ -305,8 +313,14 @@ export function Editor({
             <div key={i}>{line}</div>
           ))}
           <div className="ghost-preset-hint">
-            <CornerDownLeft size={11} strokeWidth={2} style={{ verticalAlign: 'middle' }} />
-            {' '}enter to fill all
+            {suggestion.isHint ? (
+              'type to filter…'
+            ) : (
+              <>
+                <CornerDownLeft size={11} strokeWidth={2} style={{ verticalAlign: 'middle' }} />
+                {' '}enter to fill all
+              </>
+            )}
           </div>
         </div>
       )}

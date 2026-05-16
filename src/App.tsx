@@ -73,9 +73,20 @@ function getSuggestion(
   return best ? { suffix: best.suffix, lineIndex } : null
 }
 
-// Note-triggered preset: when cursor is on a non-exercise line that matches a past note,
-// suggest ALL exercises from the latest past day containing that note.
-function getPresetSuggestion(
+// Hash-preset suggestion: triggered on any line starting with '#'.
+// Hash-preset suggestion: triggered on any line starting with '#'.
+//
+// Normalisation rule: preset keys are the content *after* "#" with surrounding spaces
+// stripped and lowercased. So "#home", "# home", "#  Home" all share key "home".
+// nameSuffix is computed from the content portion only (not the full raw line), so the
+// inline ghost is always a clean completion of the name, independent of spacing.
+//
+// Cases:
+//   A       — nothing typed after '#'         → show all names, passive hint
+//   B-multi — typed prefix matches >1 preset  → show matching names, passive hint
+//   B-single— typed prefix matches exactly 1  → show name ghost + exercises, Enter fills
+//   C       — full name typed (B-single where nameSuffix == "")
+function getHashPresetSuggestion(
   currentText: string,
   cursorPos: number,
   pastDays: ParsedDay[],
@@ -89,44 +100,106 @@ function getPresetSuggestion(
   const allLines = currentText.split('\n')
   if (currentLine.length !== allLines[lineIndex]?.length) return null
 
-  // Only trigger on non-exercise lines that start with '#'
+  // Only trigger on lines starting with '#' that aren't parsed as exercises
+  if (!currentLine.trimStart().startsWith('#')) return null
   if (parseLine(currentLine).exercise !== null) return null
-  if (!currentLine.trim().startsWith('#')) return null
 
-  const noteText = currentLine.toLowerCase().trim()
+  // Build preset map: normKey → { rawContent (original case after "#"), exercises[] }
+  const presets = new Map<string, { rawContent: string; exercises: string[] }>()
 
-  // Names already typed today (excluding current line)
+  for (const day of pastDays) { // newest first
+    const lines = day.parsedLines
+    for (let i = 0; i < lines.length; i++) {
+      const p = lines[i]
+      if (p.exercise !== null) continue
+      if (p.bodyweightEntry !== undefined) continue
+      if (!p.raw.trim().startsWith('#')) continue
+
+      const rawName   = p.raw.trim()
+      const rawContent = rawName.replace(/^#+\s*/, '') // "# Push Day" → "Push Day"
+      const normKey   = rawContent.toLowerCase()       // "push day"
+      if (!normKey) continue  // bare "#" with nothing after — skip
+
+      // Collect exercise lines that immediately follow this header
+      const exercises: string[] = []
+      let j = i + 1
+      while (j < lines.length) {
+        const next = lines[j]
+        if (next.exercise === null && next.bodyweightEntry === undefined &&
+            next.raw.trim().startsWith('#')) break  // next header → stop
+        if (next.exercise !== null) exercises.push(next.raw)
+        j++
+      }
+
+      // Newest occurrence wins; only keep presets that actually have exercises
+      if (!presets.has(normKey) && exercises.length > 0) {
+        presets.set(normKey, { rawContent, exercises })
+      }
+    }
+  }
+
+  if (presets.size === 0) return null
+
+  // Exercise names already typed today (to filter from suggestion)
   const todayNames = new Set<string>()
-  allLines.forEach((line, i) => {
-    if (i === lineIndex) return
+  allLines.forEach((line, li) => {
+    if (li === lineIndex) return
     const p = parseLine(line)
     if (p.exercise?.name) todayNames.add(normalizeName(p.exercise.name))
   })
 
-  // Find the latest past day containing exactly this note text
-  for (const day of pastDays) { // newest first
-    const hasNote = day.parsedLines.some(
-      p => p.exercise === null && p.raw.trim().startsWith('#') && p.raw.toLowerCase().trim() === noteText
-    )
-    if (!hasNote) continue
+  // Content after '#' with leading spaces stripped — works for "#home" and "# home" equally
+  const typed        = currentLine.trimEnd()
+  const afterHash      = typed.slice(typed.indexOf('#') + 1).trimStart() // "Push" | "home" | ""
+  const afterHashLower = afterHash.toLowerCase()
 
-    const exercises = day.parsedLines
-      .filter(p => {
-        if (!p.exercise) return false
-        return !todayNames.has(normalizeName(p.exercise.name))
-      })
-      .map(p => p.raw)
-
-    if (exercises.length === 0) continue
-
+  // Case A: nothing typed after '#'
+  if (afterHash === '') {
     return {
-      suffix: '\n' + exercises.join('\n'),
+      suffix: '',
       lineIndex,
-      presetLines: exercises,
+      presetLines: [...presets.values()].map(v => v.rawContent),
+      isHint: true,
     }
   }
 
-  return null
+  // Find all presets whose key starts with what the user typed, sorted alphabetically
+  const matches = [...presets.entries()]
+    .filter(([k]) => k.startsWith(afterHashLower))
+    .sort(([a], [b]) => a.localeCompare(b))
+
+  if (matches.length === 0) return null
+
+  // Case B-multi: more than one match → show names, passive hint (no Enter fill)
+  if (matches.length > 1) {
+    return {
+      suffix: '',
+      lineIndex,
+      presetLines: matches.map(([, p]) => p.rawContent),
+      isHint: true,
+    }
+  }
+
+  // Case B-single / C: exactly one match — show name ghost + exercises, Enter fills
+  const [, preset] = matches[0]
+
+  // nameSuffix: remaining characters to finish the preset name (content portion only)
+  // e.g. afterHash="Push", rawContent="Push Day" → nameSuffix=" Day"
+  const nameSuffix = preset.rawContent.slice(afterHash.length)
+
+  const exercises = preset.exercises.filter(line => {
+    const p = parseLine(line)
+    return p.exercise && !todayNames.has(normalizeName(p.exercise.name))
+  })
+
+  if (exercises.length === 0 && !nameSuffix) return null
+
+  return {
+    suffix: nameSuffix + (exercises.length > 0 ? '\n' + exercises.join('\n') : ''),
+    lineIndex,
+    presetLines: exercises.length > 0 ? exercises : undefined,
+    nameSuffix: nameSuffix || undefined,
+  }
 }
 
 function formatDisplayDate(dateStr: string): string {
@@ -323,7 +396,7 @@ export function App() {
 
   const suggestion = useMemo<Suggestion | null>(() => {
     if (viewDate !== null) return null
-    return getPresetSuggestion(todayText, cursorPos, pastDays)
+    return getHashPresetSuggestion(todayText, cursorPos, pastDays)
         ?? getSuggestion(todayText, cursorPos, pastDays)
   }, [todayText, cursorPos, pastDays, viewDate])
 
@@ -338,7 +411,7 @@ export function App() {
 
   const pastSuggestion = useMemo<Suggestion | null>(() => {
     if (!viewDate) return null
-    return getPresetSuggestion(pastText, pastCursorPos, dayBeforeParsed)
+    return getHashPresetSuggestion(pastText, pastCursorPos, dayBeforeParsed)
         ?? getSuggestion(pastText, pastCursorPos, dayBeforeParsed)
   }, [pastText, pastCursorPos, dayBeforeParsed, viewDate])
 
