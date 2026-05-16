@@ -401,19 +401,18 @@ export function App() {
   }, [todayText, cursorPos, pastDays, viewDate])
 
   // For past-day editing: suggest only from the day immediately before viewDate
-  const dayBeforeParsed = useMemo<ParsedDay[]>(() => {
+  // All days strictly before the currently-viewed date — used for past-day suggestions.
+  // Same pattern as previousExercises: only look back, never at or after the viewed date.
+  const daysBeforeView = useMemo<ParsedDay[]>(() => {
     if (!viewDate) return []
-    const dayBefore = offsetDate(viewDate, -1)
-    const rawText = loadDay(dayBefore)?.rawText ?? ''
-    if (!rawText) return []
-    return [{ date: dayBefore, rawText, parsedLines: rawText.split('\n').map(parseLine) }]
-  }, [viewDate])
+    return pastDays.filter(d => d.date < viewDate)
+  }, [pastDays, viewDate])
 
   const pastSuggestion = useMemo<Suggestion | null>(() => {
     if (!viewDate) return null
-    return getHashPresetSuggestion(pastText, pastCursorPos, dayBeforeParsed)
-        ?? getSuggestion(pastText, pastCursorPos, dayBeforeParsed)
-  }, [pastText, pastCursorPos, dayBeforeParsed, viewDate])
+    return getHashPresetSuggestion(pastText, pastCursorPos, daysBeforeView)
+        ?? getSuggestion(pastText, pastCursorPos, daysBeforeView)
+  }, [pastText, pastCursorPos, daysBeforeView, viewDate])
 
   // Most recent prior occurrence of each exercise, for trend indicators.
   // For today: search all past days. For a past day: search only days before it.
