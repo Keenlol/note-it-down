@@ -153,12 +153,16 @@ function getHashPresetSuggestion(
   const afterHash      = typed.slice(typed.indexOf('#') + 1).trimStart() // "Push" | "home" | ""
   const afterHashLower = afterHash.toLowerCase()
 
+  const exLabel = (n: number) => n === 1 ? '1 exercise' : `${n} exercises`
+  const withCount = (rawContent: string, exercises: string[]) =>
+    `${rawContent} (${exLabel(exercises.length)})`
+
   // Case A: nothing typed after '#'
   if (afterHash === '') {
     return {
       suffix: '',
       lineIndex,
-      presetLines: [...presets.values()].map(v => v.rawContent),
+      presetLines: [...presets.values()].map(v => withCount(v.rawContent, v.exercises)),
       isHint: true,
     }
   }
@@ -175,7 +179,7 @@ function getHashPresetSuggestion(
     return {
       suffix: '',
       lineIndex,
-      presetLines: matches.map(([, p]) => p.rawContent),
+      presetLines: matches.map(([, p]) => withCount(p.rawContent, p.exercises)),
       isHint: true,
     }
   }

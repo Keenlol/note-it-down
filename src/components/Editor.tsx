@@ -312,16 +312,12 @@ export function Editor({
           {suggestion.presetLines.map((line, i) => (
             <div key={i}>{line}</div>
           ))}
-          <div className="ghost-preset-hint">
-            {suggestion.isHint ? (
-              'type to filter…'
-            ) : (
-              <>
-                <CornerDownLeft size={11} strokeWidth={2} style={{ verticalAlign: 'middle' }} />
-                {' '}enter to fill all
-              </>
-            )}
-          </div>
+          {!suggestion.isHint && (
+            <div className="ghost-preset-hint">
+              <CornerDownLeft size={11} strokeWidth={2} style={{ verticalAlign: 'middle' }} />
+              {' '}enter to fill all
+            </div>
+          )}
         </div>
       )}
 
