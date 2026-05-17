@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, MoreVertical } from 'lucide-react'
 import {
@@ -26,7 +26,8 @@ type DeleteMode = 'label-only' | 'with-exercises'
 
 export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }: Props) {
   const [sortMode, setSortMode] = useState<SortMode>('count')
-  const [listKey, setListKey]   = useState(0)
+  const listRef   = useRef<HTMLDivElement>(null)
+  const snapshots = useRef<Map<string, number>>(new Map())
 
   // Dropdown state
   const [openDropdownFor, setOpenDropdownFor] = useState<string | null>(null)
@@ -61,6 +62,22 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
       setDeleteMode(null)
     }
   }, [open])
+
+  // FLIP: after sort re-render, animate each item from its old position to its new one
+  useEffect(() => {
+    if (snapshots.current.size === 0 || !listRef.current) return
+    listRef.current.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
+      const prev = snapshots.current.get(el.dataset.norm!)
+      if (prev === undefined) return
+      const delta = prev - el.getBoundingClientRect().top
+      if (Math.abs(delta) < 1) return
+      el.animate(
+        [{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }],
+        { duration: 280, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' },
+      )
+    })
+    snapshots.current.clear()
+  }, [sortMode])
 
   const catalog = useMemo(
     () => buildPresetCatalog(sortMode),
@@ -119,7 +136,12 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
             <button
               key={opt.value}
               className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
-              onClick={() => { setSortMode(opt.value); setListKey(k => k + 1) }}
+              onClick={() => {
+                listRef.current?.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
+                  snapshots.current.set(el.dataset.norm!, el.getBoundingClientRect().top)
+                })
+                setSortMode(opt.value)
+              }}
             >
               {opt.label}
             </button>
@@ -127,17 +149,16 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
         </div>
       </div>
 
-      <div className="exercise-list">
-        <div key={listKey}>
+      <div className="exercise-list" ref={listRef}>
         {catalog.length === 0 && (
           <p className="exercise-empty">No presets logged yet.</p>
         )}
         {catalog.map(entry => (
-          <div key={entry.norm} className="exercise-item-wrap preset-item-wrap">
+          <div key={entry.norm} data-norm={entry.norm} className="exercise-item-wrap preset-item-wrap">
             {/* Main row */}
             <div className="exercise-item">
               <div className="ex-row-left">
-                <span className="ex-name">#{entry.displayName}</span>
+                <span className="ex-name"># {entry.displayName}</span>
               </div>
               <div className="ex-row-right">
                 <span className="ex-last">{relativeTime(entry.lastSeen)}</span>
@@ -156,7 +177,6 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
             </div>
           </div>
         ))}
-        </div>
       </div>
 
       {/* Dropdown — portalled to escape overflow clipping */}

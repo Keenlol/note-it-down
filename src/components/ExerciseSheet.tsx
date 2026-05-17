@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, Check, ChevronRight, MoreVertical } from 'lucide-react'
 import {
@@ -118,7 +118,8 @@ export function ExerciseSheet({
   open, onClose, aliases, onAliasesChange, onFocusExercise, dataVersion, onDataChange, height,
 }: Props) {
   const [sortMode, setSortMode]           = useState<SortMode>('count')
-  const [listKey, setListKey]             = useState(0)
+  const listRef   = useRef<HTMLDivElement>(null)
+  const snapshots = useRef<Map<string, number>>(new Map())
   const [mergeMode, setMergeMode]         = useState(false)
   const [mergeTarget, setMergeTarget]     = useState<string | null>(null)
   const [mergeSelected, setMergeSelected] = useState<Set<string>>(new Set())
@@ -160,6 +161,22 @@ export function ExerciseSheet({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
+
+  // FLIP: after sort re-render, animate each item from its old position to its new one
+  useEffect(() => {
+    if (snapshots.current.size === 0 || !listRef.current) return
+    listRef.current.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
+      const prev = snapshots.current.get(el.dataset.norm!)
+      if (prev === undefined) return
+      const delta = prev - el.getBoundingClientRect().top
+      if (Math.abs(delta) < 1) return
+      el.animate(
+        [{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }],
+        { duration: 280, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' },
+      )
+    })
+    snapshots.current.clear()
+  }, [sortMode])
 
   const catalog = useMemo(
     () => buildCatalog(aliases, sortMode),
@@ -268,7 +285,13 @@ export function ExerciseSheet({
             <button
               key={opt.value}
               className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
-              onClick={() => { setSortMode(opt.value); setListKey(k => k + 1) }}
+              onClick={() => {
+                // Snapshot positions before re-render (FLIP: First)
+                listRef.current?.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
+                  snapshots.current.set(el.dataset.norm!, el.getBoundingClientRect().top)
+                })
+                setSortMode(opt.value)
+              }}
             >
               {opt.label}
             </button>
@@ -276,8 +299,7 @@ export function ExerciseSheet({
         </div>
       </div>
 
-      <div className="exercise-list">
-        <div key={listKey}>
+      <div className="exercise-list" ref={listRef}>
         {catalog.length === 0 && (
           <p className="exercise-empty">No exercises logged yet.</p>
         )}
@@ -289,6 +311,7 @@ export function ExerciseSheet({
           return (
             <div
               key={entry.norm}
+              data-norm={entry.norm}
               className={`exercise-item-wrap${isExpanded ? ' ex-expanded' : ''}`}
             >
               {/* ── Main row ── */}
@@ -327,7 +350,6 @@ export function ExerciseSheet({
             </div>
           )
         })}
-        </div>
       </div>
 
       {/* Dropdown — portalled to body to escape overflow:auto clipping */}
