@@ -545,18 +545,20 @@ html, body {
   text-align: center;
 }
 
-/* Exercise list rows */
+/* Exercise list rows
+   Outer card: border-radius 12px, horizontal padding 8px.
+   Inner content box: border-radius 4px  (= 12 − 8).
+   Items separated by gap (margin-bottom) instead of a line. */
 
 .exercise-item-wrap {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: #1c1c1c;
+  border-radius: 12px;
+  padding: 0 8px;
+  margin-bottom: 8px;
 }
 
 .exercise-item-wrap:last-child {
-  border-bottom: none;
-}
-
-.exercise-item-wrap.ex-expanded {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  margin-bottom: 0;
 }
 
 .exercise-item {
@@ -676,10 +678,13 @@ html, body {
   color: rgba(232, 232, 232, 0.7);
 }
 
-/* History list (expanded exercise entries) */
+/* History list (expanded exercise entries) — inner box */
 
 .history-list {
-  padding: 2px 0 12px 26px; /* indent to align with name, past the merge-circle gap */
+  background: #131313;
+  border-radius: 4px; /* = outer(12) − padding(8) */
+  padding: 8px 8px 10px 22px; /* left indent aligns with name text */
+  margin-bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -690,7 +695,10 @@ html, body {
 }
 
 .history-empty {
-  padding: 6px 0 12px 26px;
+  background: #131313;
+  border-radius: 4px;
+  padding: 8px 8px 10px 22px;
+  margin-bottom: 8px;
   font-size: 0.75rem;
   color: var(--text-dim);
   font-style: italic;
@@ -865,22 +873,20 @@ html, body {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* Exercise lines inside each preset card */
-.preset-item-wrap {
-  padding-bottom: 4px;
-}
-
+/* Exercise lines inside each preset card — inner box */
 .preset-exercises {
-  padding: 0 0 10px 0;
+  background: #131313;
+  border-radius: 4px; /* = outer(12) − padding(8) */
+  padding: 8px 10px;
+  margin-bottom: 8px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .preset-exercise-line {
   font-size: 0.78rem;
   color: rgba(232, 232, 232, 0.38);
-  padding-left: 2px;
   line-height: 1.5;
 }
 
