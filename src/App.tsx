@@ -692,14 +692,14 @@ export function App() {
           onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false) }}
           aria-label="Exercises"
         >
-          <Dumbbell size={19} strokeWidth={1.8} />
+          <Dumbbell size={23} strokeWidth={1.6} />
         </button>
         <button
           className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
           onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false) }}
           aria-label="Presets"
         >
-          <Hash size={19} strokeWidth={1.8} />
+          <Hash size={23} strokeWidth={1.6} />
         </button>
         <button
           className="bottom-btn"
@@ -708,7 +708,7 @@ export function App() {
           onPointerLeave={() => setReveal(false)}
           aria-label="Reveal exercise details"
         >
-          <Eye size={20} strokeWidth={1.8} />
+          <Eye size={23} strokeWidth={1.6} />
         </button>
       </div>
 

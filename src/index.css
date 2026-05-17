@@ -361,15 +361,16 @@ html, body {
   justify-content: center;
   align-items: center;
   gap: 4px;
-  padding: 8px 0 calc(10px + env(safe-area-inset-bottom));
+  padding: 10px 0 calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 55%, transparent);
 }
 
 .bottom-btn {
   background: none;
   border: none;
-  color: var(--text-dim);
+  color: var(--text-muted);
   cursor: pointer;
-  padding: 7px;
+  padding: 10px;
   display: inline-flex;
   align-items: center;
   touch-action: none;
@@ -378,12 +379,16 @@ html, body {
   transition: color 0.1s;
 }
 
+.bottom-btn:hover {
+  color: var(--text);
+}
+
 .bottom-btn:active {
   color: var(--text);
 }
 
 .bottom-btn.active {
-  color: var(--accent);
+  color: var(--text);
 }
 
 /* ── Exercise sheet ── */
