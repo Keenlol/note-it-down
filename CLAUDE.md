@@ -23,22 +23,34 @@ After successfully implementing a feature (when the user accepts it without aski
 All new UI must follow these tokens and patterns. Do not introduce new values — extend from these.
 
 ### Colors
-```
-background:   #0d0d0d   (--bg)
-card outer:   #1c1c1c   (list row cards, sheet surfaces)
-card inner:   #131313   (nested content box inside a card)
-text:         #e8e8e8   (--text)
-text dim:     rgba(232,232,232,0.35)  (--text-dim)
-accent:       #f97316   (--accent, orange — numbers, counts, active states)
-```
+
+Use CSS variables exclusively — never hardcode these values in new rules.
+
+| Variable        | Value                        | Usage |
+|-----------------|------------------------------|-------|
+| `--bg`          | `#0d0d0d`                    | Page background |
+| `--surface-1`   | `#1e1e1e`                    | Outer cards, borders, dividers, sort chips, sheet handle |
+| `--surface-2`   | `#131313`                    | Inner card boxes (history, preset exercise lists) |
+| `--surface-3`   | `#242424`                    | Elevated surfaces (dropdown menus) |
+| `--text`        | `#e8e8e8`                    | Primary text |
+| `--text-2`      | `rgba(232,232,232,0.45)`     | Secondary text (past-day title, open chevron) |
+| `--text-dim`    | `rgba(232,232,232,0.35)`     | Metadata, labels, ghost text |
+| `--text-muted`  | `rgba(232,232,232,0.25)`     | Very subtle text (menu buttons, separators, chevron) |
+| `--accent`      | `#f97316`                    | Numbers, counts, active states |
+| `--delete`      | `rgba(220,80,80,0.85)`       | Destructive actions |
+| `--cell-empty`  | `var(--surface-1)`           | Heatmap empty cell |
+
+**Rule:** avoid opacity-based rgba() for backgrounds and borders. Use solid surface variables instead. Opacity is acceptable only for accent tints (e.g. `rgba(249,115,22,0.15)`) and the `--text-*` scale.
+
+The one exception to solid borders: `#2e2e2e` is used for input/circle borders that need slight visibility against a `--surface-1` background.
 
 ### Card / list row pattern
 Every list row uses a two-level nested box:
 
-| Layer        | `background` | `border-radius` | notes                          |
-|--------------|--------------|-----------------|--------------------------------|
-| Outer card   | `#1c1c1c`    | `8px`           | `padding: 0 5px`, `margin-bottom: 5px`, `overflow: hidden` |
-| Inner box    | `#131313`    | `3px`           | = outer(8) − padding(5); `margin-bottom: 5px` (creates bottom gap, contained by `overflow:hidden`) |
+| Layer        | `background`      | `border-radius` | notes                          |
+|--------------|-------------------|-----------------|--------------------------------|
+| Outer card   | `var(--surface-1)`| `8px`           | `padding: 0 5px`, `margin-bottom: 5px`, `overflow: hidden` |
+| Inner box    | `var(--surface-2)`| `3px`           | = outer(8) − padding(5); `margin-bottom: 5px` (creates bottom gap, contained by `overflow:hidden`) |
 
 - Gap between outer edge and inner box: **5px on all four sides**
 - `overflow: hidden` on the outer card is mandatory — it prevents `margin-bottom` on the inner box from collapsing through the outer, and clips inner corners cleanly.
@@ -60,8 +72,8 @@ Sheets slide up from the bottom. Multiple sheets are mutually exclusive (opening
 
 ### Bottom bar buttons
 ```css
-color: rgba(232,232,232,0.38);   /* inactive */
-color: var(--accent);             /* active / open */
+color: var(--text-dim);   /* inactive */
+color: var(--accent);     /* active / open */
 ```
 
 ### Ghost / suggestion text
@@ -74,9 +86,9 @@ Preset ghost blocks float absolutely below the triggering line using `top: calc(
 ```
 title:        1.1rem  weight 600
 row name:     0.92rem weight 500
-meta (date):  0.72rem color rgba(232,232,232,0.35)
+meta (date):  0.72rem color var(--text-dim)
 count:        0.72rem color var(--accent)
-inner text:   0.78rem color rgba(232,232,232,0.38)
+inner text:   0.78rem color var(--text-dim)
 dropdown:     0.82rem
 ```
 
