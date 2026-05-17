@@ -546,15 +546,17 @@ html, body {
 }
 
 /* Exercise list rows
-   Outer card: border-radius 12px, horizontal padding 8px.
-   Inner content box: border-radius 4px  (= 12 − 8).
-   Items separated by gap (margin-bottom) instead of a line. */
+   Outer card: border-radius 8px, horizontal padding 5px.
+   Inner content box: border-radius 3px (= 8 − 5), all gaps 5px.
+   overflow:hidden prevents inner margin-bottom from collapsing through
+   the outer card (which would erase the bottom gap). */
 
 .exercise-item-wrap {
   background: #1c1c1c;
-  border-radius: 12px;
-  padding: 0 8px;
-  margin-bottom: 8px;
+  border-radius: 8px;
+  padding: 0 5px;
+  margin-bottom: 5px;
+  overflow: hidden;
 }
 
 .exercise-item-wrap:last-child {
@@ -565,7 +567,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 0;
+  padding: 7px 0 5px;
   cursor: pointer;
 }
 
@@ -682,23 +684,22 @@ html, body {
 
 .history-list {
   background: #131313;
-  border-radius: 4px; /* = outer(12) − padding(8) */
-  padding: 8px 8px 10px 22px; /* left indent aligns with name text */
-  margin-bottom: 8px;
+  border-radius: 3px; /* = outer(8) − padding(5) */
+  padding: 6px 6px 8px 18px; /* left indent aligns with name text */
+  margin-bottom: 5px; /* contained by overflow:hidden → becomes bottom gap inside outer */
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  /* ~10 entries (each ~20px tall + 7px gap) before scrolling kicks in */
-  max-height: calc(10 * (20px + 7px) - 7px + 14px); /* = 277px */
+  gap: 6px;
+  max-height: calc(10 * (18px + 6px) - 6px + 14px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .history-empty {
   background: #131313;
-  border-radius: 4px;
-  padding: 8px 8px 10px 22px;
-  margin-bottom: 8px;
+  border-radius: 3px;
+  padding: 6px 6px 8px 18px;
+  margin-bottom: 5px;
   font-size: 0.75rem;
   color: var(--text-dim);
   font-style: italic;
@@ -876,12 +877,12 @@ html, body {
 /* Exercise lines inside each preset card — inner box */
 .preset-exercises {
   background: #131313;
-  border-radius: 4px; /* = outer(12) − padding(8) */
-  padding: 8px 10px;
-  margin-bottom: 8px;
+  border-radius: 3px; /* = outer(8) − padding(5) */
+  padding: 6px 8px;
+  margin-bottom: 5px; /* contained by overflow:hidden → becomes bottom gap inside outer */
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .preset-exercise-line {
