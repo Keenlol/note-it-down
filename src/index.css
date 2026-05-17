@@ -544,8 +544,8 @@ html, body {
 }
 
 .sort-chip.active {
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--surface-3);
+  color: var(--text);
 }
 
 /* Exercise list */
@@ -571,13 +571,32 @@ html, body {
    overflow:hidden prevents inner margin-bottom from collapsing through
    the outer card (which would erase the bottom gap). */
 
+@keyframes item-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .exercise-item-wrap {
   background: var(--surface-1);
   border-radius: 8px;
   padding: 0 5px;
   margin-bottom: 5px;
   overflow: hidden;
+  animation: item-in 0.22s ease both;
 }
+
+/* Staggered entrance — each card follows 18 ms after the previous */
+.exercise-item-wrap:nth-child(2)  { animation-delay:  18ms; }
+.exercise-item-wrap:nth-child(3)  { animation-delay:  36ms; }
+.exercise-item-wrap:nth-child(4)  { animation-delay:  54ms; }
+.exercise-item-wrap:nth-child(5)  { animation-delay:  72ms; }
+.exercise-item-wrap:nth-child(6)  { animation-delay:  90ms; }
+.exercise-item-wrap:nth-child(7)  { animation-delay: 108ms; }
+.exercise-item-wrap:nth-child(8)  { animation-delay: 126ms; }
+.exercise-item-wrap:nth-child(9)  { animation-delay: 144ms; }
+.exercise-item-wrap:nth-child(10) { animation-delay: 162ms; }
+.exercise-item-wrap:nth-child(11) { animation-delay: 180ms; }
+.exercise-item-wrap:nth-child(12) { animation-delay: 198ms; }
 
 .exercise-item-wrap:last-child {
   margin-bottom: 0;
@@ -892,6 +911,11 @@ html, body {
 
 .preset-delete-options .ex-dropdown-delete + .ex-dropdown-delete {
   border-top: 1px solid var(--surface-1);
+}
+
+/* Preset name row: small left indent (no chevron icon, unlike exercises) */
+.preset-item-wrap .ex-row-left {
+  padding-left: 3px;
 }
 
 /* Exercise lines inside each preset card — inner box */

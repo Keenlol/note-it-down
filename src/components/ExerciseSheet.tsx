@@ -118,6 +118,7 @@ export function ExerciseSheet({
   open, onClose, aliases, onAliasesChange, onFocusExercise, dataVersion, onDataChange, height,
 }: Props) {
   const [sortMode, setSortMode]           = useState<SortMode>('count')
+  const [listKey, setListKey]             = useState(0)
   const [mergeMode, setMergeMode]         = useState(false)
   const [mergeTarget, setMergeTarget]     = useState<string | null>(null)
   const [mergeSelected, setMergeSelected] = useState<Set<string>>(new Set())
@@ -267,7 +268,7 @@ export function ExerciseSheet({
             <button
               key={opt.value}
               className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
-              onClick={() => setSortMode(opt.value)}
+              onClick={() => { setSortMode(opt.value); setListKey(k => k + 1) }}
             >
               {opt.label}
             </button>
@@ -276,6 +277,7 @@ export function ExerciseSheet({
       </div>
 
       <div className="exercise-list">
+        <div key={listKey}>
         {catalog.length === 0 && (
           <p className="exercise-empty">No exercises logged yet.</p>
         )}
@@ -325,6 +327,7 @@ export function ExerciseSheet({
             </div>
           )
         })}
+        </div>
       </div>
 
       {/* Dropdown — portalled to body to escape overflow:auto clipping */}

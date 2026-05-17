@@ -26,6 +26,7 @@ type DeleteMode = 'label-only' | 'with-exercises'
 
 export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }: Props) {
   const [sortMode, setSortMode] = useState<SortMode>('count')
+  const [listKey, setListKey]   = useState(0)
 
   // Dropdown state
   const [openDropdownFor, setOpenDropdownFor] = useState<string | null>(null)
@@ -118,7 +119,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
             <button
               key={opt.value}
               className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
-              onClick={() => setSortMode(opt.value)}
+              onClick={() => { setSortMode(opt.value); setListKey(k => k + 1) }}
             >
               {opt.label}
             </button>
@@ -127,6 +128,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
       </div>
 
       <div className="exercise-list">
+        <div key={listKey}>
         {catalog.length === 0 && (
           <p className="exercise-empty">No presets logged yet.</p>
         )}
@@ -135,7 +137,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
             {/* Main row */}
             <div className="exercise-item">
               <div className="ex-row-left">
-                <span className="ex-name">{entry.displayName}</span>
+                <span className="ex-name">#{entry.displayName}</span>
               </div>
               <div className="ex-row-right">
                 <span className="ex-last">{relativeTime(entry.lastSeen)}</span>
@@ -154,6 +156,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       {/* Dropdown — portalled to escape overflow clipping */}
