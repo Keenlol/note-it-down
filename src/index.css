@@ -368,7 +368,7 @@ html, body {
 .bottom-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--surface-1);
   cursor: pointer;
   padding: 10px;
   display: inline-flex;

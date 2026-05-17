@@ -75,7 +75,7 @@ Sheets slide up from the bottom. Multiple sheets are mutually exclusive (opening
 
 ### Bottom bar buttons
 ```css
-color: var(--text-muted);  /* idle */
+color: var(--surface-1);   /* idle */
 color: var(--text);        /* hover / active / sheet open */
 /* gradient background for separation from content below */
 background: linear-gradient(to top, var(--bg) 55%, transparent);
