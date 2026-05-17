@@ -854,3 +854,33 @@ html, body {
   padding: 0;
 }
 
+/* ── Preset sheet ── */
+
+/* No top border on first delete option — the rename item above acts as the separator */
+.preset-delete-options .ex-dropdown-delete:first-child {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.preset-delete-options .ex-dropdown-delete + .ex-dropdown-delete {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Exercise lines inside each preset card */
+.preset-item-wrap {
+  padding-bottom: 4px;
+}
+
+.preset-exercises {
+  padding: 0 0 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.preset-exercise-line {
+  font-size: 0.78rem;
+  color: rgba(232, 232, 232, 0.38);
+  padding-left: 2px;
+  line-height: 1.5;
+}
+

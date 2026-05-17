@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ArrowRight, Eye, Dumbbell } from 'lucide-react'
+import { Check, ArrowRight, Eye, Dumbbell, Hash } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { Editor, type Suggestion } from './components/Editor'
 import { ExerciseSheet } from './components/ExerciseSheet'
+import { PresetSheet } from './components/PresetSheet'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
@@ -252,6 +253,7 @@ export function App() {
   const [isSwipeAnimating, setIsSwipeAnimating] = useState(false)
   const [reveal, setReveal] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [presetSheetOpen, setPresetSheetOpen] = useState(false)
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
@@ -687,10 +689,17 @@ export function App() {
       <div className="bottom-bar">
         <button
           className={`bottom-btn${sheetOpen ? ' active' : ''}`}
-          onClick={() => setSheetOpen(v => !v)}
+          onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false) }}
           aria-label="Exercises"
         >
           <Dumbbell size={19} strokeWidth={1.8} />
+        </button>
+        <button
+          className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
+          onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false) }}
+          aria-label="Presets"
+        >
+          <Hash size={19} strokeWidth={1.8} />
         </button>
         <button
           className="bottom-btn"
@@ -709,6 +718,14 @@ export function App() {
         aliases={aliases}
         onAliasesChange={setAliases}
         onFocusExercise={setFocusedExercise}
+        dataVersion={dataVersion}
+        onDataChange={() => setDataVersion(v => v + 1)}
+        height={sheetHeight}
+      />
+
+      <PresetSheet
+        open={presetSheetOpen}
+        onClose={() => setPresetSheetOpen(false)}
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         height={sheetHeight}
