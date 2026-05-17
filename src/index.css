@@ -19,7 +19,10 @@
   --text-muted: rgba(232, 232, 232, 0.25);  /* very subtle */
 
   /* Semantic */
-  --accent:  #f97316;
+  --accent:     #f97316;
+  --accent-dim: rgba(249, 115, 22, 0.45);  /* dimmed accent text */
+  --accent-mid: rgba(249, 115, 22, 0.28);  /* selection / active bg */
+  --accent-tint: rgba(249, 115, 22, 0.12); /* subtle accent bg */
   --delete:  rgba(220, 80, 80, 0.85);
 
   --cell-empty: var(--surface-1);
@@ -337,13 +340,13 @@ html, body {
 }
 
 .bw-hint-label {
-  color: rgba(249, 115, 22, 0.5);
-  background: rgba(249, 115, 22, 0.08);
+  color: var(--accent-dim);
+  background: var(--accent-tint);
 }
 
 /* Reveal mode unit labels (kg, reps, sets) */
 .reveal-unit {
-  color: rgba(249, 115, 22, 0.4);
+  color: var(--accent-dim);
 }
 
 /* ── Bottom bar ── */
@@ -536,7 +539,7 @@ html, body {
 }
 
 .sort-chip.active {
-  background: rgba(249, 115, 22, 0.15);
+  background: var(--accent-tint);
   color: var(--accent);
 }
 
@@ -619,7 +622,7 @@ html, body {
 
 .merge-circle.selected {
   border-color: var(--accent);
-  background: rgba(249, 115, 22, 0.28);
+  background: var(--accent-mid);
 }
 
 /* Row layout */

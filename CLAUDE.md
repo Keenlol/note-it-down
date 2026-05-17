@@ -37,6 +37,9 @@ Use CSS variables exclusively — never hardcode these values in new rules.
 | `--text-dim`    | `rgba(232,232,232,0.35)`     | Metadata, labels, ghost text |
 | `--text-muted`  | `rgba(232,232,232,0.25)`     | Very subtle text (menu buttons, separators, chevron) |
 | `--accent`      | `#f97316`                    | Numbers, counts, active states |
+| `--accent-dim`  | `rgba(249,115,22,0.45)`      | Dimmed accent text (bw hint, reveal units) |
+| `--accent-mid`  | `rgba(249,115,22,0.28)`      | Selection/active bg (merge circle) |
+| `--accent-tint` | `rgba(249,115,22,0.12)`      | Subtle accent bg (chips, bw hint bg) |
 | `--delete`      | `rgba(220,80,80,0.85)`       | Destructive actions |
 | `--cell-empty`  | `var(--surface-1)`           | Heatmap empty cell |
 
