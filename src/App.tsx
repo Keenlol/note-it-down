@@ -260,6 +260,28 @@ export function App() {
   const [sheetHeight, setSheetHeight] = useState<number | undefined>(undefined)
   const heatmapRef = useRef<HTMLDivElement>(null)
 
+  // Global tap animation — pointerdown on any [data-tap] element adds .tapping,
+  // animationend removes it. Single source: edit only @keyframes tap-scale in CSS.
+  useEffect(() => {
+    function onPointerDown(e: PointerEvent) {
+      const el = (e.target as Element).closest('[data-tap]') as HTMLElement | null
+      if (!el) return
+      el.classList.remove('tapping')
+      void el.offsetWidth          // force reflow so animation restarts if re-tapped
+      el.classList.add('tapping')
+    }
+    function onAnimationEnd(e: AnimationEvent) {
+      if (e.animationName === 'tap-scale')
+        (e.target as Element).classList.remove('tapping')
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('animationend', onAnimationEnd)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('animationend', onAnimationEnd)
+    }
+  }, [])
+
   const filterVolumeMap = useMemo(
     () => focusedExercise ? exerciseVolumePerDay(focusedExercise, aliases) : undefined,
     [focusedExercise, aliases, dataVersion],
@@ -641,7 +663,7 @@ export function App() {
         <div className="title-row" style={titleStyle}>
           <h1 className={`title${isViewingPast ? ' past' : ''}`}>{titleText}</h1>
           {isViewingPast ? (
-            <button className="jump-today" onClick={() => { setViewDate(null); setCursorPos(0) }}>
+            <button className="jump-today" data-tap onClick={() => { setViewDate(null); setCursorPos(0) }}>
               Today <ArrowRight size={13} strokeWidth={2} style={{ verticalAlign: 'middle', marginLeft: 2 }} />
             </button>
           ) : (
@@ -688,6 +710,7 @@ export function App() {
       </div>
       <div className="bottom-bar">
         <button
+          data-tap
           className={`bottom-btn${sheetOpen ? ' active' : ''}`}
           onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false) }}
           aria-label="Exercises"
@@ -695,6 +718,7 @@ export function App() {
           <Dumbbell size={23} strokeWidth={1.6} />
         </button>
         <button
+          data-tap
           className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
           onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false) }}
           aria-label="Presets"
@@ -702,6 +726,7 @@ export function App() {
           <Hash size={23} strokeWidth={1.6} />
         </button>
         <button
+          data-tap
           className="bottom-btn"
           onPointerDown={e => { e.preventDefault(); setReveal(true) }}
           onPointerUp={() => setReveal(false)}

@@ -123,7 +123,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
       className={`exercise-sheet${open ? ' open' : ''}`}
       style={height !== undefined ? { height: `${height}px` } : undefined}
     >
-      <div className="sheet-handle-wrap" onClick={onClose}>
+      <div className="sheet-handle-wrap" data-tap onClick={onClose}>
         <div className="sheet-handle" />
       </div>
 
@@ -135,6 +135,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
           {SORT_OPTIONS.map(opt => (
             <button
               key={opt.value}
+              data-tap
               className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
               onClick={() => {
                 listRef.current?.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
@@ -154,7 +155,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
           <p className="exercise-empty">No presets logged yet.</p>
         )}
         {catalog.map(entry => (
-          <div key={entry.norm} data-norm={entry.norm} className="exercise-item-wrap preset-item-wrap">
+          <div key={entry.norm} data-tap data-norm={entry.norm} className="exercise-item-wrap preset-item-wrap">
             {/* Main row */}
             <div className="exercise-item">
               <div className="ex-row-left">

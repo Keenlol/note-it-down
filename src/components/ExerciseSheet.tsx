@@ -260,7 +260,7 @@ export function ExerciseSheet({
 
   return (
     <div className={`exercise-sheet${open ? ' open' : ''}`} style={height !== undefined ? { height: `${height}px` } : undefined}>
-      <div className="sheet-handle-wrap" onClick={onClose}>
+      <div className="sheet-handle-wrap" data-tap onClick={onClose}>
         <div className="sheet-handle" />
       </div>
 
@@ -284,6 +284,7 @@ export function ExerciseSheet({
           {SORT_OPTIONS.map(opt => (
             <button
               key={opt.value}
+              data-tap
               className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
               onClick={() => {
                 // Snapshot positions before re-render (FLIP: First)
@@ -311,6 +312,7 @@ export function ExerciseSheet({
           return (
             <div
               key={entry.norm}
+              data-tap
               data-norm={entry.norm}
               className={`exercise-item-wrap${isExpanded ? ' ex-expanded' : ''}`}
             >

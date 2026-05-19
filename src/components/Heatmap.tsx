@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { dateToKey, todayKey } from '../utils/storage'
 import { getDayVolume } from '../utils/exercises'
 
@@ -42,8 +42,6 @@ function cellColor(cell: Cell, maxVolume: number, filtered: boolean): string {
 }
 
 export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume }: Props) {
-  const [tappedCell, setTappedCell] = useState<string | null>(null)
-
   const { weeks, monthLabels, maxVolume } = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -98,15 +96,10 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume }:
             {col.map((cell, d) => (
               <div
                 key={d}
-                className={`heatmap-cell${((cell.date !== null && cell.date === selectedDate) || (cell.isToday && selectedDate === null)) ? ' selected' : ''}${tappedCell === cell.date ? ' tapping' : ''}`}
+                data-tap
+                className={`heatmap-cell${((cell.date !== null && cell.date === selectedDate) || (cell.isToday && selectedDate === null)) ? ' selected' : ''}`}
                 style={{ background: cellColor(cell, maxVolume, filtered) }}
-                onClick={() => {
-                  if (cell.date) {
-                    setTappedCell(cell.date)
-                    onDayClick(cell.date)
-                  }
-                }}
-                onAnimationEnd={() => setTappedCell(null)}
+                onClick={() => { if (cell.date) onDayClick(cell.date) }}
                 title={cell.date ?? undefined}
               />
             ))}

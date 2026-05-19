@@ -82,10 +82,19 @@ html, body {
   gap: 3px;
 }
 
-@keyframes cell-tap {
+/* ── Tap animation — single source of truth ──────────────────────────────
+   Add data-tap to any element. Global delegation in App.tsx adds/removes
+   the .tapping class on pointerdown / animationend.
+   Override --tap-scale on specific elements to tune the depth.          */
+
+@keyframes tap-scale {
   0%   { transform: scale(1); }
-  40%  { transform: scale(0.88); }
+  40%  { transform: scale(var(--tap-scale, 0.92)); }
   100% { transform: scale(1); }
+}
+
+.tapping {
+  animation: tap-scale 0.15s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 .heatmap-cell {
@@ -94,14 +103,11 @@ html, body {
   border-radius: 3px;
   cursor: pointer;
   transition: opacity 0.15s;
+  --tap-scale: 0.88;  /* small cell — more pronounced */
 }
 
 .heatmap-cell:hover {
   opacity: 0.75;
-}
-
-.heatmap-cell.tapping {
-  animation: cell-tap 0.15s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 .heatmap-cell.selected {
@@ -571,18 +577,13 @@ html, body {
    overflow:hidden prevents inner margin-bottom from collapsing through
    the outer card (which would erase the bottom gap). */
 
-@keyframes item-in {
-  from { opacity: 0; transform: translateY(7px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 .exercise-item-wrap {
   background: var(--surface-1);
   border-radius: 8px;
   padding: 0 5px;
   margin-bottom: 5px;
   overflow: hidden;
-  animation: item-in 0.22s ease both;
+  --tap-scale: 0.97;  /* large card — very subtle */
 }
 
 
