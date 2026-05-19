@@ -83,9 +83,8 @@ html, body {
 }
 
 /* ── Tap animation — single source of truth ──────────────────────────────
-   Add data-tap to any element. Global delegation in App.tsx adds/removes
-   the .tapping class on pointerdown / animationend.
-   Override --tap-scale on specific elements to tune the depth.          */
+   Add data-tap to any clickable element. Edit only this keyframe to
+   change the feel everywhere.                                            */
 
 @keyframes tap-scale {
   0%   { transform: scale(1); }
@@ -93,7 +92,7 @@ html, body {
   100% { transform: scale(1); }
 }
 
-.tapping {
+[data-tap]:active {
   animation: tap-scale 0.15s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
@@ -582,6 +581,7 @@ html, body {
   padding: 0 5px;
   margin-bottom: 5px;
   overflow: hidden;
+  cursor: pointer;
 }
 
 

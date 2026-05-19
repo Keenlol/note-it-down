@@ -260,28 +260,6 @@ export function App() {
   const [sheetHeight, setSheetHeight] = useState<number | undefined>(undefined)
   const heatmapRef = useRef<HTMLDivElement>(null)
 
-  // Global tap animation — pointerdown on any [data-tap] element adds .tapping,
-  // animationend removes it. Single source: edit only @keyframes tap-scale in CSS.
-  useEffect(() => {
-    function onPointerDown(e: PointerEvent) {
-      const el = (e.target as Element).closest('[data-tap]') as HTMLElement | null
-      if (!el) return
-      el.classList.remove('tapping')
-      void el.offsetWidth          // force reflow so animation restarts if re-tapped
-      el.classList.add('tapping')
-    }
-    function onAnimationEnd(e: AnimationEvent) {
-      if (e.animationName === 'tap-scale')
-        (e.target as Element).classList.remove('tapping')
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('animationend', onAnimationEnd)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('animationend', onAnimationEnd)
-    }
-  }, [])
-
   const filterVolumeMap = useMemo(
     () => focusedExercise ? exerciseVolumePerDay(focusedExercise, aliases) : undefined,
     [focusedExercise, aliases, dataVersion],
