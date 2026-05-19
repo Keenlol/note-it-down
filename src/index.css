@@ -89,7 +89,7 @@ html, body {
 
 @keyframes tap-scale {
   0%   { transform: scale(1); }
-  40%  { transform: scale(var(--tap-scale, 0.92)); }
+  40%  { transform: scale(0.88); }
   100% { transform: scale(1); }
 }
 
@@ -103,7 +103,6 @@ html, body {
   border-radius: 3px;
   cursor: pointer;
   transition: opacity 0.15s;
-  --tap-scale: 0.88;  /* small cell — more pronounced */
 }
 
 .heatmap-cell:hover {
@@ -583,7 +582,6 @@ html, body {
   padding: 0 5px;
   margin-bottom: 5px;
   overflow: hidden;
-  --tap-scale: 0.97;  /* large card — very subtle */
 }
 
 
