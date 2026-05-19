@@ -9,6 +9,7 @@ import { normalizeName, parseLine, type ParsedLine, type Exercise } from './util
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
 import { getBwOn, setBwEntry, isBwSet } from './utils/bodyweight'
+import { tap } from './utils/tap'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
 
@@ -641,7 +642,7 @@ export function App() {
         <div className="title-row" style={titleStyle}>
           <h1 className={`title${isViewingPast ? ' past' : ''}`}>{titleText}</h1>
           {isViewingPast ? (
-            <button className="jump-today" data-tap onClick={() => { setViewDate(null); setCursorPos(0) }}>
+            <button className="jump-today" onPointerDown={tap} onClick={() => { setViewDate(null); setCursorPos(0) }}>
               Today <ArrowRight size={13} strokeWidth={2} style={{ verticalAlign: 'middle', marginLeft: 2 }} />
             </button>
           ) : (
@@ -688,7 +689,7 @@ export function App() {
       </div>
       <div className="bottom-bar">
         <button
-          data-tap
+          onPointerDown={tap}
           className={`bottom-btn${sheetOpen ? ' active' : ''}`}
           onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false) }}
           aria-label="Exercises"
@@ -696,7 +697,7 @@ export function App() {
           <Dumbbell size={23} strokeWidth={1.6} />
         </button>
         <button
-          data-tap
+          onPointerDown={tap}
           className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
           onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false) }}
           aria-label="Presets"
@@ -704,9 +705,8 @@ export function App() {
           <Hash size={23} strokeWidth={1.6} />
         </button>
         <button
-          data-tap
           className="bottom-btn"
-          onPointerDown={e => { e.preventDefault(); setReveal(true) }}
+          onPointerDown={e => { tap(e); e.preventDefault(); setReveal(true) }}
           onPointerUp={() => setReveal(false)}
           onPointerLeave={() => setReveal(false)}
           aria-label="Reveal exercise details"

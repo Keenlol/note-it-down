@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { dateToKey, todayKey } from '../utils/storage'
 import { getDayVolume } from '../utils/exercises'
+import { tap } from '../utils/tap'
 
 interface Cell {
   date: string | null
@@ -96,7 +97,7 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume }:
             {col.map((cell, d) => (
               <div
                 key={d}
-                data-tap
+                onPointerDown={tap}
                 className={`heatmap-cell${((cell.date !== null && cell.date === selectedDate) || (cell.isToday && selectedDate === null)) ? ' selected' : ''}`}
                 style={{ background: cellColor(cell, maxVolume, filtered) }}
                 onClick={() => { if (cell.date) onDayClick(cell.date) }}
