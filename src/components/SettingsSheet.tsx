@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Check } from 'lucide-react'
-import { ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent } from '../utils/settings'
+import {
+  ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent,
+  type WeightUnit, getSavedWeightUnit, saveWeightUnit,
+} from '../utils/settings'
 import { tap } from '../utils/tap'
 
 interface Props {
@@ -8,15 +11,23 @@ interface Props {
   onClose: () => void
   height?: number
   onAccentChange?: (key: AccentKey) => void
+  onWeightUnitChange?: (unit: WeightUnit) => void
 }
 
-export function SettingsSheet({ open, onClose, height, onAccentChange }: Props) {
-  const [accent, setAccent] = useState<AccentKey>(() => getSavedAccent())
+export function SettingsSheet({ open, onClose, height, onAccentChange, onWeightUnitChange }: Props) {
+  const [accent, setAccent]         = useState<AccentKey>(() => getSavedAccent())
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
 
   function handleAccent(key: AccentKey) {
     saveAndApplyAccent(key)
     setAccent(key)
     onAccentChange?.(key)
+  }
+
+  function handleWeightUnit(unit: WeightUnit) {
+    saveWeightUnit(unit)
+    setWeightUnit(unit)
+    onWeightUnitChange?.(unit)
   }
 
   return (
@@ -35,6 +46,26 @@ export function SettingsSheet({ open, onClose, height, onAccentChange }: Props) 
       </div>
 
       <div className="settings-body">
+        {/* Weight unit */}
+        <div className="settings-section">
+          <span className="settings-section-label">Default weight unit</span>
+          <p className="settings-section-hint">
+            Applied to entries with no explicit unit. Explicit kg/lbs always win.
+          </p>
+          <div className="unit-toggle">
+            <button
+              className={`unit-toggle-btn${weightUnit === 'kg' ? ' active' : ''}`}
+              onPointerDown={tap}
+              onClick={() => handleWeightUnit('kg')}
+            >kg</button>
+            <button
+              className={`unit-toggle-btn${weightUnit === 'lbs' ? ' active' : ''}`}
+              onPointerDown={tap}
+              onClick={() => handleWeightUnit('lbs')}
+            >lbs</button>
+          </div>
+        </div>
+
         {/* Accent color */}
         <div className="settings-section">
           <span className="settings-section-label">Accent color</span>

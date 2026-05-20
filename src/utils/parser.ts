@@ -1,6 +1,14 @@
 const LBS_TO_KG = 0.453592
 export const ASSUMED_BW_KG = 60
 
+// Module-level default unit multiplier.
+// 1 = treat bare numbers as kg (default), LBS_TO_KG = treat as lbs.
+// Explicit "kg" / "lbs" tokens in the text always override this.
+let _unitMul = 1
+export function setDefaultWeightUnit(unit: 'kg' | 'lbs') {
+  _unitMul = unit === 'lbs' ? LBS_TO_KG : 1
+}
+
 export type BwExpr =
   | { op: 'plain' }
   | { op: 'add'; offset: number }  // bw+4, bw-3
@@ -149,7 +157,7 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
     } else if (t.kind === 'bwadd') {
       bodyweight = true
       bwExpr = { op: 'add', offset: t.offset }
-      if (weightKg === undefined) weightKg = bodyweightKg + t.offset
+      if (weightKg === undefined) weightKg = bodyweightKg + t.offset * _unitMul
       used.push(t)
     } else if (t.kind === 'bwmul') {
       bodyweight = true
@@ -190,7 +198,7 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
   // Pass 2: bare numbers fill remaining slots in order (weight → reps → sets)
   for (const t of toks) {
     if (t.kind !== 'bare') continue
-    if (weightKg === undefined) { weightKg = t.n; used.push(t) }
+    if (weightKg === undefined) { weightKg = t.n * _unitMul; used.push(t) }
     else if (reps === undefined) { reps = t.n; used.push(t) }
     else if (sets === undefined) { sets = t.n; used.push(t) }
   }

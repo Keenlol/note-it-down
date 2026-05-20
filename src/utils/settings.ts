@@ -1,3 +1,38 @@
+// ── Weight unit ──────────────────────────────────────────────────────────────
+
+export type WeightUnit = 'kg' | 'lbs'
+
+const WEIGHT_UNIT_KEY = 'settings_weightUnit'
+const KG_PER_LB = 0.453592
+
+export function getSavedWeightUnit(): WeightUnit {
+  return (localStorage.getItem(WEIGHT_UNIT_KEY) as WeightUnit | null) ?? 'kg'
+}
+
+export function saveWeightUnit(unit: WeightUnit) {
+  localStorage.setItem(WEIGHT_UNIT_KEY, unit)
+}
+
+/** Format a stored-kg value for display in the user's preferred unit. */
+export function formatWeightDisplay(kg: number, unit: WeightUnit): string {
+  if (unit === 'lbs') {
+    const lbs = kg / KG_PER_LB
+    const r = Math.round(lbs * 10) / 10
+    return r % 1 === 0 ? `${Math.round(lbs)}lbs` : `${r}lbs`
+  }
+  return kg % 1 === 0 ? `${kg}kg` : `${Math.round(kg * 10) / 10}kg`
+}
+
+/** Format an absolute kg difference for display (used in trend chips). */
+export function formatWeightDiff(absKgDiff: number, unit: WeightUnit): string {
+  const val = unit === 'lbs' ? absKgDiff / KG_PER_LB : absKgDiff
+  const r = Math.round(val * 10) / 10
+  const display = r < 10 ? `${r}` : `${Math.round(val)}`
+  return `${display}${unit}`
+}
+
+// ── Accent color ──────────────────────────────────────────────────────────────
+
 export const ACCENT_COLORS = [
   { key: 'red',    label: 'Red',    hex: '#ef4444' },
   { key: 'orange', label: 'Orange', hex: '#f97316' },

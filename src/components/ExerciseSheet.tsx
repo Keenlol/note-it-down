@@ -7,6 +7,7 @@ import {
   type SortMode, type HistoryEntry,
 } from '../utils/exercises'
 import { type Exercise } from '../utils/parser'
+import { type WeightUnit, formatWeightDisplay, formatWeightDiff } from '../utils/settings'
 import { tap } from '../utils/tap'
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
   dataVersion: number
   onDataChange: () => void
   height?: number
+  weightUnit?: WeightUnit
 }
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
@@ -32,7 +34,7 @@ const NEG_COLOR = 'rgb(200, 57, 57)'
 const POS_BG    = 'rgba(45, 149, 47, 0.1)'
 const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
 
-function buildTrend(curr: Exercise, prev: Exercise): React.ReactNode | null {
+function buildTrend(curr: Exercise, prev: Exercise, unit: WeightUnit): React.ReactNode | null {
   const items: React.ReactNode[] = []
 
   const sDiff = curr.sets - prev.sets
@@ -61,11 +63,9 @@ function buildTrend(curr: Exercise, prev: Exercise): React.ReactNode | null {
   const wDiff = curr.weightKg - prev.weightKg
   if (Math.abs(wDiff) >= 0.5 && !(curr.bwExpr?.op === 'plain' && prev.bwExpr?.op === 'plain')) {
     const Icon = wDiff > 0 ? ArrowUp : ArrowDown
-    const abs = Math.abs(wDiff)
-    const display = abs < 10 ? `${Math.round(abs * 10) / 10}kg` : `${Math.round(abs)}kg`
     items.push(
       <span key="w" className="trend-item" style={{ color: wDiff > 0 ? POS_COLOR : NEG_COLOR, background: wDiff > 0 ? POS_BG : NEG_BG }}>
-        <Icon size={11} strokeWidth={2.5} />{display}
+        <Icon size={11} strokeWidth={2.5} />{formatWeightDiff(Math.abs(wDiff), unit)}
       </span>
     )
   }
@@ -83,12 +83,7 @@ function shortDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', opts)
 }
 
-function formatWeight(ex: Exercise): string {
-  const w = ex.weightKg
-  return w % 1 === 0 ? `${w}kg` : `${Math.round(w * 10) / 10}kg`
-}
-
-function HistoryList({ entries }: { entries: HistoryEntry[] }) {
+function HistoryList({ entries, unit }: { entries: HistoryEntry[]; unit: WeightUnit }) {
   if (entries.length === 0) {
     return <div className="history-empty">No entries found.</div>
   }
@@ -96,12 +91,12 @@ function HistoryList({ entries }: { entries: HistoryEntry[] }) {
     <div className="history-list">
       {entries.map((entry, i) => {
         const prev = entries[i + 1]
-        const trend = prev ? buildTrend(entry.exercise, prev.exercise) : null
+        const trend = prev ? buildTrend(entry.exercise, prev.exercise, unit) : null
         return (
           <div key={`${entry.date}-${i}`} className="history-entry">
             <span className="history-date">{shortDate(entry.date)}</span>
             <span className="history-values">
-              <span className="num">{formatWeight(entry.exercise)}</span>
+              <span className="num">{formatWeightDisplay(entry.exercise.weightKg, unit)}</span>
               <span className="history-sep"> × </span>
               <span className="num">{entry.exercise.reps}</span>
               <span className="history-sep"> × </span>
@@ -117,6 +112,7 @@ function HistoryList({ entries }: { entries: HistoryEntry[] }) {
 
 export function ExerciseSheet({
   open, onClose, aliases, onAliasesChange, onFocusExercise, dataVersion, onDataChange, height,
+  weightUnit = 'kg',
 }: Props) {
   const [sortMode, setSortMode]           = useState<SortMode>('count')
   const listRef   = useRef<HTMLDivElement>(null)
@@ -357,7 +353,7 @@ export function ExerciseSheet({
               {/* ── Expanded history ── */}
               <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
                 <div className="history-expand-inner">
-                  <HistoryList entries={historyMap.get(entry.norm) ?? []} />
+                  <HistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} />
                 </div>
               </div>
             </div>

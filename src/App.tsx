@@ -11,7 +11,8 @@ import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
 import { getBwOn, setBwEntry, isBwSet } from './utils/bodyweight'
 import { tap } from './utils/tap'
-import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey } from './utils/settings'
+import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit } from './utils/settings'
+import { setDefaultWeightUnit } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
 
@@ -262,6 +263,7 @@ export function App() {
     const key = getSavedAccent()
     return ACCENT_COLORS.find(c => c.key === key)?.hex ?? '#f97316'
   })
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
@@ -355,9 +357,10 @@ export function App() {
     if (saved) setTodayText(saved.rawText)
   }, [])
 
-  // Apply saved accent color on first render
+  // Apply saved accent color and weight unit on first render
   useEffect(() => {
     applyAccent(accentHex)
+    setDefaultWeightUnit(weightUnit)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -682,6 +685,7 @@ export function App() {
               bwIsSet={bwSet}
               reveal={reveal}
               textareaRef={pastTextareaRef}
+              weightUnit={weightUnit}
             />
           ) : (
             <Editor
@@ -697,6 +701,7 @@ export function App() {
               bwIsSet={bwSet}
               reveal={reveal}
               textareaRef={textareaRef}
+              weightUnit={weightUnit}
             />
           )}
         </div>
@@ -748,6 +753,7 @@ export function App() {
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         height={sheetHeight}
+        weightUnit={weightUnit}
       />
 
       <PresetSheet
@@ -765,6 +771,11 @@ export function App() {
         onAccentChange={(key: AccentKey) => {
           const def = ACCENT_COLORS.find(c => c.key === key)!
           setAccentHex(def.hex)
+        }}
+        onWeightUnitChange={(unit: WeightUnit) => {
+          setDefaultWeightUnit(unit)
+          setWeightUnit(unit)
+          setDataVersion(v => v + 1)  // force re-parse of all exercises
         }}
       />
     </div>

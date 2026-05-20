@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ArrowDown, ArrowUp, CornerDownLeft } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, type ParsedLine, type Exercise } from '../utils/parser'
+import { type WeightUnit, formatWeightDisplay, formatWeightDiff } from '../utils/settings'
 
 export interface Suggestion {
   suffix: string
@@ -24,6 +25,7 @@ interface Props {
   reveal?: boolean
   readOnly?: boolean
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  weightUnit?: WeightUnit
 }
 
 const POS_COLOR = 'rgb(45, 149, 47)'    // green – improvement
@@ -31,7 +33,7 @@ const NEG_COLOR = 'rgb(200, 57, 57)'   // red   – decline
 const POS_BG    = 'rgba(45, 149, 47, 0.1)'
 const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
 
-function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
+function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit): React.ReactNode | null {
   const items: React.ReactNode[] = []
 
   const setsDiff = current.sets - prev.sets
@@ -62,12 +64,10 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
   const weightDiff = current.weightKg - prev.weightKg
   if (Math.abs(weightDiff) >= 0.5 && !(current.bodyweight && prev.bodyweight)) {
     const Icon = weightDiff > 0 ? ArrowUp : ArrowDown
-    const abs = Math.abs(weightDiff)
-    const display = abs < 10 ? `${Math.round(abs * 10) / 10}kg` : `${Math.round(abs)}kg`
     items.push(
       <span key="w" className="trend-item" style={{ color: weightDiff > 0 ? POS_COLOR : NEG_COLOR, background: weightDiff > 0 ? POS_BG : NEG_BG }}>
         <Icon size={13} strokeWidth={2.5} />
-        {display}
+        {formatWeightDiff(Math.abs(weightDiff), unit)}
       </span>
     )
   }
@@ -78,7 +78,7 @@ function buildTrend(current: Exercise, prev: Exercise): React.ReactNode | null {
 
 // Reveal overlay: exercise lines show formatted values (all orange), non-exercise lines render normally.
 // This is a second overlay that crossfades over the normal one on hold.
-function renderRevealOverlay(text: string, bodyweightKg: number): React.ReactNode[] {
+function renderRevealOverlay(text: string, bodyweightKg: number, unit: WeightUnit): React.ReactNode[] {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
 
@@ -96,14 +96,12 @@ function renderRevealOverlay(text: string, bodyweightKg: number): React.ReactNod
       )
     } else if (parsed.exercise) {
       const ex = parsed.exercise
-      const w = ex.weightKg % 1 === 0
-        ? `${ex.weightKg}`
-        : `${Math.round(ex.weightKg * 10) / 10}`
+      const wFormatted = formatWeightDisplay(ex.weightKg, unit)
       nodes.push(
         <span key={i}>
           {ex.name}
           {'  '}
-          <span className="num">{w}</span><span className="reveal-unit">kg</span>
+          <span className="num">{wFormatted}</span>
           {'  '}
           <span className="num">{ex.reps}</span><span className="reveal-unit">reps x </span>
           <span className="num">{ex.sets}</span><span className="reveal-unit">sets</span>
@@ -193,7 +191,7 @@ export function Editor({
   value, onChange, onCursorChange, onTabConfirm,
   suggestion, knownPast, todayCounts, previousExercises,
   bodyweightKg = 60, bwIsSet = true,
-  reveal, readOnly, textareaRef,
+  reveal, readOnly, textareaRef, weightUnit = 'kg',
 }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
@@ -218,7 +216,7 @@ export function Editor({
     const isNew = !isKnownName(parsed.exercise.name, knownPast, todayCounts)
 
     if (prev) {
-      const node = buildTrend(parsed.exercise, prev)
+      const node = buildTrend(parsed.exercise, prev, weightUnit)
       if (node) lineTrends.push({ lineIndex: i, node })
     } else if (isNew) {
       lineNewItems.push(i)
@@ -263,7 +261,7 @@ export function Editor({
         aria-hidden="true"
         style={{ opacity: reveal ? 1 : 0, transition: 'opacity 0.15s ease' }}
       >
-        {renderRevealOverlay(value, bodyweightKg)}
+        {renderRevealOverlay(value, bodyweightKg, weightUnit)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
 
