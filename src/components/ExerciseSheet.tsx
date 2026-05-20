@@ -185,11 +185,15 @@ export function ExerciseSheet({
     [aliases, sortMode, dataVersion],
   )
 
+  // Persists the last-loaded history so content stays visible during the collapse
+  // animation instead of snapping to "No entries found" mid-transition.
+  const lastHistoryRef = useRef<Map<string, HistoryEntry[]>>(new Map())
+
   const historyMap = useMemo(() => {
-    // Pre-compute history for the currently (or previously) expanded exercise so
-    // the content is ready before the CSS expand animation starts.
-    if (!expandedExercise) return new Map<string, HistoryEntry[]>()
-    return new Map([[expandedExercise, getExerciseHistory(expandedExercise, aliases)]])
+    if (!expandedExercise) return lastHistoryRef.current   // reuse stale data while collapsing
+    const map = new Map([[expandedExercise, getExerciseHistory(expandedExercise, aliases)]])
+    lastHistoryRef.current = map
+    return map
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedExercise, aliases, dataVersion])
 
