@@ -11,7 +11,7 @@ import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
 import { getBwOn, setBwEntry, isBwSet } from './utils/bodyweight'
 import { tap } from './utils/tap'
-import { getSavedAccent, applyAccent, ACCENT_COLORS } from './utils/settings'
+import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey } from './utils/settings'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
 
@@ -258,6 +258,10 @@ export function App() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [presetSheetOpen, setPresetSheetOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [accentHex, setAccentHex] = useState(() => {
+    const key = getSavedAccent()
+    return ACCENT_COLORS.find(c => c.key === key)?.hex ?? '#f97316'
+  })
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
@@ -353,9 +357,8 @@ export function App() {
 
   // Apply saved accent color on first render
   useEffect(() => {
-    const key = getSavedAccent()
-    const def = ACCENT_COLORS.find(c => c.key === key)
-    if (def) applyAccent(def.hex)
+    applyAccent(accentHex)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -640,6 +643,7 @@ export function App() {
           selectedDate={viewDate}
           dataVersion={dataVersion}
           filterVolume={filterVolumeMap}
+          accentHex={accentHex}
         />
       </div>
 
@@ -758,6 +762,10 @@ export function App() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         height={sheetHeight}
+        onAccentChange={(key: AccentKey) => {
+          const def = ACCENT_COLORS.find(c => c.key === key)!
+          setAccentHex(def.hex)
+        }}
       />
     </div>
   )

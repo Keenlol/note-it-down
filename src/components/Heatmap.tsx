@@ -14,26 +14,34 @@ interface Props {
   onDayClick: (date: string) => void
   selectedDate: string | null
   dataVersion: number                 // increments on every save, forcing the memo to re-run
-  filterVolume?: Map<string, number>  // per-day volume for a specific exercise; triggers orange mode
+  filterVolume?: Map<string, number>  // per-day volume for a specific exercise; triggers accent mode
+  accentHex: string                   // current accent color hex, e.g. "#f97316"
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKS = 21
 
-function cellColor(cell: Cell, maxVolume: number, filtered: boolean): string {
+function hexToRgb(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `${r},${g},${b}`
+}
+
+function cellColor(cell: Cell, maxVolume: number, filtered: boolean, accentRgb: string): string {
   if (cell.isFuture || cell.date === null) return 'transparent'
 
   const ratio = maxVolume > 0 ? Math.min(cell.volume / maxVolume, 1) : 0
 
   if (filtered) {
     if (cell.volume === 0) return '#1e1e1e'
-    const opacity = 0.2 + ratio * 0.8
-    return `rgba(249, 115, 22, ${opacity.toFixed(2)})`
+    const opacity = (0.2 + ratio * 0.8).toFixed(2)
+    return `rgba(${accentRgb},${opacity})`
   }
 
   if (cell.isToday) {
-    const opacity = 0.3 + ratio * 0.7
-    return `rgba(249, 115, 22, ${opacity.toFixed(2)})`
+    const opacity = (0.3 + ratio * 0.7).toFixed(2)
+    return `rgba(${accentRgb},${opacity})`
   }
 
   if (cell.volume === 0) return '#1e1e1e'
@@ -42,7 +50,9 @@ function cellColor(cell: Cell, maxVolume: number, filtered: boolean): string {
   return `hsl(0, 0%, ${lightness}%)`
 }
 
-export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume }: Props) {
+export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, accentHex }: Props) {
+  const accentRgb = useMemo(() => hexToRgb(accentHex), [accentHex])
+
   const { weeks, monthLabels, maxVolume } = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -99,7 +109,7 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume }:
                 key={d}
                 onPointerDown={tap}
                 className={`heatmap-cell${((cell.date !== null && cell.date === selectedDate) || (cell.isToday && selectedDate === null)) ? ' selected' : ''}`}
-                style={{ background: cellColor(cell, maxVolume, filtered) }}
+                style={{ background: cellColor(cell, maxVolume, filtered, accentRgb) }}
                 onClick={() => { if (cell.date) onDayClick(cell.date) }}
                 title={cell.date ?? undefined}
               />

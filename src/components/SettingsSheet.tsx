@@ -7,14 +7,16 @@ interface Props {
   open: boolean
   onClose: () => void
   height?: number
+  onAccentChange?: (key: AccentKey) => void
 }
 
-export function SettingsSheet({ open, onClose, height }: Props) {
+export function SettingsSheet({ open, onClose, height, onAccentChange }: Props) {
   const [accent, setAccent] = useState<AccentKey>(() => getSavedAccent())
 
   function handleAccent(key: AccentKey) {
     saveAndApplyAccent(key)
     setAccent(key)
+    onAccentChange?.(key)
   }
 
   return (
