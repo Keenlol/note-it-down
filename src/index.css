@@ -572,30 +572,25 @@ html, body {
 
 .about-card {
   background: var(--surface-1);
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: 8px;
 }
 
 .about-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 10px 14px;
-}
-
-.about-row + .about-row {
-  border-top: 1px solid var(--surface-2);
-}
-
-.about-key {
-  font-size: 0.75rem;
-  color: var(--text-dim);
 }
 
 .about-val {
   font-size: 0.75rem;
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+}
+
+.about-sep {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .about-link {

@@ -237,15 +237,10 @@ export function SettingsSheet({
           <span className="settings-section-label">About</span>
           <div className="about-card">
             <div className="about-row">
-              <span className="about-key">Version</span>
-              <span className="about-val">{__APP_VERSION__}</span>
-            </div>
-            <div className="about-row">
-              <span className="about-key">Latest update</span>
+              <span className="about-val">v{__APP_VERSION__}</span>
+              <span className="about-sep">·</span>
               <span className="about-val">{__BUILD_DATE__}</span>
-            </div>
-            <div className="about-row">
-              <span className="about-key">Source</span>
+              <span className="about-sep">·</span>
               <a
                 className="about-link"
                 href="https://github.com/Keenlol/note-it-down"
