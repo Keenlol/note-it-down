@@ -1,9 +1,13 @@
-import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { useRef, useState, useMemo } from 'react'
+import { Check, Download, Upload, Trash2, AlertTriangle } from 'lucide-react'
 import {
   ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent,
   type WeightUnit, getSavedWeightUnit, saveWeightUnit,
 } from '../utils/settings'
+import {
+  getDataStats, formatSize, exportData, parseImportFile, applyImport,
+  clearData, type ImportSummary,
+} from '../utils/data'
 import { SegmentedControl } from './SegmentedControl'
 import { tap } from '../utils/tap'
 
@@ -12,17 +16,36 @@ const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
   { value: 'lbs', label: 'lbs' },
 ]
 
+type ConfirmState =
+  | { kind: 'none' }
+  | { kind: 'clear' }
+  | { kind: 'import'; summary: ImportSummary }
+  | { kind: 'import-mode'; summary: ImportSummary }  // after choosing replace
+
 interface Props {
   open: boolean
   onClose: () => void
   height?: number
+  dataVersion: number
+  onDataChange: () => void
   onAccentChange?: (key: AccentKey) => void
   onWeightUnitChange?: (unit: WeightUnit) => void
 }
 
-export function SettingsSheet({ open, onClose, height, onAccentChange, onWeightUnitChange }: Props) {
+export function SettingsSheet({
+  open, onClose, height, dataVersion, onDataChange,
+  onAccentChange, onWeightUnitChange,
+}: Props) {
   const [accent, setAccent]         = useState<AccentKey>(() => getSavedAccent())
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
+  const [confirm, setConfirm]       = useState<ConfirmState>({ kind: 'none' })
+  const fileInputRef                = useRef<HTMLInputElement>(null)
+
+  const stats = useMemo(
+    () => getDataStats(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dataVersion],
+  )
 
   function handleAccent(key: AccentKey) {
     saveAndApplyAccent(key)
@@ -35,6 +58,42 @@ export function SettingsSheet({ open, onClose, height, onAccentChange, onWeightU
     setWeightUnit(unit)
     onWeightUnitChange?.(unit)
   }
+
+  function handleExport() {
+    exportData()
+  }
+
+  function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      try {
+        const summary = parseImportFile(ev.target?.result as string)
+        setConfirm({ kind: 'import', summary })
+      } catch {
+        alert('Invalid backup file.')
+      }
+    }
+    reader.readAsText(file)
+    // Reset so the same file can be re-selected
+    e.target.value = ''
+  }
+
+  function handleImportConfirm(mode: 'add' | 'replace') {
+    if (confirm.kind !== 'import' && confirm.kind !== 'import-mode') return
+    applyImport(confirm.summary.rawBundle, mode)
+    setConfirm({ kind: 'none' })
+    onDataChange()
+  }
+
+  function handleClearConfirm() {
+    clearData()
+    setConfirm({ kind: 'none' })
+    onDataChange()
+  }
+
+  function dismissConfirm() { setConfirm({ kind: 'none' }) }
 
   return (
     <div
@@ -52,11 +111,12 @@ export function SettingsSheet({ open, onClose, height, onAccentChange, onWeightU
       </div>
 
       <div className="settings-body">
-        {/* Weight unit */}
+
+        {/* ── Weight unit ─────────────────────────────────────── */}
         <div className="settings-section">
           <span className="settings-section-label">Default weight unit</span>
           <p className="settings-section-hint">
-            Applied to entries with no explicit unit. Explicit kg/lbs always win.
+            Applied to entries with no explicit unit. Explicit kg / lbs always win.
           </p>
           <SegmentedControl
             options={WEIGHT_UNIT_OPTIONS}
@@ -65,7 +125,7 @@ export function SettingsSheet({ open, onClose, height, onAccentChange, onWeightU
           />
         </div>
 
-        {/* Accent color */}
+        {/* ── Accent color ─────────────────────────────────────── */}
         <div className="settings-section">
           <span className="settings-section-label">Accent color</span>
           <div className="accent-swatches">
@@ -84,6 +144,101 @@ export function SettingsSheet({ open, onClose, height, onAccentChange, onWeightU
             ))}
           </div>
         </div>
+
+        {/* ── Data ─────────────────────────────────────────────── */}
+        <div className="settings-section">
+          <span className="settings-section-label">Data</span>
+
+          {/* Stats grid */}
+          <div className="data-stats">
+            <div className="data-stat">
+              <span className="data-stat-value">{stats.exerciseCount}</span>
+              <span className="data-stat-label">exercises</span>
+            </div>
+            <div className="data-stat">
+              <span className="data-stat-value">{stats.presetCount}</span>
+              <span className="data-stat-label">presets</span>
+            </div>
+            <div className="data-stat">
+              <span className="data-stat-value">{stats.entryCount}</span>
+              <span className="data-stat-label">log entries</span>
+            </div>
+            <div className="data-stat">
+              <span className="data-stat-value">{formatSize(stats.sizeBytes)}</span>
+              <span className="data-stat-label">stored</span>
+            </div>
+          </div>
+
+          {/* Action buttons — or inline confirmation */}
+          {confirm.kind === 'none' && (
+            <div className="data-actions">
+              <button className="data-btn" onPointerDown={tap} onClick={handleExport}>
+                <Download size={14} strokeWidth={2} />
+                Export
+              </button>
+              <button className="data-btn" onPointerDown={tap} onClick={() => fileInputRef.current?.click()}>
+                <Upload size={14} strokeWidth={2} />
+                Import
+              </button>
+              <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => setConfirm({ kind: 'clear' })}>
+                <Trash2 size={14} strokeWidth={2} />
+                Clear
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={handleImportFile}
+              />
+            </div>
+          )}
+
+          {/* Import: choose add or replace */}
+          {(confirm.kind === 'import' || confirm.kind === 'import-mode') && (
+            <div className="data-confirm">
+              <p className="data-confirm-title">
+                Import {confirm.summary.dayCount} log entr{confirm.summary.dayCount !== 1 ? 'ies' : 'y'}
+              </p>
+              <p className="data-confirm-hint">
+                <strong>Add</strong> merges with your current data.{' '}
+                <strong>Replace</strong> overwrites everything — export first to be safe.
+              </p>
+              <div className="data-confirm-actions">
+                <button className="data-btn" onPointerDown={tap} onClick={() => handleImportConfirm('add')}>
+                  Add
+                </button>
+                <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => handleImportConfirm('replace')}>
+                  <AlertTriangle size={13} strokeWidth={2} />
+                  Replace
+                </button>
+                <button className="data-btn data-btn-ghost" onPointerDown={tap} onClick={dismissConfirm}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Clear: confirmation */}
+          {confirm.kind === 'clear' && (
+            <div className="data-confirm">
+              <p className="data-confirm-title">Clear all data?</p>
+              <p className="data-confirm-hint">
+                This permanently deletes all log entries, exercises, presets, and bodyweight records. Your settings are kept.
+              </p>
+              <div className="data-confirm-actions">
+                <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={handleClearConfirm}>
+                  <Trash2 size={13} strokeWidth={2} />
+                  Clear everything
+                </button>
+                <button className="data-btn data-btn-ghost" onPointerDown={tap} onClick={dismissConfirm}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   )

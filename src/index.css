@@ -630,6 +630,105 @@ html, body {
   margin-top: -6px;
 }
 
+/* Data stats + actions */
+
+.data-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.data-stat {
+  background: var(--surface-1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.data-stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.data-stat-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.data-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.data-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-1);
+  border: none;
+  color: var(--text-2);
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 7px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.data-btn:hover, .data-btn:active {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.data-btn-danger {
+  color: var(--delete);
+}
+
+.data-btn-ghost {
+  background: none;
+  color: var(--text-dim);
+}
+
+.data-btn-ghost:hover, .data-btn-ghost:active {
+  background: var(--surface-1);
+}
+
+.data-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface-1);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.data-confirm-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.data-confirm-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.data-confirm-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .accent-swatches {
   display: flex;
   gap: 10px;

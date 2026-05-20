@@ -768,6 +768,8 @@ export function App() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         height={sheetHeight}
+        dataVersion={dataVersion}
+        onDataChange={() => setDataVersion(v => v + 1)}
         onAccentChange={(key: AccentKey) => {
           const def = ACCENT_COLORS.find(c => c.key === key)!
           setAccentHex(def.hex)
@@ -775,7 +777,7 @@ export function App() {
         onWeightUnitChange={(unit: WeightUnit) => {
           setDefaultWeightUnit(unit)
           setWeightUnit(unit)
-          setDataVersion(v => v + 1)  // force re-parse of all exercises
+          setDataVersion(v => v + 1)
         }}
       />
     </div>
