@@ -116,6 +116,86 @@ Single-page React 19 + TypeScript app, no backend. All data lives in `localStora
 - `components/ExerciseSheet.tsx` — bottom sheet: exercise catalog with sort, merge mode, per-exercise expandable history, nickname/delete dropdown.
 - `components/PresetSheet.tsx` — bottom sheet: preset catalog with sort, always-visible exercise list per preset, rename/delete-label/delete-with-exercises dropdown.
 
+## Settings patterns
+
+### Section layout
+Every settings section uses this structure:
+```tsx
+<div className="settings-section">
+  <span className="settings-section-label">Section title</span>
+  <p className="settings-section-hint">Optional one-liner explaining behaviour.</p>
+  {/* control */}
+</div>
+```
+- Label: `0.72rem`, `font-weight: 600`, uppercase, `--text-dim`
+- Hint: `0.7rem`, `--text-muted`, `line-height: 1.5`, `margin-top: -6px`
+
+### Segmented control
+Use `<SegmentedControl options={...} value={...} onChange={...} />` for any mutually-exclusive setting. Generic over string unions — works for 2+ options. The sliding pill is driven by CSS custom properties (`--seg-n`, `--seg-i`), no JS layout math. Do not hand-roll toggles.
+
+```tsx
+const OPTIONS: { value: MyType; label: string }[] = [
+  { value: 'a', label: 'A' },
+  { value: 'b', label: 'B' },
+]
+<SegmentedControl options={OPTIONS} value={current} onChange={setCurrent} />
+```
+
+### Stat card (prominent value + supporting counts)
+Use when a section has one headline metric and several supporting counts.
+```tsx
+<div className="data-stat-card">
+  <div className="data-stat-size">
+    <span className="data-stat-size-value">{bigValue}</span>
+    <span className="data-stat-size-label">label</span>
+  </div>
+  <div className="data-stat-counts">
+    <span className="data-stat-count"><strong>{n}</strong> things</span>
+  </div>
+</div>
+```
+- Headline: `1.6rem weight-700`, `--text`
+- Sub-label: `0.68rem uppercase`, `--text-muted`
+- Counts: `0.72rem`, label `--text-dim`, number `--text-2 weight-600`
+
+### Action buttons
+```tsx
+<button className="data-btn" onPointerDown={tap} onClick={...}>
+  <Icon size={14} strokeWidth={2} /> Label
+</button>
+```
+Variants: `data-btn` (neutral), `data-btn-danger` (destructive, `--delete`), `data-btn-ghost` (no background). Group them in `<div className="data-actions">`.
+
+### Inline confirmation flow
+Never use `window.confirm()`. Confirmation replaces the action buttons inline:
+```tsx
+type ConfirmState = { kind: 'none' } | { kind: 'my-action' } | { kind: 'import'; data: ... }
+const [confirm, setConfirm] = useState<ConfirmState>({ kind: 'none' })
+
+{confirm.kind === 'none' && (
+  <div className="data-actions">
+    <button className="data-btn data-btn-danger" onClick={() => setConfirm({ kind: 'my-action' })}>
+      Dangerous action
+    </button>
+  </div>
+)}
+
+{confirm.kind === 'my-action' && (
+  <div className="data-confirm">
+    <p className="data-confirm-title">Are you sure?</p>
+    <p className="data-confirm-hint">Explain consequences. Be specific.</p>
+    <div className="data-confirm-actions">
+      <button className="data-btn data-btn-danger" onClick={handleConfirm}>Confirm</button>
+      <button className="data-btn data-btn-ghost" onClick={() => setConfirm({ kind: 'none' })}>Cancel</button>
+    </div>
+  </div>
+)}
+```
+- Confirmation card: `background: --surface-1`, `border-radius: 10px`, `padding: 12px 14px`
+- Title: `0.82rem weight-600`, `--text`
+- Hint: `0.72rem`, `--text-dim`, `line-height: 1.5`
+- Always offer a Cancel alongside the destructive confirm
+
 **Key patterns:**
 - `viewDate === null` means "today"; non-null means browsing a past day. The same `Editor` component handles both — past mode reads/writes `pastText` and suggests from `daysBeforeView` (all days strictly before `viewDate`).
 - Suggestions (`getHashPresetSuggestion`, `getSuggestion` in App.tsx) are pure functions over `ParsedDay[]` (newest-first). `#` lines trigger preset ghost: bare `#` → show all, partial → narrow (multi = hint, single = fill).

@@ -149,23 +149,16 @@ export function SettingsSheet({
         <div className="settings-section">
           <span className="settings-section-label">Data</span>
 
-          {/* Stats grid */}
-          <div className="data-stats">
-            <div className="data-stat">
-              <span className="data-stat-value">{stats.exerciseCount}</span>
-              <span className="data-stat-label">exercises</span>
+          {/* Single stat card: size prominent, counts as supporting info */}
+          <div className="data-stat-card">
+            <div className="data-stat-size">
+              <span className="data-stat-size-value">{formatSize(stats.sizeBytes)}</span>
+              <span className="data-stat-size-label">stored</span>
             </div>
-            <div className="data-stat">
-              <span className="data-stat-value">{stats.presetCount}</span>
-              <span className="data-stat-label">presets</span>
-            </div>
-            <div className="data-stat">
-              <span className="data-stat-value">{stats.entryCount}</span>
-              <span className="data-stat-label">log entries</span>
-            </div>
-            <div className="data-stat">
-              <span className="data-stat-value">{formatSize(stats.sizeBytes)}</span>
-              <span className="data-stat-label">stored</span>
+            <div className="data-stat-counts">
+              <span className="data-stat-count"><strong>{stats.exerciseCount}</strong> exercises</span>
+              <span className="data-stat-count"><strong>{stats.presetCount}</strong> presets</span>
+              <span className="data-stat-count"><strong>{stats.entryCount}</strong> log entries</span>
             </div>
           </div>
 

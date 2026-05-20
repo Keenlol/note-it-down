@@ -632,34 +632,50 @@ html, body {
 
 /* Data stats + actions */
 
-.data-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.data-stat {
+.data-stat-card {
   background: var(--surface-1);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 10px;
 }
 
-.data-stat-value {
-  font-size: 1.1rem;
-  font-weight: 600;
+.data-stat-size {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.data-stat-size-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
   color: var(--text);
 }
 
-.data-stat-label {
+.data-stat-size-label {
   font-size: 0.68rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+}
+
+.data-stat-counts {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.data-stat-count {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.data-stat-count strong {
+  color: var(--text-2);
+  font-weight: 600;
 }
 
 .data-actions {
