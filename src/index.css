@@ -706,6 +706,22 @@ html, body {
   color: var(--text-2);
 }
 
+/* History expand — grid-row animation (no JS height measurement needed) */
+
+.history-expand-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease-out;
+}
+
+.history-expand-wrap.history-expand-open {
+  grid-template-rows: 1fr;
+}
+
+.history-expand-inner {
+  overflow: hidden;
+}
+
 /* History list (expanded exercise entries) — inner box */
 
 .history-list {

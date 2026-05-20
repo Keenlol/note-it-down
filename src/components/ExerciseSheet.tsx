@@ -185,11 +185,13 @@ export function ExerciseSheet({
     [aliases, sortMode, dataVersion],
   )
 
-  const history = useMemo(
-    () => expandedExercise ? getExerciseHistory(expandedExercise, aliases) : [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [expandedExercise, aliases, dataVersion],
-  )
+  const historyMap = useMemo(() => {
+    // Pre-compute history for the currently (or previously) expanded exercise so
+    // the content is ready before the CSS expand animation starts.
+    if (!expandedExercise) return new Map<string, HistoryEntry[]>()
+    return new Map([[expandedExercise, getExerciseHistory(expandedExercise, aliases)]])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedExercise, aliases, dataVersion])
 
   function toggleExpand(norm: string) {
     if (expandedExercise === norm) {
@@ -349,7 +351,11 @@ export function ExerciseSheet({
               </div>
 
               {/* ── Expanded history ── */}
-              {isExpanded && <HistoryList entries={history} />}
+              <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
+                <div className="history-expand-inner">
+                  <HistoryList entries={historyMap.get(entry.norm) ?? []} />
+                </div>
+              </div>
             </div>
           )
         })}
