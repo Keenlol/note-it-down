@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ArrowDown, ArrowUp, CornerDownLeft } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, type ParsedLine, type Exercise } from '../utils/parser'
-import { type WeightUnit, formatWeightDisplay, formatWeightDiff } from '../utils/settings'
+import { type WeightUnit, formatWeightDiff } from '../utils/settings'
 
 export interface Suggestion {
   suffix: string
@@ -96,12 +96,16 @@ function renderRevealOverlay(text: string, bodyweightKg: number, unit: WeightUni
       )
     } else if (parsed.exercise) {
       const ex = parsed.exercise
-      const wFormatted = formatWeightDisplay(ex.weightKg, unit)
+      // Separate the numeric value from its unit label so the label
+      // gets reveal-unit styling (dimmed) matching "reps x" and "sets".
+      const KG_PER_LB = 0.453592
+      const wVal = unit === 'lbs' ? ex.weightKg / KG_PER_LB : ex.weightKg
+      const wNum = wVal % 1 === 0 ? `${Math.round(wVal)}` : `${Math.round(wVal * 10) / 10}`
       nodes.push(
         <span key={i}>
           {ex.name}
           {'  '}
-          <span className="num">{wFormatted}</span>
+          <span className="num">{wNum}</span><span className="reveal-unit">{unit}</span>
           {'  '}
           <span className="num">{ex.reps}</span><span className="reveal-unit">reps x </span>
           <span className="num">{ex.sets}</span><span className="reveal-unit">sets</span>

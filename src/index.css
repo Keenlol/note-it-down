@@ -576,32 +576,50 @@ html, body {
   color: var(--text-dim);
 }
 
-/* Weight unit toggle */
+/* Segmented control — generic, works for any number of options */
 
-.unit-toggle {
-  display: inline-flex;
+.seg-control {
+  display: flex;
   background: var(--surface-1);
   border-radius: 8px;
   padding: 3px;
-  gap: 2px;
+  position: relative;
 }
 
-.unit-toggle-btn {
+/* Sliding pill — position driven by CSS custom properties set inline */
+.seg-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--seg-n));
+  border-radius: 6px;
+  background: var(--text);
+  transform: translateX(calc(100% * var(--seg-i)));
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.seg-btn {
+  flex: 1;
   background: none;
   border: none;
   color: var(--text-dim);
   font-family: var(--font);
   font-size: 0.8rem;
   font-weight: 500;
-  padding: 5px 18px;
+  padding: 5px 0;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  position: relative;
+  z-index: 1;            /* sit above the indicator */
+  transition: color 0.15s;
+  text-align: center;
+  white-space: nowrap;
   letter-spacing: 0.02em;
 }
 
-.unit-toggle-btn.active {
-  background: var(--text);
+.seg-btn.active {
   color: var(--bg);
 }
 

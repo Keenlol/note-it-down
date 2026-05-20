@@ -4,7 +4,13 @@ import {
   ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent,
   type WeightUnit, getSavedWeightUnit, saveWeightUnit,
 } from '../utils/settings'
+import { SegmentedControl } from './SegmentedControl'
 import { tap } from '../utils/tap'
+
+const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
+  { value: 'kg',  label: 'kg'  },
+  { value: 'lbs', label: 'lbs' },
+]
 
 interface Props {
   open: boolean
@@ -52,18 +58,11 @@ export function SettingsSheet({ open, onClose, height, onAccentChange, onWeightU
           <p className="settings-section-hint">
             Applied to entries with no explicit unit. Explicit kg/lbs always win.
           </p>
-          <div className="unit-toggle">
-            <button
-              className={`unit-toggle-btn${weightUnit === 'kg' ? ' active' : ''}`}
-              onPointerDown={tap}
-              onClick={() => handleWeightUnit('kg')}
-            >kg</button>
-            <button
-              className={`unit-toggle-btn${weightUnit === 'lbs' ? ' active' : ''}`}
-              onPointerDown={tap}
-              onClick={() => handleWeightUnit('lbs')}
-            >lbs</button>
-          </div>
+          <SegmentedControl
+            options={WEIGHT_UNIT_OPTIONS}
+            value={weightUnit}
+            onChange={handleWeightUnit}
+          />
         </div>
 
         {/* Accent color */}
