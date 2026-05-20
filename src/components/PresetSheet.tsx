@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, MoreVertical } from 'lucide-react'
+import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
@@ -32,6 +32,8 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
 
   // Dropdown state
   const [openDropdownFor, setOpenDropdownFor] = useState<string | null>(null)
+  const [dropdownClosing, setDropdownClosing] = useState(false)
+  const closeTimerRef                         = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [dropdownTop, setDropdownTop]         = useState(0)
   const [dropdownRight, setDropdownRight]     = useState(0)
   const [renamingFor, setRenamingFor]         = useState<string | null>(null)
@@ -39,18 +41,27 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
   const [deleteConfirmFor, setDeleteConfirmFor] = useState<string | null>(null)
   const [deleteMode, setDeleteMode]           = useState<DeleteMode | null>(null)
 
-  // Close dropdown on outside tap
-  useEffect(() => {
-    if (!openDropdownFor) return
-    const close = () => {
+  function closeDropdown() {
+    if (closeTimerRef.current) return
+    setDropdownClosing(true)
+    closeTimerRef.current = setTimeout(() => {
       setOpenDropdownFor(null)
+      setDropdownClosing(false)
       setRenamingFor(null)
       setRenameInput('')
       setDeleteConfirmFor(null)
       setDeleteMode(null)
-    }
-    document.addEventListener('pointerdown', close)
-    return () => document.removeEventListener('pointerdown', close)
+      closeTimerRef.current = null
+    }, 120)
+  }
+
+  // Close dropdown on outside tap
+  useEffect(() => {
+    if (!openDropdownFor) return
+    const handler = () => closeDropdown()
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openDropdownFor])
 
   // Reset when sheet closes
@@ -88,11 +99,19 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
 
   function openMenu(norm: string, e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
-    if (openDropdownFor === norm) { setOpenDropdownFor(null); return }
+    if (openDropdownFor === norm && !dropdownClosing) {
+      closeDropdown()
+      return
+    }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
     const rect = e.currentTarget.getBoundingClientRect()
     setDropdownTop(rect.bottom + 6)
-    setDropdownRight(window.innerWidth - rect.right)
+    setDropdownRight(Math.max(window.innerWidth - rect.right, 24))
     setOpenDropdownFor(norm)
+    setDropdownClosing(false)
     setRenamingFor(null)
     setRenameInput('')
     setDeleteConfirmFor(null)
@@ -105,6 +124,8 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
     setRenamingFor(null)
     setRenameInput('')
     setOpenDropdownFor(null)
+    setDropdownClosing(false)
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null }
     onDataChange()
   }
 
@@ -113,6 +134,8 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
     else deletePresetWithExercises(norm)
     onDataChange()
     setOpenDropdownFor(null)
+    setDropdownClosing(false)
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null }
     setDeleteConfirmFor(null)
     setDeleteMode(null)
   }
@@ -137,7 +160,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
             <button
               key={opt.value}
               onPointerDown={tap}
-              className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
+              className={`data-btn${sortMode === opt.value ? ' data-btn-filled' : ''}`}
               onClick={() => {
                 listRef.current?.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
                   snapshots.current.set(el.dataset.norm!, el.getBoundingClientRect().top)
@@ -184,7 +207,7 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
       {/* Dropdown — portalled to escape overflow clipping */}
       {dropdownEntry && createPortal(
         <div
-          className="ex-dropdown"
+          className={`ex-dropdown${dropdownClosing ? ' closing' : ''}`}
           style={{ top: dropdownTop, right: dropdownRight }}
           onPointerDown={e => e.stopPropagation()}
         >
@@ -207,43 +230,50 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
               </button>
             </div>
           ) : (
-            <button className="ex-dropdown-item" onClick={() => setRenamingFor(dropdownEntry.norm)}>
+            <button className="data-btn" onPointerDown={tap} onClick={() => setRenamingFor(dropdownEntry.norm)}>
+              <Pencil size={14} strokeWidth={2} />
               rename
             </button>
           )}
 
+          <div className="dd-sep" />
+
           {/* Delete — two-step with mode selection */}
           {deleteConfirmFor === dropdownEntry.norm ? (
-            <div className="ex-dropdown-confirm preset-delete-confirm">
-              <span className="ex-dropdown-confirm-label">
+            <div className="dd-confirm">
+              <span className="dd-confirm-label">
                 {deleteMode === 'label-only'
                   ? 'Remove preset label only?'
-                  : 'Remove preset + exercises?'}
+                  : 'Remove preset + all exercises?'}
               </span>
-              <div className="ex-dropdown-confirm-actions">
-                <button className="delete-yes-btn" onClick={() => handleDelete(dropdownEntry.norm, deleteMode!)}>
-                  Remove
+              <div className="dd-confirm-btns">
+                <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => handleDelete(dropdownEntry.norm, deleteMode!)}>
+                  <Trash2 size={13} strokeWidth={2} /> Remove
                 </button>
-                <button className="delete-no-btn" onClick={() => { setDeleteConfirmFor(null); setDeleteMode(null) }}>
+                <button className="data-btn data-btn-ghost" onPointerDown={tap} onClick={() => { setDeleteConfirmFor(null); setDeleteMode(null) }}>
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
-            <div className="preset-delete-options">
+            <>
               <button
-                className="ex-dropdown-item ex-dropdown-delete"
+                className="data-btn data-btn-danger"
+                onPointerDown={tap}
                 onClick={() => { setDeleteConfirmFor(dropdownEntry.norm); setDeleteMode('label-only') }}
               >
+                <Trash2 size={14} strokeWidth={2} />
                 delete label only
               </button>
               <button
-                className="ex-dropdown-item ex-dropdown-delete"
+                className="data-btn data-btn-danger"
+                onPointerDown={tap}
                 onClick={() => { setDeleteConfirmFor(dropdownEntry.norm); setDeleteMode('with-exercises') }}
               >
+                <Trash2 size={14} strokeWidth={2} />
                 delete with exercises
               </button>
-            </div>
+            </>
           )}
         </div>,
         document.body,

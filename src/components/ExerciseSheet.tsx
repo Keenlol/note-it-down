@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, Check, ChevronRight, GitMerge, MoreVertical } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronRight, GitMerge, MoreVertical, Tag, Trash2 } from 'lucide-react'
 import {
   buildCatalog, mergeExercises, addNickname, deleteExercise,
   relativeTime, getExerciseHistory,
@@ -124,23 +124,34 @@ export function ExerciseSheet({
 
   // Dropdown state
   const [openDropdownFor, setOpenDropdownFor] = useState<string | null>(null)
+  const [dropdownClosing, setDropdownClosing] = useState(false)
+  const closeTimerRef                         = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [dropdownTop, setDropdownTop]         = useState(0)
   const [dropdownRight, setDropdownRight]     = useState(0)
   const [addingNickFor, setAddingNickFor]     = useState<string | null>(null)
   const [nickInput, setNickInput]             = useState('')
   const [deleteConfirmFor, setDeleteConfirmFor] = useState<string | null>(null)
 
-  // Close dropdown on outside tap
-  useEffect(() => {
-    if (!openDropdownFor) return
-    const close = () => {
+  function closeDropdown() {
+    if (closeTimerRef.current) return
+    setDropdownClosing(true)
+    closeTimerRef.current = setTimeout(() => {
       setOpenDropdownFor(null)
+      setDropdownClosing(false)
       setAddingNickFor(null)
       setNickInput('')
       setDeleteConfirmFor(null)
-    }
-    document.addEventListener('pointerdown', close)
-    return () => document.removeEventListener('pointerdown', close)
+      closeTimerRef.current = null
+    }, 120)
+  }
+
+  // Close dropdown on outside tap
+  useEffect(() => {
+    if (!openDropdownFor) return
+    const handler = () => closeDropdown()
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openDropdownFor])
 
   // Reset when sheet closes
@@ -206,14 +217,20 @@ export function ExerciseSheet({
 
   function openMenu(norm: string, e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
-    if (openDropdownFor === norm) {
-      setOpenDropdownFor(null)
+    if (openDropdownFor === norm && !dropdownClosing) {
+      closeDropdown()
       return
+    }
+    // Cancel any in-flight close and open immediately
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
     }
     const rect = e.currentTarget.getBoundingClientRect()
     setDropdownTop(rect.bottom + 6)
-    setDropdownRight(window.innerWidth - rect.right)
+    setDropdownRight(Math.max(window.innerWidth - rect.right, 24))
     setOpenDropdownFor(norm)
+    setDropdownClosing(false)
     setAddingNickFor(null)
     setNickInput('')
     setDeleteConfirmFor(null)
@@ -223,6 +240,8 @@ export function ExerciseSheet({
     setMergeMode(true)
     setMergeTarget(norm)
     setOpenDropdownFor(null)
+    setDropdownClosing(false)
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null }
   }
 
   function handleMergeTap(norm: string) {
@@ -285,7 +304,7 @@ export function ExerciseSheet({
               <button
                 key={opt.value}
                 onPointerDown={tap}
-                className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
+                className={`data-btn${sortMode === opt.value ? ' data-btn-filled' : ''}`}
                 onClick={() => {
                   listRef.current?.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
                     snapshots.current.set(el.dataset.norm!, el.getBoundingClientRect().top)
@@ -379,7 +398,7 @@ export function ExerciseSheet({
       {/* Dropdown — portalled to body to escape overflow:auto clipping */}
       {dropdownEntry && createPortal(
         <div
-          className="ex-dropdown"
+          className={`ex-dropdown${dropdownClosing ? ' closing' : ''}`}
           style={{ top: dropdownTop, right: dropdownRight }}
           onPointerDown={e => e.stopPropagation()}
         >
@@ -401,30 +420,40 @@ export function ExerciseSheet({
               </button>
             </div>
           ) : (
-            <button className="ex-dropdown-item" onClick={() => setAddingNickFor(dropdownEntry.norm)}>
+            <button className="data-btn" onPointerDown={tap} onClick={() => setAddingNickFor(dropdownEntry.norm)}>
+              <Tag size={14} strokeWidth={2} />
               add nickname
             </button>
           )}
 
-          <button className="ex-dropdown-item" onClick={() => handleMergeFromDropdown(dropdownEntry.norm)}>
+          <button className="data-btn" onPointerDown={tap} onClick={() => handleMergeFromDropdown(dropdownEntry.norm)}>
+            <GitMerge size={14} strokeWidth={2} />
             merge
           </button>
 
+          <div className="dd-sep" />
+
           {deleteConfirmFor === dropdownEntry.norm ? (
-            <div className="ex-dropdown-confirm">
-              <span className="ex-dropdown-confirm-label">
+            <div className="dd-confirm">
+              <span className="dd-confirm-label">
                 Remove from {dropdownEntry.count} day{dropdownEntry.count !== 1 ? 's' : ''}?
               </span>
-              <div className="ex-dropdown-confirm-actions">
-                <button className="delete-yes-btn" onClick={() => handleDelete(dropdownEntry.norm)}>Remove</button>
-                <button className="delete-no-btn" onClick={() => setDeleteConfirmFor(null)}>Cancel</button>
+              <div className="dd-confirm-btns">
+                <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => handleDelete(dropdownEntry.norm)}>
+                  <Trash2 size={13} strokeWidth={2} /> Remove
+                </button>
+                <button className="data-btn data-btn-ghost" onPointerDown={tap} onClick={() => setDeleteConfirmFor(null)}>
+                  Cancel
+                </button>
               </div>
             </div>
           ) : (
             <button
-              className="ex-dropdown-item ex-dropdown-delete"
+              className="data-btn data-btn-danger"
+              onPointerDown={tap}
               onClick={() => setDeleteConfirmFor(dropdownEntry.norm)}
             >
+              <Trash2 size={14} strokeWidth={2} />
               delete from history
             </button>
           )}
