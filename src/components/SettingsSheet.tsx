@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react'
-import { Check, Download, Upload, Trash2, AlertTriangle } from 'lucide-react'
+import { Check, Download, Upload, Trash2, AlertTriangle, ExternalLink } from 'lucide-react'
 import {
   ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent,
   type WeightUnit, getSavedWeightUnit, saveWeightUnit,
@@ -230,6 +230,33 @@ export function SettingsSheet({
               </div>
             </div>
           )}
+        </div>
+
+        {/* ── About ────────────────────────────────────────── */}
+        <div className="settings-section">
+          <span className="settings-section-label">About</span>
+          <div className="about-card">
+            <div className="about-row">
+              <span className="about-key">Version</span>
+              <span className="about-val">{__APP_VERSION__}</span>
+            </div>
+            <div className="about-row">
+              <span className="about-key">Latest update</span>
+              <span className="about-val">{__BUILD_DATE__}</span>
+            </div>
+            <div className="about-row">
+              <span className="about-key">Source</span>
+              <a
+                className="about-link"
+                href="https://github.com/Keenlol/note-it-down"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Keenlol/note-it-down
+                <ExternalLink size={11} strokeWidth={2} />
+              </a>
+            </div>
+          </div>
         </div>
 
       </div>

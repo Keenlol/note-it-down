@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+import pkg from './package.json'
 
 /**
  * Generates a production service worker with a precise precache list built
@@ -92,4 +93,10 @@ self.addEventListener('fetch', e => {
 
 export default defineConfig({
   plugins: [react(), swPlugin()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_DATE__: JSON.stringify(
+      new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    ),
+  },
 })

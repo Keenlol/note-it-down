@@ -568,6 +568,49 @@ html, body {
   margin-top: -6px;
 }
 
+/* About card */
+
+.about-card {
+  background: var(--surface-1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.about-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+
+.about-row + .about-row {
+  border-top: 1px solid var(--surface-2);
+}
+
+.about-key {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.about-val {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.about-link {
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.about-link:hover {
+  text-decoration: underline;
+}
+
 /* Data stats + actions */
 
 .data-stat-card {
