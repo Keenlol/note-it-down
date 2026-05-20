@@ -579,7 +579,7 @@ html, body {
 /* Segmented control — generic, works for any number of options */
 
 .seg-control {
-  display: flex;
+  display: inline-flex;
   background: var(--surface-1);
   border-radius: 8px;
   padding: 3px;
