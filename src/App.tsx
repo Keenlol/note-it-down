@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ArrowRight, Eye, Dumbbell, Hash } from 'lucide-react'
+import { Check, ArrowRight, Eye, Dumbbell, Hash, Settings } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { Editor, type Suggestion } from './components/Editor'
 import { ExerciseSheet } from './components/ExerciseSheet'
 import { PresetSheet } from './components/PresetSheet'
+import { SettingsSheet } from './components/SettingsSheet'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
 import { getBwOn, setBwEntry, isBwSet } from './utils/bodyweight'
 import { tap } from './utils/tap'
+import { getSavedAccent, applyAccent, ACCENT_COLORS } from './utils/settings'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
 
@@ -255,6 +257,7 @@ export function App() {
   const [reveal, setReveal] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [presetSheetOpen, setPresetSheetOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
@@ -346,6 +349,13 @@ export function App() {
   useEffect(() => {
     const saved = loadDay(todayKey())
     if (saved) setTodayText(saved.rawText)
+  }, [])
+
+  // Apply saved accent color on first render
+  useEffect(() => {
+    const key = getSavedAccent()
+    const def = ACCENT_COLORS.find(c => c.key === key)
+    if (def) applyAccent(def.hex)
   }, [])
 
   useEffect(() => {
@@ -688,30 +698,40 @@ export function App() {
         </div>
       </div>
       <div className="bottom-bar">
+        <div className="bottom-bar-main">
+          <button
+            onPointerDown={tap}
+            className={`bottom-btn${sheetOpen ? ' active' : ''}`}
+            onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setSettingsOpen(false) }}
+            aria-label="Exercises"
+          >
+            <Dumbbell size={23} strokeWidth={1.6} />
+          </button>
+          <button
+            onPointerDown={tap}
+            className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
+            onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setSettingsOpen(false) }}
+            aria-label="Presets"
+          >
+            <Hash size={23} strokeWidth={1.6} />
+          </button>
+          <button
+            className="bottom-btn"
+            onPointerDown={e => { tap(e); e.preventDefault(); setReveal(true) }}
+            onPointerUp={() => setReveal(false)}
+            onPointerLeave={() => setReveal(false)}
+            aria-label="Reveal exercise details"
+          >
+            <Eye size={23} strokeWidth={1.6} />
+          </button>
+        </div>
         <button
           onPointerDown={tap}
-          className={`bottom-btn${sheetOpen ? ' active' : ''}`}
-          onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false) }}
-          aria-label="Exercises"
+          className={`bottom-btn${settingsOpen ? ' active' : ''}`}
+          onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false) }}
+          aria-label="Settings"
         >
-          <Dumbbell size={23} strokeWidth={1.6} />
-        </button>
-        <button
-          onPointerDown={tap}
-          className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
-          onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false) }}
-          aria-label="Presets"
-        >
-          <Hash size={23} strokeWidth={1.6} />
-        </button>
-        <button
-          className="bottom-btn"
-          onPointerDown={e => { tap(e); e.preventDefault(); setReveal(true) }}
-          onPointerUp={() => setReveal(false)}
-          onPointerLeave={() => setReveal(false)}
-          aria-label="Reveal exercise details"
-        >
-          <Eye size={23} strokeWidth={1.6} />
+          <Settings size={21} strokeWidth={1.6} />
         </button>
       </div>
 
@@ -731,6 +751,12 @@ export function App() {
         onClose={() => setPresetSheetOpen(false)}
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
+        height={sheetHeight}
+      />
+
+      <SettingsSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
         height={sheetHeight}
       />
     </div>

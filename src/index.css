@@ -374,11 +374,18 @@ html, body {
   right: 0;
   z-index: 30;
   display: flex;
+  align-items: center;
+  padding: 10px 4px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 55%, transparent);
+}
+
+/* Main icon group — centered in remaining space */
+.bottom-bar-main {
+  flex: 1;
+  display: flex;
   justify-content: center;
   align-items: center;
   gap: 4px;
-  padding: 10px 0 calc(12px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, var(--bg) 55%, transparent);
 }
 
 .bottom-btn {
@@ -537,6 +544,55 @@ html, body {
 .merge-confirm-btn:disabled {
   opacity: 0.3;
   cursor: default;
+}
+
+/* Settings sheet */
+
+.settings-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 var(--pad) var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-section-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.accent-swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.accent-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.accent-swatch.active {
+  border-color: var(--text);
 }
 
 /* Sort chips */
