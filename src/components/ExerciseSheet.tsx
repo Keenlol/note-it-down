@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, Check, ChevronRight, MoreVertical } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronRight, GitMerge, MoreVertical } from 'lucide-react'
 import {
   buildCatalog, mergeExercises, addNickname, deleteExercise,
   relativeTime, getExerciseHistory,
@@ -219,6 +219,12 @@ export function ExerciseSheet({
     setDeleteConfirmFor(null)
   }
 
+  function handleMergeFromDropdown(norm: string) {
+    setMergeMode(true)
+    setMergeTarget(norm)
+    setOpenDropdownFor(null)
+  }
+
   function handleMergeTap(norm: string) {
     if (mergeTarget === null) { setMergeTarget(norm); return }
     if (norm === mergeTarget) { setMergeTarget(null); setMergeSelected(new Set()); return }
@@ -270,37 +276,46 @@ export function ExerciseSheet({
       <div className="sheet-header">
         <div className="sheet-title-row">
           <span className="sheet-title">Exercises</span>
-          <div className="merge-header-right">
-            <button
-              className={`merge-init-btn${mergeMode ? ' merge-init-hidden' : ''}`}
-              onClick={() => setMergeMode(true)}
-            >Merge</button>
-            <div className={`merge-actions${mergeMode ? '' : ' merge-actions-hidden'}`}>
-              <button className="merge-cancel-btn" onClick={cancelMerge}>Cancel</button>
-              <button className="merge-confirm-btn" disabled={mergeCount < 2} onClick={confirmMerge}>
-                Merge {mergeCount >= 2 ? mergeCount : ''}
+        </div>
+
+        {/* Sort chips — hidden during merge mode */}
+        {!mergeMode && (
+          <div className="sort-chips">
+            {SORT_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onPointerDown={tap}
+                className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
+                onClick={() => {
+                  listRef.current?.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
+                    snapshots.current.set(el.dataset.norm!, el.getBoundingClientRect().top)
+                  })
+                  setSortMode(opt.value)
+                }}
+              >
+                {opt.label}
               </button>
-            </div>
+            ))}
           </div>
-        </div>
-        <div className="sort-chips">
-          {SORT_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              onPointerDown={tap}
-              className={`sort-chip${sortMode === opt.value ? ' active' : ''}`}
-              onClick={() => {
-                // Snapshot positions before re-render (FLIP: First)
-                listRef.current?.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
-                  snapshots.current.set(el.dataset.norm!, el.getBoundingClientRect().top)
-                })
-                setSortMode(opt.value)
-              }}
-            >
-              {opt.label}
+        )}
+
+        {/* Merge action bar — replaces sort chips during merge mode */}
+        {mergeMode && (
+          <div className="merge-action-bar">
+            <button className="data-btn data-btn-ghost" onPointerDown={tap} onClick={cancelMerge}>
+              Cancel
             </button>
-          ))}
-        </div>
+            <button
+              className="data-btn"
+              onPointerDown={tap}
+              onClick={confirmMerge}
+              disabled={mergeCount < 2}
+            >
+              <GitMerge size={14} strokeWidth={2} />
+              Merge{mergeCount >= 2 ? ` ${mergeCount}` : ''}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="exercise-list" ref={listRef}>
@@ -390,6 +405,10 @@ export function ExerciseSheet({
               add nickname
             </button>
           )}
+
+          <button className="ex-dropdown-item" onClick={() => handleMergeFromDropdown(dropdownEntry.norm)}>
+            merge
+          </button>
 
           {deleteConfirmFor === dropdownEntry.norm ? (
             <div className="ex-dropdown-confirm">

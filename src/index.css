@@ -478,76 +478,14 @@ html, body {
 /* Keep both header states in DOM; whichever is active is in normal flow,
    the other is absolutely positioned so it can't contribute to header height/width. */
 
-.merge-header-right {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.merge-init-btn {
-  background: none;
-  border: 1px solid var(--surface-1);
-  color: var(--text-dim);
-  font-family: var(--font);
-  font-size: 0.78rem;
-  padding: 4px 11px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: color 0.1s, border-color 0.1s, opacity 0.15s;
-  white-space: nowrap;
-}
-
-.merge-init-btn:active {
-  color: var(--text);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.merge-init-btn.merge-init-hidden {
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
-}
-
-.merge-actions {
+.merge-action-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  white-space: nowrap;
 }
 
-.merge-actions.merge-actions-hidden {
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
-}
-
-.merge-cancel-btn {
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-family: var(--font);
-  font-size: 0.78rem;
-  cursor: pointer;
-  padding: 4px 6px;
-}
-
-.merge-confirm-btn {
-  background: var(--accent);
-  border: none;
-  color: #fff;
-  font-family: var(--font);
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: opacity 0.1s;
-}
-
-.merge-confirm-btn:disabled {
-  opacity: 0.3;
+.merge-action-bar .data-btn:disabled {
+  opacity: 0.35;
   cursor: default;
 }
 
