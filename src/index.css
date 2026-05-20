@@ -727,6 +727,22 @@ html, body {
   padding: 12px 14px;
 }
 
+/* Buttons nested inside a confirm box sit on --surface-1, so bump them to
+   --surface-3 to stay visible. Ghost stays transparent. */
+.data-confirm .data-btn {
+  background: var(--surface-3);
+}
+
+.data-confirm .data-btn:hover,
+.data-confirm .data-btn:active {
+  background: var(--surface-3);
+  filter: brightness(1.15);
+}
+
+.data-confirm .data-btn-ghost {
+  background: none;
+}
+
 .data-confirm-title {
   font-size: 0.82rem;
   font-weight: 600;

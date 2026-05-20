@@ -112,19 +112,6 @@ export function SettingsSheet({
 
       <div className="settings-body">
 
-        {/* ── Weight unit ─────────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">Default weight unit</span>
-          <p className="settings-section-hint">
-            Applied to entries with no explicit unit. Explicit kg / lbs always win.
-          </p>
-          <SegmentedControl
-            options={WEIGHT_UNIT_OPTIONS}
-            value={weightUnit}
-            onChange={handleWeightUnit}
-          />
-        </div>
-
         {/* ── Accent color ─────────────────────────────────────── */}
         <div className="settings-section">
           <span className="settings-section-label">Accent color</span>
@@ -143,6 +130,19 @@ export function SettingsSheet({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* ── Weight unit ─────────────────────────────────────── */}
+        <div className="settings-section">
+          <span className="settings-section-label">Default weight unit</span>
+          <p className="settings-section-hint">
+            Applied to entries with no explicit unit. Explicit kg / lbs always win.
+          </p>
+          <SegmentedControl
+            options={WEIGHT_UNIT_OPTIONS}
+            value={weightUnit}
+            onChange={handleWeightUnit}
+          />
         </div>
 
         {/* ── Data ─────────────────────────────────────────────── */}
