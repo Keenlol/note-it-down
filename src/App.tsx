@@ -727,7 +727,7 @@ export function App() {
         </div>
         <button
           onPointerDown={tap}
-          className={`bottom-btn${settingsOpen ? ' active' : ''}`}
+          className={`bottom-btn bottom-btn-settings${settingsOpen ? ' active' : ''}`}
           onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false) }}
           aria-label="Settings"
         >

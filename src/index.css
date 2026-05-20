@@ -374,18 +374,23 @@ html, body {
   right: 0;
   z-index: 30;
   display: flex;
+  justify-content: center;
   align-items: center;
-  padding: 10px 4px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 0 calc(12px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, var(--bg) 55%, transparent);
 }
 
-/* Main icon group — centered in remaining space */
+/* Main icon group — truly centered in the full bar */
 .bottom-bar-main {
-  flex: 1;
   display: flex;
-  justify-content: center;
   align-items: center;
   gap: 4px;
+}
+
+/* Settings button — pinned to right edge, aligned with --pad content margin */
+.bottom-btn-settings {
+  position: absolute;
+  right: calc(var(--pad) - 10px); /* 10px = button's own padding */
 }
 
 .bottom-btn {
