@@ -732,7 +732,7 @@ export function App() {
             <Hash size={23} strokeWidth={1.6} />
           </button>
           <button
-            className="bottom-btn"
+            className={`bottom-btn${reveal ? ' active' : ''}`}
             onPointerDown={e => { tap(e); e.preventDefault(); setReveal(true) }}
             onPointerUp={() => setReveal(false)}
             onPointerLeave={() => setReveal(false)}
