@@ -274,6 +274,19 @@ export function App() {
   const [bloom, setBloom] = useState<{ date: string; id: number } | null>(null)
   const bloomId = useRef(0)
   const exCountRef = useRef<{ day: string; count: number }>({ day: '', count: -1 })
+
+  // Fire a bloom when a user edit raises the exercise-line count for `day`.
+  // Driven only by real edits (typing / preset fill), never by navigation loads,
+  // so scrolling to a logged day can't misfire. A day change just re-baselines.
+  const fireBloomIfNewLine = useCallback((day: string, newText: string) => {
+    const count = countExercises(newText)
+    const prev = exCountRef.current
+    if (prev.day === day && count > prev.count) {
+      bloomId.current += 1
+      setBloom({ date: day, id: bloomId.current })
+    }
+    exCountRef.current = { day, count }
+  }, [])
   const heatmapRef = useRef<HTMLDivElement>(null)
   // True once the user has dragged the handle — auto-sizing then stops overriding it.
   const manualSheetHeight = useRef(getSavedSheetHeight() !== undefined)
@@ -393,18 +406,6 @@ export function App() {
     if (saved) setTodayText(saved.rawText)
   }, [])
 
-  // Trigger a heatmap bloom whenever a new exercise line is completed on the
-  // day currently being edited. Switching days only re-baselines (no bloom).
-  useEffect(() => {
-    const day = viewDate ?? todayKey()
-    const count = countExercises(viewDate ? pastText : todayText)
-    const prev = exCountRef.current
-    if (prev.day === day && count > prev.count) {
-      bloomId.current += 1
-      setBloom({ date: day, id: bloomId.current })
-    }
-    exCountRef.current = { day, count }
-  }, [todayText, pastText, viewDate])
 
   // Apply saved accent color and weight unit on first render
   useEffect(() => {
@@ -441,6 +442,7 @@ export function App() {
 
   const handleChange = useCallback((text: string) => {
     setTodayText(text)
+    fireBloomIfNewLine(todayKey(), text)
     setSaveStatus('saving')
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
@@ -456,6 +458,7 @@ export function App() {
   const handlePastChange = useCallback((text: string) => {
     if (!viewDate) return
     setPastText(text)
+    fireBloomIfNewLine(viewDate, text)
     clearTimeout(pastSaveTimer.current)
     const dateSnapshot = viewDate
     pastSaveTimer.current = setTimeout(() => {
@@ -535,6 +538,7 @@ export function App() {
     }
 
     setTodayText(newText)
+    fireBloomIfNewLine(todayKey(), newText)
     setCursorPos(newCursor)
     setSaveStatus('saving')
     clearTimeout(saveTimer.current)
@@ -576,6 +580,7 @@ export function App() {
 
     if (!viewDate) return
     setPastText(newText)
+    fireBloomIfNewLine(viewDate, newText)
     setPastCursorPos(newCursor)
     clearTimeout(pastSaveTimer.current)
     const dateSnapshot = viewDate

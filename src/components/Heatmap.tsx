@@ -23,9 +23,10 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const WEEKS = 21
 
 // Bloom timing: each cell's ripple is delayed by its distance from the origin,
-// so the wave expands outward and fades off the edges.
-const BLOOM_STEP_MS = 34     // delay added per unit of distance
-const BLOOM_DURATION_MS = 520
+// so the wave expands outward and fades off the edges. Kept fast so rapid
+// exercise logging produces quick successive ripples.
+const BLOOM_STEP_MS = 14     // delay added per unit of distance
+const BLOOM_DURATION_MS = 320
 const BLOOM_MAX_DIST = Math.sqrt(WEEKS * WEEKS + 7 * 7)
 
 function hexToRgb(hex: string): string {
