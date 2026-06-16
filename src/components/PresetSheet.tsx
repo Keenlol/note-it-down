@@ -9,6 +9,7 @@ import {
 } from '../utils/presets'
 import { type WeightUnit } from '../utils/settings'
 import { tap } from '../utils/tap'
+import { SheetHandle } from './SheetHandle'
 
 interface Props {
   open: boolean
@@ -17,6 +18,8 @@ interface Props {
   dataVersion: number
   onDataChange: () => void
   height?: number
+  onResize: (height: number) => void
+  onResizeEnd: () => void
   weightUnit?: WeightUnit
 }
 
@@ -84,7 +87,7 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
-export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataChange, height, weightUnit = 'kg' }: Props) {
+export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataChange, height, onResize, onResizeEnd, weightUnit = 'kg' }: Props) {
   const [sortMode, setSortMode] = useState<SortMode>('count')
   const [query, setQuery]       = useState('')
   const listRef   = useRef<HTMLDivElement>(null)
@@ -240,9 +243,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataC
       className={`exercise-sheet${open ? ' open' : ''}`}
       style={height !== undefined ? { height: `${height}px` } : undefined}
     >
-      <div className="sheet-handle-wrap" onPointerDown={tap} onClick={onClose}>
-        <div className="sheet-handle" />
-      </div>
+      <SheetHandle onClose={onClose} onResize={onResize} onResizeEnd={onResizeEnd} />
 
       <div className="sheet-header">
         <div className="sheet-title-row">

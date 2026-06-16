@@ -31,6 +31,19 @@ export function formatWeightDiff(absKgDiff: number, unit: WeightUnit): string {
   return `${display}${unit}`
 }
 
+// ── Bottom-sheet height (user-resizable, remembered) ──────────────────────────
+
+const SHEET_HEIGHT_KEY = 'settings_sheetHeight'
+
+export function getSavedSheetHeight(): number | undefined {
+  const v = localStorage.getItem(SHEET_HEIGHT_KEY)
+  return v ? Number(v) : undefined
+}
+
+export function saveSheetHeight(px: number): void {
+  localStorage.setItem(SHEET_HEIGHT_KEY, String(Math.round(px)))
+}
+
 // ── Accent color ──────────────────────────────────────────────────────────────
 
 export const ACCENT_COLORS = [

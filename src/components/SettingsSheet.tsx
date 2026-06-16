@@ -9,6 +9,7 @@ import {
   clearData, type ImportSummary,
 } from '../utils/data'
 import { SegmentedControl } from './SegmentedControl'
+import { SheetHandle } from './SheetHandle'
 import { tap } from '../utils/tap'
 
 const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
@@ -26,6 +27,8 @@ interface Props {
   open: boolean
   onClose: () => void
   height?: number
+  onResize: (height: number) => void
+  onResizeEnd: () => void
   dataVersion: number
   onDataChange: () => void
   onAccentChange?: (key: AccentKey) => void
@@ -33,7 +36,7 @@ interface Props {
 }
 
 export function SettingsSheet({
-  open, onClose, height, dataVersion, onDataChange,
+  open, onClose, height, onResize, onResizeEnd, dataVersion, onDataChange,
   onAccentChange, onWeightUnitChange,
 }: Props) {
   const [accent, setAccent]         = useState<AccentKey>(() => getSavedAccent())
@@ -100,9 +103,7 @@ export function SettingsSheet({
       className={`exercise-sheet${open ? ' open' : ''}`}
       style={height !== undefined ? { height: `${height}px` } : undefined}
     >
-      <div className="sheet-handle-wrap" onPointerDown={tap} onClick={onClose}>
-        <div className="sheet-handle" />
-      </div>
+      <SheetHandle onClose={onClose} onResize={onResize} onResizeEnd={onResizeEnd} />
 
       <div className="sheet-header">
         <div className="sheet-title-row">

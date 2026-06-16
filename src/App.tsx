@@ -12,7 +12,7 @@ import { exerciseVolumePerDay } from './utils/exercises'
 import { presetVolumePerDay } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet } from './utils/bodyweight'
 import { tap } from './utils/tap'
-import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit } from './utils/settings'
+import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedSheetHeight, saveSheetHeight } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
@@ -269,8 +269,27 @@ export function App() {
   const [focusedPreset, setFocusedPreset] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
-  const [sheetHeight, setSheetHeight] = useState<number | undefined>(undefined)
+  const [sheetHeight, setSheetHeight] = useState<number | undefined>(() => getSavedSheetHeight())
   const heatmapRef = useRef<HTMLDivElement>(null)
+  // True once the user has dragged the handle — auto-sizing then stops overriding it.
+  const manualSheetHeight = useRef(getSavedSheetHeight() !== undefined)
+  const latestSheetHeight = useRef<number | undefined>(getSavedSheetHeight())
+
+  function clampSheetHeight(px: number): number {
+    const vh = window.visualViewport?.height ?? window.innerHeight
+    return Math.round(Math.max(220, Math.min(px, vh - 72)))
+  }
+
+  const handleSheetResize = (px: number) => {
+    manualSheetHeight.current = true
+    const clamped = clampSheetHeight(px)
+    latestSheetHeight.current = clamped
+    setSheetHeight(clamped)
+  }
+
+  const handleSheetResizeEnd = () => {
+    if (latestSheetHeight.current !== undefined) saveSheetHeight(latestSheetHeight.current)
+  }
 
   const filterVolumeMap = useMemo(
     () => {
@@ -348,8 +367,13 @@ export function App() {
     const el = heatmapRef.current
     if (!el) return
     const update = () => {
-      const rect = el.getBoundingClientRect()
       const vh = window.visualViewport?.height ?? window.innerHeight
+      if (manualSheetHeight.current) {
+        // Keep the user's chosen size, but never let it overflow the viewport.
+        setSheetHeight(h => (h === undefined ? h : clampSheetHeight(h)))
+        return
+      }
+      const rect = el.getBoundingClientRect()
       setSheetHeight(vh - rect.bottom)
     }
     update()
@@ -357,6 +381,7 @@ export function App() {
     ro.observe(el)
     window.addEventListener('resize', update)
     return () => { ro.disconnect(); window.removeEventListener('resize', update) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -760,6 +785,8 @@ export function App() {
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         height={sheetHeight}
+        onResize={handleSheetResize}
+        onResizeEnd={handleSheetResizeEnd}
         weightUnit={weightUnit}
       />
 
@@ -770,6 +797,8 @@ export function App() {
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         height={sheetHeight}
+        onResize={handleSheetResize}
+        onResizeEnd={handleSheetResizeEnd}
         weightUnit={weightUnit}
       />
 
@@ -777,6 +806,8 @@ export function App() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         height={sheetHeight}
+        onResize={handleSheetResize}
+        onResizeEnd={handleSheetResizeEnd}
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         onAccentChange={(key: AccentKey) => {

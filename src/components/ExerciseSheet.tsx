@@ -9,6 +9,7 @@ import {
 import { type Exercise } from '../utils/parser'
 import { type WeightUnit, formatWeightDisplay, formatWeightDiff } from '../utils/settings'
 import { tap } from '../utils/tap'
+import { SheetHandle } from './SheetHandle'
 
 interface Props {
   open: boolean
@@ -19,6 +20,8 @@ interface Props {
   dataVersion: number
   onDataChange: () => void
   height?: number
+  onResize: (height: number) => void
+  onResizeEnd: () => void
   weightUnit?: WeightUnit
 }
 
@@ -112,7 +115,7 @@ function HistoryList({ entries, unit }: { entries: HistoryEntry[]; unit: WeightU
 
 export function ExerciseSheet({
   open, onClose, aliases, onAliasesChange, onFocusExercise, dataVersion, onDataChange, height,
-  weightUnit = 'kg',
+  onResize, onResizeEnd, weightUnit = 'kg',
 }: Props) {
   const [sortMode, setSortMode]           = useState<SortMode>('count')
   const [query, setQuery]                 = useState('')
@@ -298,9 +301,7 @@ export function ExerciseSheet({
 
   return (
     <div className={`exercise-sheet${open ? ' open' : ''}`} style={height !== undefined ? { height: `${height}px` } : undefined}>
-      <div className="sheet-handle-wrap" onPointerDown={tap} onClick={onClose}>
-        <div className="sheet-handle" />
-      </div>
+      <SheetHandle onClose={onClose} onResize={onResize} onResizeEnd={onResizeEnd} />
 
       <div className="sheet-header">
         <div className="sheet-title-row">

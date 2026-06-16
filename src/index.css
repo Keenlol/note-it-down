@@ -442,8 +442,9 @@ html, body {
   display: flex;
   justify-content: center;
   padding: 10px 0 6px;
-  cursor: pointer;
+  cursor: ns-resize;
   flex-shrink: 0;
+  touch-action: none;   /* drag the handle to resize without the page scrolling */
 }
 
 .sheet-handle {
