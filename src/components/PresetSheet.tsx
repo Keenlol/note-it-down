@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, Check, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronRight, MoreVertical, Pencil, Search, Trash2, X } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
@@ -86,6 +86,7 @@ type DeleteMode = 'label-only' | 'with-exercises'
 
 export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataChange, height, weightUnit = 'kg' }: Props) {
   const [sortMode, setSortMode] = useState<SortMode>('count')
+  const [query, setQuery]       = useState('')
   const listRef   = useRef<HTMLDivElement>(null)
   const snapshots = useRef<Map<string, number>>(new Map())
   const [expandedPreset, setExpandedPreset] = useState<string | null>(null)
@@ -133,6 +134,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataC
       setDeleteConfirmFor(null)
       setDeleteMode(null)
       setExpandedPreset(null)
+      setQuery('')
       onFocusPreset(null)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,6 +161,12 @@ export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataC
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sortMode, dataVersion],
   )
+
+  const visibleCatalog = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return catalog
+    return catalog.filter(e => e.displayName.toLowerCase().includes(q) || e.norm.includes(q))
+  }, [catalog, query])
 
   // Persists last-loaded history so content stays visible during the collapse animation.
   const lastHistoryRef = useRef<Map<string, PresetHistoryEntry[]>>(new Map())
@@ -240,6 +248,24 @@ export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataC
         <div className="sheet-title-row">
           <span className="sheet-title">Presets</span>
         </div>
+        <div className="sheet-search">
+          <Search size={15} strokeWidth={2} />
+          <input
+            className="search-input"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search presets…"
+            spellCheck={false}
+            autoCapitalize="off"
+            autoComplete="off"
+            autoCorrect="off"
+          />
+          {query && (
+            <button className="search-clear" onPointerDown={tap} onClick={() => setQuery('')} aria-label="Clear search">
+              <X size={15} strokeWidth={2} />
+            </button>
+          )}
+        </div>
         <div className="sort-chips">
           {SORT_OPTIONS.map(opt => (
             <button
@@ -263,7 +289,10 @@ export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataC
         {catalog.length === 0 && (
           <p className="exercise-empty">No presets logged yet.</p>
         )}
-        {catalog.map(entry => {
+        {catalog.length > 0 && visibleCatalog.length === 0 && (
+          <p className="exercise-empty">No matches for “{query.trim()}”.</p>
+        )}
+        {visibleCatalog.map(entry => {
           const isExpanded = expandedPreset === entry.norm
           return (
             <div

@@ -775,6 +775,58 @@ html, body {
 
 /* Sort chips */
 
+/* Search bar — sits above the sort chips in the exercise / preset sheets */
+.sheet-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface-2);
+  border: 1px solid #2e2e2e;
+  border-radius: 7px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+}
+
+.sheet-search:focus-within {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.sheet-search > svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  padding: 0;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-clear {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  transition: color 0.1s;
+}
+
+.search-clear:active {
+  color: var(--text-2);
+}
+
 .sort-chips {
   display: flex;
   gap: 6px;

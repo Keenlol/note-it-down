@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, Check, ChevronRight, GitMerge, MoreVertical, Tag, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronRight, GitMerge, MoreVertical, Search, Tag, Trash2, X } from 'lucide-react'
 import {
   buildCatalog, mergeExercises, addNickname, deleteExercise,
   relativeTime, getExerciseHistory,
@@ -115,6 +115,7 @@ export function ExerciseSheet({
   weightUnit = 'kg',
 }: Props) {
   const [sortMode, setSortMode]           = useState<SortMode>('count')
+  const [query, setQuery]                 = useState('')
   const listRef   = useRef<HTMLDivElement>(null)
   const snapshots = useRef<Map<string, number>>(new Map())
   const [mergeMode, setMergeMode]         = useState(false)
@@ -165,6 +166,7 @@ export function ExerciseSheet({
       setMergeTarget(null)
       setMergeSelected(new Set())
       setExpandedExercise(null)
+      setQuery('')
       onFocusExercise(null)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -191,6 +193,14 @@ export function ExerciseSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [aliases, sortMode, dataVersion],
   )
+
+  const visibleCatalog = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return catalog
+    return catalog.filter(e =>
+      e.displayName.toLowerCase().includes(q) || e.nicknames.some(n => n.includes(q)),
+    )
+  }, [catalog, query])
 
   // Persists the last-loaded history so content stays visible during the collapse
   // animation instead of snapping to "No entries found" mid-transition.
@@ -297,6 +307,28 @@ export function ExerciseSheet({
           <span className="sheet-title">Exercises</span>
         </div>
 
+        {/* Search bar — hidden during merge mode */}
+        {!mergeMode && (
+          <div className="sheet-search">
+            <Search size={15} strokeWidth={2} />
+            <input
+              className="search-input"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search exercises…"
+              spellCheck={false}
+              autoCapitalize="off"
+              autoComplete="off"
+              autoCorrect="off"
+            />
+            {query && (
+              <button className="search-clear" onPointerDown={tap} onClick={() => setQuery('')} aria-label="Clear search">
+                <X size={15} strokeWidth={2} />
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Sort chips — hidden during merge mode */}
         {!mergeMode && (
           <div className="sort-chips">
@@ -341,7 +373,10 @@ export function ExerciseSheet({
         {catalog.length === 0 && (
           <p className="exercise-empty">No exercises logged yet.</p>
         )}
-        {catalog.map(entry => {
+        {catalog.length > 0 && visibleCatalog.length === 0 && (
+          <p className="exercise-empty">No matches for “{query.trim()}”.</p>
+        )}
+        {visibleCatalog.map(entry => {
           const isMergeTarget   = mergeTarget === entry.norm
           const isMergeSelected = mergeSelected.has(entry.norm)
           const isExpanded      = expandedExercise === entry.norm
