@@ -127,12 +127,12 @@ html, body {
   z-index: 1;   /* keep the selection outline above neighbouring bloom overlays */
 }
 
-/* Radial bloom: each cell pulses in the accent color, delayed by its distance
-   from the logged date, so a ripple expands outward and fades off the edges. */
+/* Radial bloom: each cell snaps straight to the accent color, then fades out.
+   The per-cell delay (by distance from the logged date) makes the color ripple
+   expand outward and fade off the edges — no scaling, pixel-art style. */
 @keyframes bloom-pulse {
-  0%   { opacity: 0;    transform: scale(0.45); }
-  35%  { opacity: 0.85; transform: scale(1); }
-  100% { opacity: 0;    transform: scale(1); }
+  0%   { opacity: 0.9; }
+  100% { opacity: 0; }
 }
 
 .bloom-cell {
