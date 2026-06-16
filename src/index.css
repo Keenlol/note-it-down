@@ -784,7 +784,7 @@ html, body {
 }
 
 .sheet-search:focus-within {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: #4a4a4a;
 }
 
 .sheet-search > svg {
