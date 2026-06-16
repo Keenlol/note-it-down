@@ -6,7 +6,7 @@ import { ExerciseSheet } from './components/ExerciseSheet'
 import { PresetSheet } from './components/PresetSheet'
 import { SettingsSheet } from './components/SettingsSheet'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
-import { normalizeName, parseLine, type ParsedLine, type Exercise } from './utils/parser'
+import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
 import { presetVolumePerDay } from './utils/presets'
@@ -270,6 +270,10 @@ export function App() {
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
   const [sheetHeight, setSheetHeight] = useState<number | undefined>(() => getSavedSheetHeight())
+  // Heatmap bloom: bumped each time a new exercise line is completed on the edited day.
+  const [bloom, setBloom] = useState<{ date: string; id: number } | null>(null)
+  const bloomId = useRef(0)
+  const exCountRef = useRef<{ day: string; count: number }>({ day: '', count: -1 })
   const heatmapRef = useRef<HTMLDivElement>(null)
   // True once the user has dragged the handle — auto-sizing then stops overriding it.
   const manualSheetHeight = useRef(getSavedSheetHeight() !== undefined)
@@ -388,6 +392,19 @@ export function App() {
     const saved = loadDay(todayKey())
     if (saved) setTodayText(saved.rawText)
   }, [])
+
+  // Trigger a heatmap bloom whenever a new exercise line is completed on the
+  // day currently being edited. Switching days only re-baselines (no bloom).
+  useEffect(() => {
+    const day = viewDate ?? todayKey()
+    const count = countExercises(viewDate ? pastText : todayText)
+    const prev = exCountRef.current
+    if (prev.day === day && count > prev.count) {
+      bloomId.current += 1
+      setBloom({ date: day, id: bloomId.current })
+    }
+    exCountRef.current = { day, count }
+  }, [todayText, pastText, viewDate])
 
   // Apply saved accent color and weight unit on first render
   useEffect(() => {
@@ -679,6 +696,7 @@ export function App() {
           dataVersion={dataVersion}
           filterVolume={filterVolumeMap}
           accentHex={accentHex}
+          bloom={bloom}
         />
       </div>
 

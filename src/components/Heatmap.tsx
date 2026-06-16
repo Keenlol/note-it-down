@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { dateToKey, todayKey } from '../utils/storage'
 import { getDayVolume } from '../utils/exercises'
 import { tap } from '../utils/tap'
@@ -16,10 +16,17 @@ interface Props {
   dataVersion: number                 // increments on every save, forcing the memo to re-run
   filterVolume?: Map<string, number>  // per-day volume for a specific exercise; triggers accent mode
   accentHex: string                   // current accent color hex, e.g. "#f97316"
+  bloom?: { date: string; id: number } | null  // radial ripple origin; id retriggers the animation
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKS = 21
+
+// Bloom timing: each cell's ripple is delayed by its distance from the origin,
+// so the wave expands outward and fades off the edges.
+const BLOOM_STEP_MS = 34     // delay added per unit of distance
+const BLOOM_DURATION_MS = 520
+const BLOOM_MAX_DIST = Math.sqrt(WEEKS * WEEKS + 7 * 7)
 
 function hexToRgb(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -50,7 +57,7 @@ function cellColor(cell: Cell, maxVolume: number, filtered: boolean, accentRgb: 
   return `hsl(0, 0%, ${lightness}%)`
 }
 
-export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, accentHex }: Props) {
+export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, accentHex, bloom }: Props) {
   const accentRgb = useMemo(() => hexToRgb(accentHex), [accentHex])
 
   const { weeks, monthLabels, maxVolume } = useMemo(() => {
@@ -99,6 +106,29 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, a
 
   const filtered = !!filterVolume
 
+  // Locate the bloom origin cell and (re)start the ripple whenever bloom.id changes.
+  const [activeBloom, setActiveBloom] = useState<{ ow: number; od: number; id: number } | null>(null)
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!bloom) return
+    let ow = -1, od = -1
+    for (let w = 0; w < weeks.length && ow < 0; w++) {
+      for (let d = 0; d < weeks[w].length; d++) {
+        if (weeks[w][d].date === bloom.date) { ow = w; od = d; break }
+      }
+    }
+    if (ow < 0) return  // logged day isn't in the visible window
+    setActiveBloom({ ow, od, id: bloom.id })
+    if (clearTimer.current) clearTimeout(clearTimer.current)
+    clearTimer.current = setTimeout(
+      () => setActiveBloom(null),
+      BLOOM_MAX_DIST * BLOOM_STEP_MS + BLOOM_DURATION_MS + 80,
+    )
+    return () => { if (clearTimer.current) clearTimeout(clearTimer.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bloom?.id])
+
   return (
     <div className="heatmap-wrap">
       <div className="heatmap-grid">
@@ -112,7 +142,19 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, a
                 style={{ background: cellColor(cell, maxVolume, filtered, accentRgb) }}
                 onClick={() => { if (cell.date) onDayClick(cell.date) }}
                 title={cell.date ?? undefined}
-              />
+              >
+                {activeBloom && cell.date !== null && (
+                  <span
+                    key={`${activeBloom.id}-${w}-${d}`}
+                    className="bloom-cell"
+                    style={{
+                      background: accentHex,
+                      animationDelay: `${Math.hypot(w - activeBloom.ow, d - activeBloom.od) * BLOOM_STEP_MS}ms`,
+                      animationDuration: `${BLOOM_DURATION_MS}ms`,
+                    }}
+                  />
+                )}
+              </div>
             ))}
           </div>
         ))}

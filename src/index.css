@@ -109,6 +109,7 @@ html, body {
 }
 
 .heatmap-cell {
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
   border-radius: 3px;
@@ -123,6 +124,26 @@ html, body {
 .heatmap-cell.selected {
   outline: 1.5px solid var(--accent);
   outline-offset: 1px;
+  z-index: 1;   /* keep the selection outline above neighbouring bloom overlays */
+}
+
+/* Radial bloom: each cell pulses in the accent color, delayed by its distance
+   from the logged date, so a ripple expands outward and fades off the edges. */
+@keyframes bloom-pulse {
+  0%   { opacity: 0;    transform: scale(0.45); }
+  35%  { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 0;    transform: scale(1); }
+}
+
+.bloom-cell {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  animation-name: bloom-pulse;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
 }
 
 
