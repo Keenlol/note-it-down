@@ -7,6 +7,7 @@ import {
   getPresetHistory, relativeTime,
   type SortMode, type PresetHistoryEntry,
 } from '../utils/presets'
+import { type WeightUnit } from '../utils/settings'
 import { tap } from '../utils/tap'
 
 interface Props {
@@ -16,15 +17,19 @@ interface Props {
   dataVersion: number
   onDataChange: () => void
   height?: number
+  weightUnit?: WeightUnit
 }
 
 const POS_COLOR = 'rgb(45, 149, 47)'
 const NEG_COLOR = 'rgb(200, 57, 57)'
 const POS_BG    = 'rgba(45, 149, 47, 0.1)'
 const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
+const KG_PER_LB = 0.453592
 
-function fmtVol(n: number): string {
-  return n % 1 === 0 ? `${n}` : `${Math.round(n * 10) / 10}`
+/** Total load (weight × reps × sets) is stored in kg; render it in the user's unit. */
+function fmtLoad(kg: number, unit: WeightUnit): string {
+  const v = unit === 'lbs' ? kg / KG_PER_LB : kg
+  return `${Math.round(v)}`
 }
 
 function shortDate(dateStr: string): string {
@@ -36,7 +41,7 @@ function shortDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', opts)
 }
 
-function VolumeHistoryList({ entries }: { entries: PresetHistoryEntry[] }) {
+function VolumeHistoryList({ entries, unit }: { entries: PresetHistoryEntry[]; unit: WeightUnit }) {
   if (entries.length === 0) {
     return <div className="history-empty">No entries found.</div>
   }
@@ -44,22 +49,22 @@ function VolumeHistoryList({ entries }: { entries: PresetHistoryEntry[] }) {
     <div className="history-list">
       {entries.map((entry, i) => {
         const prev = entries[i + 1]
-        const diff = prev ? entry.volume - prev.volume : 0
+        const diff = prev ? entry.load - prev.load : 0
         const Icon = diff > 0 ? ArrowUp : ArrowDown
         return (
           <div key={entry.date} className="history-entry">
             <span className="history-date">{shortDate(entry.date)}</span>
             <span className="history-values">
-              <span className="num">{fmtVol(entry.volume)}</span>
-              <span className="history-sep"> vol</span>
+              <span className="num">{fmtLoad(entry.load, unit)}</span>
+              <span className="history-sep"> {unit}</span>
             </span>
-            {prev && diff !== 0 && (
+            {prev && Math.round(unit === 'lbs' ? diff / KG_PER_LB : diff) !== 0 && (
               <span className="history-trend">
                 <span
                   className="trend-item"
                   style={{ color: diff > 0 ? POS_COLOR : NEG_COLOR, background: diff > 0 ? POS_BG : NEG_BG }}
                 >
-                  <Icon size={11} strokeWidth={2.5} />{fmtVol(Math.abs(diff))}
+                  <Icon size={11} strokeWidth={2.5} />{fmtLoad(Math.abs(diff), unit)}
                 </span>
               </span>
             )}
@@ -79,7 +84,7 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
-export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataChange, height }: Props) {
+export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataChange, height, weightUnit = 'kg' }: Props) {
   const [sortMode, setSortMode] = useState<SortMode>('count')
   const listRef   = useRef<HTMLDivElement>(null)
   const snapshots = useRef<Map<string, number>>(new Map())
@@ -292,7 +297,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataC
               {/* Expandable total-volume history */}
               <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
                 <div className="history-expand-inner">
-                  <VolumeHistoryList entries={historyMap.get(entry.norm) ?? []} />
+                  <VolumeHistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} />
                 </div>
               </div>
             </div>

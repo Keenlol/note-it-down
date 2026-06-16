@@ -104,16 +104,18 @@ export function buildPresetCatalog(sort: SortMode = 'count'): PresetEntry[] {
 
 export interface PresetHistoryEntry {
   date: string
-  volume: number   // total volume (reps × sets) of exercises under this occurrence
+  volume: number   // Σ reps × sets — drives the heatmap accent
+  load: number     // Σ weightKg × reps × sets — shown in the history log
 }
 
 /**
- * Total volume per occurrence of a preset, newest first. For each day, sums the
- * volume of the exercise lines that follow each matching "#" header (until the
- * next header), resolving the correct bodyweight for that date.
+ * Per-occurrence totals for a preset, newest first. For each day, walks the
+ * exercise lines that follow each matching "#" header (until the next header),
+ * resolving the correct bodyweight for that date, and accumulates both the
+ * volume (reps × sets) and the load (weight × reps × sets).
  */
 export function getPresetHistory(norm: string): PresetHistoryEntry[] {
-  const byDate = new Map<string, number>()
+  const byDate = new Map<string, { volume: number; load: number }>()
 
   for (const date of getAllDayKeys()) {
     const day = loadDay(date)
@@ -129,23 +131,32 @@ export function getPresetHistory(norm: string): PresetHistoryEntry[] {
       if (lines[i].trim().replace(/^#+\s*/, '').toLowerCase() !== norm) continue
 
       let vol = 0
+      let load = 0
       let j = i + 1
       while (j < lines.length) {
         const next = parsed[j]
         if (next.exercise === null && next.bodyweightEntry === undefined &&
             lines[j].trim().startsWith('#')) break
-        if (next.exercise !== null) vol += next.exercise.volume
+        if (next.exercise !== null) {
+          vol += next.exercise.volume
+          load += next.exercise.weightKg * next.exercise.volume
+        }
         j++
       }
-      if (vol > 0) byDate.set(date, (byDate.get(date) ?? 0) + vol)
+      if (vol > 0) {
+        const acc = byDate.get(date) ?? { volume: 0, load: 0 }
+        acc.volume += vol
+        acc.load += load
+        byDate.set(date, acc)
+      }
     }
   }
 
-  return Array.from(byDate, ([date, volume]) => ({ date, volume }))
+  return Array.from(byDate, ([date, { volume, load }]) => ({ date, volume, load }))
     .sort((a, b) => b.date.localeCompare(a.date))
 }
 
-/** Per-day total volume for a preset — feeds the heatmap accent highlight. */
+/** Per-day total volume (reps × sets) for a preset — feeds the heatmap accent highlight. */
 export function presetVolumePerDay(norm: string): Map<string, number> {
   const result = new Map<string, number>()
   for (const { date, volume } of getPresetHistory(norm)) result.set(date, volume)

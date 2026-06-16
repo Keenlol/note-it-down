@@ -770,6 +770,7 @@ export function App() {
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         height={sheetHeight}
+        weightUnit={weightUnit}
       />
 
       <SettingsSheet
