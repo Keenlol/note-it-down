@@ -1,19 +1,73 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
-  relativeTime, type SortMode,
+  getPresetHistory, relativeTime,
+  type SortMode, type PresetHistoryEntry,
 } from '../utils/presets'
 import { tap } from '../utils/tap'
 
 interface Props {
   open: boolean
   onClose: () => void
+  onFocusPreset: (norm: string | null) => void
   dataVersion: number
   onDataChange: () => void
   height?: number
+}
+
+const POS_COLOR = 'rgb(45, 149, 47)'
+const NEG_COLOR = 'rgb(200, 57, 57)'
+const POS_BG    = 'rgba(45, 149, 47, 0.1)'
+const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
+
+function fmtVol(n: number): string {
+  return n % 1 === 0 ? `${n}` : `${Math.round(n * 10) / 10}`
+}
+
+function shortDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const now = new Date()
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  if (date.getFullYear() !== now.getFullYear()) opts.year = 'numeric'
+  return date.toLocaleDateString('en-US', opts)
+}
+
+function VolumeHistoryList({ entries }: { entries: PresetHistoryEntry[] }) {
+  if (entries.length === 0) {
+    return <div className="history-empty">No entries found.</div>
+  }
+  return (
+    <div className="history-list">
+      {entries.map((entry, i) => {
+        const prev = entries[i + 1]
+        const diff = prev ? entry.volume - prev.volume : 0
+        const Icon = diff > 0 ? ArrowUp : ArrowDown
+        return (
+          <div key={entry.date} className="history-entry">
+            <span className="history-date">{shortDate(entry.date)}</span>
+            <span className="history-values">
+              <span className="num">{fmtVol(entry.volume)}</span>
+              <span className="history-sep"> vol</span>
+            </span>
+            {prev && diff !== 0 && (
+              <span className="history-trend">
+                <span
+                  className="trend-item"
+                  style={{ color: diff > 0 ? POS_COLOR : NEG_COLOR, background: diff > 0 ? POS_BG : NEG_BG }}
+                >
+                  <Icon size={11} strokeWidth={2.5} />{fmtVol(Math.abs(diff))}
+                </span>
+              </span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
@@ -25,10 +79,11 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
-export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }: Props) {
+export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataChange, height }: Props) {
   const [sortMode, setSortMode] = useState<SortMode>('count')
   const listRef   = useRef<HTMLDivElement>(null)
   const snapshots = useRef<Map<string, number>>(new Map())
+  const [expandedPreset, setExpandedPreset] = useState<string | null>(null)
 
   // Dropdown state
   const [openDropdownFor, setOpenDropdownFor] = useState<string | null>(null)
@@ -72,7 +127,10 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
       setRenameInput('')
       setDeleteConfirmFor(null)
       setDeleteMode(null)
+      setExpandedPreset(null)
+      onFocusPreset(null)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   // FLIP: after sort re-render, animate each item from its old position to its new one
@@ -96,6 +154,28 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sortMode, dataVersion],
   )
+
+  // Persists last-loaded history so content stays visible during the collapse animation.
+  const lastHistoryRef = useRef<Map<string, PresetHistoryEntry[]>>(new Map())
+
+  const historyMap = useMemo(() => {
+    if (!expandedPreset) return lastHistoryRef.current
+    const map = new Map([[expandedPreset, getPresetHistory(expandedPreset)]])
+    lastHistoryRef.current = map
+    return map
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedPreset, dataVersion])
+
+  function toggleExpand(norm: string) {
+    if (expandedPreset === norm) {
+      setExpandedPreset(null)
+      onFocusPreset(null)
+    } else {
+      setExpandedPreset(norm)
+      onFocusPreset(norm)
+      setOpenDropdownFor(null)
+    }
+  }
 
   function openMenu(norm: string, e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
@@ -178,30 +258,46 @@ export function PresetSheet({ open, onClose, dataVersion, onDataChange, height }
         {catalog.length === 0 && (
           <p className="exercise-empty">No presets logged yet.</p>
         )}
-        {catalog.map(entry => (
-          <div key={entry.norm} onPointerDown={tap} data-norm={entry.norm} className="exercise-item-wrap preset-item-wrap">
-            {/* Main row */}
-            <div className="exercise-item">
-              <div className="ex-row-left">
-                <span className="ex-name"># {entry.displayName}</span>
+        {catalog.map(entry => {
+          const isExpanded = expandedPreset === entry.norm
+          return (
+            <div
+              key={entry.norm}
+              onPointerDown={tap}
+              data-norm={entry.norm}
+              className={`exercise-item-wrap preset-item-wrap${isExpanded ? ' ex-expanded' : ''}`}
+            >
+              {/* Main row — click toggles the volume-history dropdown */}
+              <div className="exercise-item" onClick={() => toggleExpand(entry.norm)}>
+                <div className="ex-row-left">
+                  <ChevronRight size={13} strokeWidth={2.5} className={`ex-chevron${isExpanded ? ' ex-chevron-open' : ''}`} />
+                  <span className="ex-name"># {entry.displayName}</span>
+                </div>
+                <div className="ex-row-right">
+                  <span className="ex-last">{relativeTime(entry.lastSeen)}</span>
+                  <span className="ex-count">{entry.count}×</span>
+                  <button className="ex-menu-btn" onClick={e => openMenu(entry.norm, e)}>
+                    <MoreVertical size={15} strokeWidth={2} />
+                  </button>
+                </div>
               </div>
-              <div className="ex-row-right">
-                <span className="ex-last">{relativeTime(entry.lastSeen)}</span>
-                <span className="ex-count">{entry.count}×</span>
-                <button className="ex-menu-btn" onClick={e => openMenu(entry.norm, e)}>
-                  <MoreVertical size={15} strokeWidth={2} />
-                </button>
-              </div>
-            </div>
 
-            {/* Always-visible exercise list */}
-            <div className="preset-exercises">
-              {entry.exercises.map((line, i) => (
-                <div key={i} className="preset-exercise-line">{line}</div>
-              ))}
+              {/* Always-visible exercise list */}
+              <div className="preset-exercises">
+                {entry.exercises.map((line, i) => (
+                  <div key={i} className="preset-exercise-line">{line}</div>
+                ))}
+              </div>
+
+              {/* Expandable total-volume history */}
+              <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
+                <div className="history-expand-inner">
+                  <VolumeHistoryList entries={historyMap.get(entry.norm) ?? []} />
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Dropdown — portalled to escape overflow clipping */}

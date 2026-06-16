@@ -1145,11 +1145,6 @@ html, body {
 
 /* ── Preset sheet ── */
 
-/* Preset name row: small left indent (no chevron icon, unlike exercises) */
-.preset-item-wrap .ex-row-left {
-  padding-left: 3px;
-}
-
 /* Exercise lines inside each preset card — inner box */
 .preset-exercises {
   background: var(--surface-2);

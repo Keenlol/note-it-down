@@ -1,5 +1,6 @@
 import { getAllDayKeys, loadDay, saveDay } from './storage'
 import { parseLine } from './parser'
+import { getBwOn } from './bodyweight'
 import { type SortMode, relativeTime } from './exercises'
 
 export { type SortMode, relativeTime }
@@ -99,6 +100,56 @@ export function buildPresetCatalog(sort: SortMode = 'count'): PresetEntry[] {
   }
 
   return entries
+}
+
+export interface PresetHistoryEntry {
+  date: string
+  volume: number   // total volume (reps × sets) of exercises under this occurrence
+}
+
+/**
+ * Total volume per occurrence of a preset, newest first. For each day, sums the
+ * volume of the exercise lines that follow each matching "#" header (until the
+ * next header), resolving the correct bodyweight for that date.
+ */
+export function getPresetHistory(norm: string): PresetHistoryEntry[] {
+  const byDate = new Map<string, number>()
+
+  for (const date of getAllDayKeys()) {
+    const day = loadDay(date)
+    if (!day) continue
+    const bw = getBwOn(date)
+    const lines = day.rawText.split('\n')
+    const parsed = lines.map(l => parseLine(l, bw))
+
+    for (let i = 0; i < lines.length; i++) {
+      const p = parsed[i]
+      if (p.exercise !== null || p.bodyweightEntry !== undefined) continue
+      if (!lines[i].trim().startsWith('#')) continue
+      if (lines[i].trim().replace(/^#+\s*/, '').toLowerCase() !== norm) continue
+
+      let vol = 0
+      let j = i + 1
+      while (j < lines.length) {
+        const next = parsed[j]
+        if (next.exercise === null && next.bodyweightEntry === undefined &&
+            lines[j].trim().startsWith('#')) break
+        if (next.exercise !== null) vol += next.exercise.volume
+        j++
+      }
+      if (vol > 0) byDate.set(date, (byDate.get(date) ?? 0) + vol)
+    }
+  }
+
+  return Array.from(byDate, ([date, volume]) => ({ date, volume }))
+    .sort((a, b) => b.date.localeCompare(a.date))
+}
+
+/** Per-day total volume for a preset — feeds the heatmap accent highlight. */
+export function presetVolumePerDay(norm: string): Map<string, number> {
+  const result = new Map<string, number>()
+  for (const { date, volume } of getPresetHistory(norm)) result.set(date, volume)
+  return result
 }
 
 /** Remove the "#" header lines for this preset, keeping the exercise lines below intact. */

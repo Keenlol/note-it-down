@@ -9,6 +9,7 @@ import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/st
 import { normalizeName, parseLine, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
+import { presetVolumePerDay } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet } from './utils/bodyweight'
 import { tap } from './utils/tap'
 import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit } from './utils/settings'
@@ -265,14 +266,20 @@ export function App() {
   })
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
+  const [focusedPreset, setFocusedPreset] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
   const [sheetHeight, setSheetHeight] = useState<number | undefined>(undefined)
   const heatmapRef = useRef<HTMLDivElement>(null)
 
   const filterVolumeMap = useMemo(
-    () => focusedExercise ? exerciseVolumePerDay(focusedExercise, aliases) : undefined,
-    [focusedExercise, aliases, dataVersion],
+    () => {
+      if (focusedExercise) return exerciseVolumePerDay(focusedExercise, aliases)
+      if (focusedPreset) return presetVolumePerDay(focusedPreset)
+      return undefined
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [focusedExercise, focusedPreset, aliases, dataVersion],
   )
 
   // Bodyweight applicable on the currently-viewed date
@@ -759,6 +766,7 @@ export function App() {
       <PresetSheet
         open={presetSheetOpen}
         onClose={() => setPresetSheetOpen(false)}
+        onFocusPreset={setFocusedPreset}
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         height={sheetHeight}
