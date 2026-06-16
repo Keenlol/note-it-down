@@ -22,12 +22,12 @@ interface Props {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKS = 21
 
-// Bloom timing: each cell's ripple is delayed by its distance from the origin,
-// so the wave expands outward and fades off the edges. Kept fast so rapid
-// exercise logging produces quick successive ripples.
-const BLOOM_STEP_MS = 14     // delay added per unit of distance
+// Bloom timing: each cell's ripple is delayed by its Manhattan distance from the
+// origin, so the wavefront forms concentric 45°-rotated squares (diamonds) that
+// expand outward and fade off the edges. Kept fast for quick successive ripples.
+const BLOOM_STEP_MS = 18     // delay added per ring (unit of Manhattan distance)
 const BLOOM_DURATION_MS = 320
-const BLOOM_MAX_DIST = Math.sqrt(WEEKS * WEEKS + 7 * 7)
+const BLOOM_MAX_DIST = WEEKS + 7   // max |dx| + |dy| across the grid
 
 function hexToRgb(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -150,7 +150,8 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, a
                     className="bloom-cell"
                     style={{
                       background: accentHex,
-                      animationDelay: `${Math.hypot(w - activeBloom.ow, d - activeBloom.od) * BLOOM_STEP_MS}ms`,
+                      // Manhattan distance → diamond (45°-rotated square) wavefront.
+                      animationDelay: `${(Math.abs(w - activeBloom.ow) + Math.abs(d - activeBloom.od)) * BLOOM_STEP_MS}ms`,
                       animationDuration: `${BLOOM_DURATION_MS}ms`,
                     }}
                   />

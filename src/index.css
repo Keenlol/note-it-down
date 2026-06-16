@@ -143,7 +143,9 @@ html, body {
   opacity: 0;
   animation-name: bloom-pulse;
   animation-timing-function: ease-out;
-  animation-fill-mode: both;
+  /* forwards (not both): the base opacity:0 holds during the per-cell delay so
+     cells stay dark until the wave reaches them, instead of all lighting at once. */
+  animation-fill-mode: forwards;
 }
 
 
