@@ -407,14 +407,10 @@ html, body {
   transition: color 0.1s;
 }
 
-.bottom-btn:hover {
-  color: var(--text);
-}
-
-.bottom-btn:active {
-  color: var(--text);
-}
-
+/* Lit state is driven exclusively by the .active class so each button follows
+   its own logic: exercise / preset light up while their sheet is toggled open,
+   the eye lights up only while held. No shared :hover/:active so taps on one
+   button never light another (and hover can't stick on touch). */
 .bottom-btn.active {
   color: var(--text);
 }
