@@ -1091,25 +1091,33 @@ html, body {
 /* ── Bodyweight sheet ── */
 
 .bw-body {
-  overflow-y: auto;
+  overflow: hidden;
   flex: 1;
+  min-height: 0;
   padding: 0 var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-/* One block: graph on top, history below, sharing a surface-2 field. */
+/* One block: graph (fixed) on top, history (scrolls) below, sharing a
+   surface-2 field. Fills the remaining height so its bottom edge meets the
+   panel bottom, maximizing visible history. */
 .bw-block {
   background: var(--surface-2);
   border-radius: 8px;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .bw-graph {
   position: relative;
   padding: 16px;
   height: 150px;
+  flex-shrink: 0;
 }
 
 .bw-graph-svg {
@@ -1145,9 +1153,13 @@ html, body {
   box-shadow: 0 0 0 2px var(--surface-2);
 }
 
-/* Sits inside .bw-block — drop its own card chrome, add a divider from the graph. */
+/* Sits inside .bw-block — drop its own card chrome, add a divider from the
+   graph, and take the remaining height so it (not the panel) scrolls. */
 .bw-history-list {
   max-height: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   background: transparent;
   border-radius: 0;
   margin-bottom: 0;
