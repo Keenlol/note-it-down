@@ -52,18 +52,6 @@ function fmtCompact(kg: number, unit: WeightUnit): string {
   return `${v}`
 }
 
-function lastLoggedLabel(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  date.setHours(0, 0, 0, 0)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const days = Math.round((today.getTime() - date.getTime()) / 86_400_000)
-  if (days <= 0) return 'logged today'
-  if (days === 1) return 'logged yesterday'
-  return `logged ${days} days ago`
-}
-
 function shortDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number)
   const date = new Date(y, m - 1, d)
@@ -197,8 +185,12 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
   }, [activeNorm, dataVersion, open])
 
   const latest = windowed[0]
-  const first  = windowed[windowed.length - 1]
-  const netDiff = latest && first ? latest.load - first.load : 0
+  const totalLoad = windowed.reduce((sum, e) => sum + e.load, 0)
+  // Recent cadence: average days between the last 5 sessions (needs ≥2).
+  const recent = windowed.slice(0, 5)
+  const cadence = recent.length >= 2
+    ? Math.max(1, Math.round((dayIndex(recent[0].date, windowStart()) - dayIndex(recent[recent.length - 1].date, windowStart())) / (recent.length - 1)))
+    : null
 
   // Unique exercise names in the active preset (no weight/sets/reps) for the tag row.
   const exerciseNames: string[] = []
@@ -289,14 +281,12 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                 <div className="data-stat-card">
                   <div className="data-stat-size">
                     <span className="data-stat-size-value">{fmtFull(latest.load, weightUnit)} {weightUnit}</span>
-                    <span className="data-stat-size-label">{lastLoggedLabel(latest.date)}</span>
                   </div>
                   <div className="data-stat-counts">
                     <span className="data-stat-count"><strong>{windowed.length}</strong> session{windowed.length !== 1 ? 's' : ''}</span>
-                    {first && latest && first.date !== latest.date && (
-                      <span className="data-stat-count">
-                        <strong>{netDiff > 0 ? '+' : netDiff < 0 ? '−' : ''}{fmtFull(Math.abs(netDiff), weightUnit)}{weightUnit}</strong> over window
-                      </span>
+                    <span className="data-stat-count"><strong>{fmtFull(totalLoad, weightUnit)}{weightUnit}</strong> total</span>
+                    {cadence !== null && (
+                      <span className="data-stat-count"><strong>~{cadence}d</strong> cadence</span>
                     )}
                   </div>
                 </div>
