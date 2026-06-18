@@ -1086,6 +1086,23 @@ html, body {
   align-items: center;
   gap: 10px;
   min-height: 20px;
+  /* Clickable: jumps the main note to this date. Negative margin lets the
+     hover/active background extend slightly past the text without shifting it. */
+  cursor: pointer;
+  margin: 0 -6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.history-entry:active {
+  background: var(--surface-1);
+}
+
+@media (hover: hover) {
+  .history-entry:hover {
+    background: var(--surface-1);
+  }
 }
 
 .history-date {

@@ -15,6 +15,7 @@ interface Props {
   open: boolean
   onClose: () => void
   onFocusPreset: (norm: string | null) => void
+  onSelectDate: (date: string) => void
   dataVersion: number
   onDataChange: () => void
   height?: number
@@ -44,7 +45,7 @@ function shortDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', opts)
 }
 
-function VolumeHistoryList({ entries, unit }: { entries: PresetHistoryEntry[]; unit: WeightUnit }) {
+function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHistoryEntry[]; unit: WeightUnit; onSelectDate: (date: string) => void }) {
   if (entries.length === 0) {
     return <div className="history-empty">No entries found.</div>
   }
@@ -55,7 +56,12 @@ function VolumeHistoryList({ entries, unit }: { entries: PresetHistoryEntry[]; u
         const diff = prev ? entry.load - prev.load : 0
         const Icon = diff > 0 ? ArrowUp : ArrowDown
         return (
-          <div key={entry.date} className="history-entry">
+          <div
+            key={entry.date}
+            className="history-entry"
+            onPointerDown={tap}
+            onClick={() => onSelectDate(entry.date)}
+          >
             <span className="history-date">{shortDate(entry.date)}</span>
             <span className="history-values">
               <span className="num">{fmtLoad(entry.load, unit)}</span>
@@ -87,7 +93,7 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
-export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataChange, height, onResize, onResizeEnd, weightUnit = 'kg' }: Props) {
+export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVersion, onDataChange, height, onResize, onResizeEnd, weightUnit = 'kg' }: Props) {
   const [sortMode, setSortMode] = useState<SortMode>('count')
   const [query, setQuery]       = useState('')
   const listRef   = useRef<HTMLDivElement>(null)
@@ -327,7 +333,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, dataVersion, onDataC
               {/* Expandable total-volume history */}
               <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
                 <div className="history-expand-inner">
-                  <VolumeHistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} />
+                  <VolumeHistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} onSelectDate={onSelectDate} />
                 </div>
               </div>
             </div>

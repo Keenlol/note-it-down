@@ -618,6 +618,17 @@ export function App() {
     setPastCursorPos(0)
   }, [])
 
+  // Jump to a specific date from a history-list entry, then close any open sheet
+  // so the note for that day is visible.
+  const goToDate = useCallback((date: string) => {
+    setViewDate(date === todayKey() ? null : date)
+    setCursorPos(0)
+    setPastCursorPos(0)
+    setSheetOpen(false)
+    setPresetSheetOpen(false)
+    setBwSheetOpen(false)
+  }, [])
+
   const handleTouchStart = (e: React.TouchEvent) => {
     clearTimeout(swipeTimer.current)
     // If interrupted mid-animation, reset cleanly
@@ -824,6 +835,7 @@ export function App() {
         aliases={aliases}
         onAliasesChange={setAliases}
         onFocusExercise={setFocusedExercise}
+        onSelectDate={goToDate}
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         height={sheetHeight}
@@ -836,6 +848,7 @@ export function App() {
         open={presetSheetOpen}
         onClose={() => setPresetSheetOpen(false)}
         onFocusPreset={setFocusedPreset}
+        onSelectDate={goToDate}
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
         height={sheetHeight}
@@ -847,6 +860,7 @@ export function App() {
       <BodyweightSheet
         open={bwSheetOpen}
         onClose={() => setBwSheetOpen(false)}
+        onSelectDate={goToDate}
         dataVersion={dataVersion}
         bwVersion={bwVersion}
         height={sheetHeight}

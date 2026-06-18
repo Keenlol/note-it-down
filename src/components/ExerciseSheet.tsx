@@ -17,6 +17,7 @@ interface Props {
   aliases: Record<string, string>
   onAliasesChange: (next: Record<string, string>) => void
   onFocusExercise: (norm: string | null) => void
+  onSelectDate: (date: string) => void
   dataVersion: number
   onDataChange: () => void
   height?: number
@@ -86,7 +87,7 @@ function shortDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', opts)
 }
 
-function HistoryList({ entries, unit }: { entries: HistoryEntry[]; unit: WeightUnit }) {
+function HistoryList({ entries, unit, onSelectDate }: { entries: HistoryEntry[]; unit: WeightUnit; onSelectDate: (date: string) => void }) {
   if (entries.length === 0) {
     return <div className="history-empty">No entries found.</div>
   }
@@ -96,7 +97,12 @@ function HistoryList({ entries, unit }: { entries: HistoryEntry[]; unit: WeightU
         const prev = entries[i + 1]
         const trend = prev ? buildTrend(entry.exercise, prev.exercise, unit) : null
         return (
-          <div key={`${entry.date}-${i}`} className="history-entry">
+          <div
+            key={`${entry.date}-${i}`}
+            className="history-entry"
+            onPointerDown={tap}
+            onClick={() => onSelectDate(entry.date)}
+          >
             <span className="history-date">{shortDate(entry.date)}</span>
             <span className="history-values">
               <span className="num">{formatWeightDisplay(entry.exercise.weightKg, unit)}</span>
@@ -114,7 +120,7 @@ function HistoryList({ entries, unit }: { entries: HistoryEntry[]; unit: WeightU
 }
 
 export function ExerciseSheet({
-  open, onClose, aliases, onAliasesChange, onFocusExercise, dataVersion, onDataChange, height,
+  open, onClose, aliases, onAliasesChange, onFocusExercise, onSelectDate, dataVersion, onDataChange, height,
   onResize, onResizeEnd, weightUnit = 'kg',
 }: Props) {
   const [sortMode, setSortMode]           = useState<SortMode>('count')
@@ -423,7 +429,7 @@ export function ExerciseSheet({
               {/* ── Expanded history ── */}
               <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
                 <div className="history-expand-inner">
-                  <HistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} />
+                  <HistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} onSelectDate={onSelectDate} />
                 </div>
               </div>
             </div>

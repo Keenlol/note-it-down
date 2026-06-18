@@ -3,11 +3,13 @@ import { ArrowDown, ArrowUp } from 'lucide-react'
 import { loadBwHistory, type BwEntry } from '../utils/bodyweight'
 import { formatWeightDisplay, formatWeightDiff, type WeightUnit } from '../utils/settings'
 import { todayKey } from '../utils/storage'
+import { tap } from '../utils/tap'
 import { SheetHandle } from './SheetHandle'
 
 interface Props {
   open: boolean
   onClose: () => void
+  onSelectDate: (date: string) => void
   dataVersion: number
   bwVersion: number
   height?: number
@@ -142,7 +144,7 @@ function BwGraph({ entries, unit, accentHex }: { entries: BwEntry[]; unit: Weigh
   )
 }
 
-function BwHistoryList({ entries, unit }: { entries: BwEntry[]; unit: WeightUnit }) {
+function BwHistoryList({ entries, unit, onSelectDate }: { entries: BwEntry[]; unit: WeightUnit; onSelectDate: (date: string) => void }) {
   // Newest first for the list.
   const ordered = [...entries].reverse()
   return (
@@ -153,7 +155,12 @@ function BwHistoryList({ entries, unit }: { entries: BwEntry[]; unit: WeightUnit
         const shown = Math.round(toUnit(Math.abs(diff), unit) * 10) / 10
         const Icon = diff > 0 ? ArrowUp : ArrowDown
         return (
-          <div key={entry.date} className="history-entry">
+          <div
+            key={entry.date}
+            className="history-entry"
+            onPointerDown={tap}
+            onClick={() => onSelectDate(entry.date)}
+          >
             <span className="history-date">{shortDate(entry.date)}</span>
             <span className="history-values">
               <span className="num">{formatWeightDisplay(entry.weight, unit)}</span>
@@ -175,7 +182,7 @@ function BwHistoryList({ entries, unit }: { entries: BwEntry[]; unit: WeightUnit
   )
 }
 
-export function BodyweightSheet({ open, onClose, dataVersion, bwVersion, height, onResize, onResizeEnd, weightUnit = 'kg' }: Props) {
+export function BodyweightSheet({ open, onClose, onSelectDate, dataVersion, bwVersion, height, onResize, onResizeEnd, weightUnit = 'kg' }: Props) {
   const accentHex = useMemo(
     () => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f97316',
     [open],
@@ -230,7 +237,7 @@ export function BodyweightSheet({ open, onClose, dataVersion, bwVersion, height,
 
             <div className="bw-block">
               <BwGraph entries={windowEntries} unit={weightUnit} accentHex={accentHex} />
-              <BwHistoryList entries={windowEntries} unit={weightUnit} />
+              <BwHistoryList entries={windowEntries} unit={weightUnit} onSelectDate={onSelectDate} />
             </div>
           </>
         )}
