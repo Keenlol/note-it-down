@@ -1061,7 +1061,7 @@ html, body {
 .history-list {
   background: var(--surface-2);
   border-radius: 3px; /* = outer(8) − padding(5) */
-  padding: 6px 6px 8px 18px; /* left indent aligns with name text */
+  padding: 12px 18px; /* left/right indent aligns with name text */
   margin-bottom: 5px; /* contained by overflow:hidden → becomes bottom gap inside outer */
   display: flex;
   flex-direction: column;
@@ -1346,18 +1346,39 @@ html, body {
 /* ── Preset sheet ── */
 
 /* Exercise lines inside each preset card — inner box */
-.preset-exercises {
-  background: var(--surface-2);
-  border-radius: 3px; /* = outer(8) − padding(5) */
-  padding: 6px 8px;
-  margin-bottom: 5px; /* contained by overflow:hidden → becomes bottom gap inside outer */
+/* Contained exercises of the active preset, rendered as wrapping name-only tags
+   (styled like the settings Export/Import buttons) to save vertical space. */
+.preset-tags {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.preset-exercise-line {
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  line-height: 1.5;
+.preset-tag {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-1);
+  color: var(--text-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 6px 11px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* Preset tabs reuse the sort-chip look but wrap to multiple rows. */
+.preset-tabs {
+  flex-wrap: wrap;
+}
+
+/* ⋮ menu anchored to the top-right of the active preset's stat card. */
+.preset-stat-wrap {
+  position: relative;
+}
+
+.preset-stat-menu {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }

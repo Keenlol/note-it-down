@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, Check, ChevronRight, MoreVertical, Pencil, Search, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
-  getPresetHistory, relativeTime,
-  type SortMode, type PresetHistoryEntry,
+  getPresetHistory, type PresetHistoryEntry,
 } from '../utils/presets'
+import { parseLine } from '../utils/parser'
 import { type WeightUnit } from '../utils/settings'
+import { todayKey } from '../utils/storage'
+import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
+import { MetricGraph } from './MetricGraph'
 import { SheetHandle } from './SheetHandle'
 
 interface Props {
@@ -30,10 +33,35 @@ const POS_BG    = 'rgba(45, 149, 47, 0.1)'
 const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
 const KG_PER_LB = 0.453592
 
-/** Total load (weight × reps × sets) is stored in kg; render it in the user's unit. */
-function fmtLoad(kg: number, unit: WeightUnit): string {
-  const v = unit === 'lbs' ? kg / KG_PER_LB : kg
-  return `${Math.round(v)}`
+function toUnit(kg: number, unit: WeightUnit): number {
+  return unit === 'lbs' ? kg / KG_PER_LB : kg
+}
+
+/** Full total-volume number with thousands separators (history rows + headline). */
+function fmtFull(kg: number, unit: WeightUnit): string {
+  return Math.round(toUnit(kg, unit)).toLocaleString()
+}
+
+/** Abbreviated total volume for the graph pills so big numbers don't overlap. */
+function fmtCompact(kg: number, unit: WeightUnit): string {
+  const v = Math.round(toUnit(kg, unit))
+  if (v >= 1000) {
+    const k = v / 1000
+    return `${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}k`
+  }
+  return `${v}`
+}
+
+function lastLoggedLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const days = Math.round((today.getTime() - date.getTime()) / 86_400_000)
+  if (days <= 0) return 'logged today'
+  if (days === 1) return 'logged yesterday'
+  return `logged ${days} days ago`
 }
 
 function shortDate(dateStr: string): string {
@@ -45,15 +73,14 @@ function shortDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', opts)
 }
 
+/** Newest-first list of total-volume sessions; tapping a row jumps to that day. */
 function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHistoryEntry[]; unit: WeightUnit; onSelectDate: (date: string) => void }) {
-  if (entries.length === 0) {
-    return <div className="history-empty">No entries found.</div>
-  }
   return (
-    <div className="history-list">
+    <div className="history-list bw-history-list">
       {entries.map((entry, i) => {
         const prev = entries[i + 1]
         const diff = prev ? entry.load - prev.load : 0
+        const shown = Math.round(toUnit(Math.abs(diff), unit))
         const Icon = diff > 0 ? ArrowUp : ArrowDown
         return (
           <div
@@ -64,16 +91,16 @@ function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHis
           >
             <span className="history-date">{shortDate(entry.date)}</span>
             <span className="history-values">
-              <span className="num">{fmtLoad(entry.load, unit)}</span>
+              <span className="num">{fmtFull(entry.load, unit)}</span>
               <span className="history-sep"> {unit}</span>
             </span>
-            {prev && Math.round(unit === 'lbs' ? diff / KG_PER_LB : diff) !== 0 && (
+            {prev && shown !== 0 && (
               <span className="history-trend">
                 <span
                   className="trend-item"
                   style={{ color: diff > 0 ? POS_COLOR : NEG_COLOR, background: diff > 0 ? POS_BG : NEG_BG }}
                 >
-                  <Icon size={11} strokeWidth={2.5} />{fmtLoad(Math.abs(diff), unit)}
+                  <Icon size={11} strokeWidth={2.5} />{fmtFull(Math.abs(diff), unit)}
                 </span>
               </span>
             )}
@@ -84,165 +111,146 @@ function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHis
   )
 }
 
-const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  { value: 'count',  label: 'Most used' },
-  { value: 'recent', label: 'Recent' },
-  { value: 'az',     label: 'A → Z' },
-  { value: 'za',     label: 'Z → A' },
-]
-
 type DeleteMode = 'label-only' | 'with-exercises'
 
 export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVersion, onDataChange, height, onResize, onResizeEnd, weightUnit = 'kg' }: Props) {
-  const [sortMode, setSortMode] = useState<SortMode>('count')
-  const [query, setQuery]       = useState('')
-  const listRef   = useRef<HTMLDivElement>(null)
-  const snapshots = useRef<Map<string, number>>(new Map())
-  const [expandedPreset, setExpandedPreset] = useState<string | null>(null)
+  const [activeNorm, setActiveNorm] = useState<string | null>(null)
 
-  // Dropdown state
-  const [openDropdownFor, setOpenDropdownFor] = useState<string | null>(null)
-  const [dropdownClosing, setDropdownClosing] = useState(false)
-  const closeTimerRef                         = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [dropdownTop, setDropdownTop]         = useState(0)
-  const [dropdownRight, setDropdownRight]     = useState(0)
-  const [renamingFor, setRenamingFor]         = useState<string | null>(null)
-  const [renameInput, setRenameInput]         = useState('')
-  const [deleteConfirmFor, setDeleteConfirmFor] = useState<string | null>(null)
-  const [deleteMode, setDeleteMode]           = useState<DeleteMode | null>(null)
+  // Stat-card ⋮ menu (rename / delete), portalled to body.
+  const [menuOpen, setMenuOpen]         = useState(false)
+  const [menuClosing, setMenuClosing]   = useState(false)
+  const closeTimerRef                   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [menuTop, setMenuTop]           = useState(0)
+  const [menuRight, setMenuRight]       = useState(0)
+  const [renaming, setRenaming]         = useState(false)
+  const [renameInput, setRenameInput]   = useState('')
+  const [deleteMode, setDeleteMode]     = useState<DeleteMode | null>(null)
 
-  function closeDropdown() {
+  const accentHex = useMemo(
+    () => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f97316',
+    [open],
+  )
+
+  // Tabs ordered newest-logged first, so the default active tab is the most recent.
+  const catalog = useMemo(
+    () => buildPresetCatalog('recent'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dataVersion, open],
+  )
+
+  function closeMenu() {
     if (closeTimerRef.current) return
-    setDropdownClosing(true)
+    setMenuClosing(true)
     closeTimerRef.current = setTimeout(() => {
-      setOpenDropdownFor(null)
-      setDropdownClosing(false)
-      setRenamingFor(null)
+      setMenuOpen(false)
+      setMenuClosing(false)
+      setRenaming(false)
       setRenameInput('')
-      setDeleteConfirmFor(null)
       setDeleteMode(null)
       closeTimerRef.current = null
     }, 120)
   }
 
-  // Close dropdown on outside tap
+  // Close the menu on any outside tap.
   useEffect(() => {
-    if (!openDropdownFor) return
-    const handler = () => closeDropdown()
+    if (!menuOpen) return
+    const handler = () => closeMenu()
     document.addEventListener('pointerdown', handler)
     return () => document.removeEventListener('pointerdown', handler)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openDropdownFor])
+  }, [menuOpen])
 
-  // Reset when sheet closes
+  // Pick / re-validate the active preset whenever the catalog changes.
+  useEffect(() => {
+    if (!open) return
+    setActiveNorm(prev => (prev && catalog.some(e => e.norm === prev)) ? prev : (catalog[0]?.norm ?? null))
+  }, [open, catalog])
+
+  // Highlight the active preset's days on the heatmap.
+  useEffect(() => {
+    if (open) onFocusPreset(activeNorm)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeNorm])
+
+  // Reset everything when the sheet closes.
   useEffect(() => {
     if (!open) {
-      setOpenDropdownFor(null)
-      setRenamingFor(null)
+      setActiveNorm(null)
+      setMenuOpen(false)
+      setRenaming(false)
       setRenameInput('')
-      setDeleteConfirmFor(null)
       setDeleteMode(null)
-      setExpandedPreset(null)
-      setQuery('')
       onFocusPreset(null)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  // FLIP: after sort re-render, animate each item from its old position to its new one
-  useEffect(() => {
-    if (snapshots.current.size === 0 || !listRef.current) return
-    listRef.current.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
-      const prev = snapshots.current.get(el.dataset.norm!)
-      if (prev === undefined) return
-      const delta = prev - el.getBoundingClientRect().top
-      if (Math.abs(delta) < 1) return
-      el.animate(
-        [{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }],
-        { duration: 280, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' },
-      )
-    })
-    snapshots.current.clear()
-  }, [sortMode])
+  const active = activeNorm ? catalog.find(e => e.norm === activeNorm) ?? null : null
 
-  const catalog = useMemo(
-    () => buildPresetCatalog(sortMode),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sortMode, dataVersion],
-  )
-
-  const visibleCatalog = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return catalog
-    return catalog.filter(e => e.displayName.toLowerCase().includes(q) || e.norm.includes(q))
-  }, [catalog, query])
-
-  // Persists last-loaded history so content stays visible during the collapse animation.
-  const lastHistoryRef = useRef<Map<string, PresetHistoryEntry[]>>(new Map())
-
-  const historyMap = useMemo(() => {
-    if (!expandedPreset) return lastHistoryRef.current
-    const map = new Map([[expandedPreset, getPresetHistory(expandedPreset)]])
-    lastHistoryRef.current = map
-    return map
+  // Sessions within the visible heatmap window, newest first (graph reverses it).
+  const windowed = useMemo(() => {
+    if (!activeNorm) return [] as PresetHistoryEntry[]
+    const start = windowStart()
+    const today = todayKey()
+    return getPresetHistory(activeNorm).filter(e => dayIndex(e.date, start) >= 0 && e.date <= today)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedPreset, dataVersion])
+  }, [activeNorm, dataVersion, open])
 
-  function toggleExpand(norm: string) {
-    if (expandedPreset === norm) {
-      setExpandedPreset(null)
-      onFocusPreset(null)
-    } else {
-      setExpandedPreset(norm)
-      onFocusPreset(norm)
-      setOpenDropdownFor(null)
+  const latest = windowed[0]
+  const first  = windowed[windowed.length - 1]
+  const netDiff = latest && first ? latest.load - first.load : 0
+
+  // Unique exercise names in the active preset (no weight/sets/reps) for the tag row.
+  const exerciseNames: string[] = []
+  if (active) {
+    const seen = new Set<string>()
+    for (const line of active.exercises) {
+      const name = parseLine(line).exercise?.name
+      if (!name) continue
+      const key = name.toLowerCase()
+      if (!seen.has(key)) { seen.add(key); exerciseNames.push(name) }
     }
   }
 
-  function openMenu(norm: string, e: React.MouseEvent<HTMLButtonElement>) {
+  function openMenu(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
-    if (openDropdownFor === norm && !dropdownClosing) {
-      closeDropdown()
-      return
-    }
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current)
-      closeTimerRef.current = null
-    }
+    if (menuOpen && !menuClosing) { closeMenu(); return }
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null }
     const rect = e.currentTarget.getBoundingClientRect()
-    setDropdownTop(rect.bottom + 6)
-    setDropdownRight(Math.max(window.innerWidth - rect.right, 24))
-    setOpenDropdownFor(norm)
-    setDropdownClosing(false)
-    setRenamingFor(null)
+    setMenuTop(rect.bottom + 6)
+    setMenuRight(Math.max(window.innerWidth - rect.right, 24))
+    setMenuOpen(true)
+    setMenuClosing(false)
+    setRenaming(false)
     setRenameInput('')
-    setDeleteConfirmFor(null)
     setDeleteMode(null)
   }
 
-  function handleRename(norm: string) {
+  function handleRename() {
+    if (!active) return
     const trimmed = renameInput.trim()
-    if (trimmed) setPresetNickname(norm, trimmed)
-    setRenamingFor(null)
+    if (trimmed) setPresetNickname(active.norm, trimmed)
+    setRenaming(false)
     setRenameInput('')
-    setOpenDropdownFor(null)
-    setDropdownClosing(false)
+    setMenuOpen(false)
+    setMenuClosing(false)
     if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null }
     onDataChange()
   }
 
-  function handleDelete(norm: string, mode: DeleteMode) {
+  function handleDelete(mode: DeleteMode) {
+    if (!active) return
+    const norm = active.norm
     if (mode === 'label-only') deletePresetLabelOnly(norm)
     else deletePresetWithExercises(norm)
-    onDataChange()
-    setOpenDropdownFor(null)
-    setDropdownClosing(false)
+    setMenuOpen(false)
+    setMenuClosing(false)
     if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null }
-    setDeleteConfirmFor(null)
     setDeleteMode(null)
+    // Drop the deleted preset as active; the catalog effect reselects on next render.
+    setActiveNorm(null)
+    onDataChange()
   }
-
-  const dropdownEntry = openDropdownFor ? catalog.find(e => e.norm === openDropdownFor) : null
 
   return (
     <div
@@ -255,119 +263,105 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
         <div className="sheet-title-row">
           <span className="sheet-title">Presets</span>
         </div>
-        <div className="sheet-search">
-          <Search size={15} strokeWidth={2} />
-          <input
-            className="search-input"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search presets…"
-            spellCheck={false}
-            autoCapitalize="off"
-            autoComplete="off"
-            autoCorrect="off"
-          />
-          {query && (
-            <button className="search-clear" onPointerDown={tap} onClick={() => setQuery('')} aria-label="Clear search">
-              <X size={15} strokeWidth={2} />
-            </button>
-          )}
-        </div>
-        <div className="sort-chips">
-          {SORT_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              onPointerDown={tap}
-              className={`data-btn${sortMode === opt.value ? ' data-btn-filled' : ''}`}
-              onClick={() => {
-                listRef.current?.querySelectorAll<HTMLElement>('[data-norm]').forEach(el => {
-                  snapshots.current.set(el.dataset.norm!, el.getBoundingClientRect().top)
-                })
-                setSortMode(opt.value)
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        {catalog.length > 0 && (
+          <div className="sort-chips preset-tabs">
+            {catalog.map(entry => (
+              <button
+                key={entry.norm}
+                onPointerDown={tap}
+                className={`data-btn${activeNorm === entry.norm ? ' data-btn-filled' : ''}`}
+                onClick={() => setActiveNorm(entry.norm)}
+              >
+                # {entry.displayName}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="exercise-list" ref={listRef}>
-        {catalog.length === 0 && (
+      <div className="bw-body">
+        {!active ? (
           <p className="exercise-empty">No presets logged yet.</p>
-        )}
-        {catalog.length > 0 && visibleCatalog.length === 0 && (
-          <p className="exercise-empty">No matches for “{query.trim()}”.</p>
-        )}
-        {visibleCatalog.map(entry => {
-          const isExpanded = expandedPreset === entry.norm
-          return (
-            <div
-              key={entry.norm}
-              onPointerDown={tap}
-              data-norm={entry.norm}
-              className={`exercise-item-wrap preset-item-wrap${isExpanded ? ' ex-expanded' : ''}`}
-            >
-              {/* Main row — click toggles the volume-history dropdown */}
-              <div className="exercise-item" onClick={() => toggleExpand(entry.norm)}>
-                <div className="ex-row-left">
-                  <ChevronRight size={13} strokeWidth={2.5} className={`ex-chevron${isExpanded ? ' ex-chevron-open' : ''}`} />
-                  <span className="ex-name"># {entry.displayName}</span>
+        ) : (
+          <>
+            <div className="preset-stat-wrap">
+              {windowed.length > 0 ? (
+                <div className="data-stat-card">
+                  <div className="data-stat-size">
+                    <span className="data-stat-size-value">{fmtFull(latest.load, weightUnit)} {weightUnit}</span>
+                    <span className="data-stat-size-label">{lastLoggedLabel(latest.date)}</span>
+                  </div>
+                  <div className="data-stat-counts">
+                    <span className="data-stat-count"><strong>{windowed.length}</strong> session{windowed.length !== 1 ? 's' : ''}</span>
+                    {first && latest && first.date !== latest.date && (
+                      <span className="data-stat-count">
+                        <strong>{netDiff > 0 ? '+' : netDiff < 0 ? '−' : ''}{fmtFull(Math.abs(netDiff), weightUnit)}{weightUnit}</strong> over window
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="ex-row-right">
-                  <span className="ex-last">{relativeTime(entry.lastSeen)}</span>
-                  <span className="ex-count">{entry.count}×</span>
-                  <button className="ex-menu-btn" onClick={e => openMenu(entry.norm, e)}>
-                    <MoreVertical size={15} strokeWidth={2} />
-                  </button>
+              ) : (
+                <div className="data-stat-card">
+                  <div className="data-stat-size">
+                    <span className="data-stat-size-value"># {active.displayName}</span>
+                    <span className="data-stat-size-label">no sessions in this window</span>
+                  </div>
                 </div>
-              </div>
-
-              {/* Always-visible exercise list */}
-              <div className="preset-exercises">
-                {entry.exercises.map((line, i) => (
-                  <div key={i} className="preset-exercise-line">{line}</div>
-                ))}
-              </div>
-
-              {/* Expandable total-volume history */}
-              <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
-                <div className="history-expand-inner">
-                  <VolumeHistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} onSelectDate={onSelectDate} />
-                </div>
-              </div>
+              )}
+              <button className="ex-menu-btn preset-stat-menu" onClick={openMenu} aria-label="Preset options">
+                <MoreVertical size={16} strokeWidth={2} />
+              </button>
             </div>
-          )
-        })}
+
+            <div className="preset-tags">
+              {exerciseNames.map((name, i) => (
+                <span key={i} className="preset-tag">{name}</span>
+              ))}
+            </div>
+
+            {windowed.length > 0 && (
+              <div className="bw-block">
+                <MetricGraph
+                  points={[...windowed].reverse().map(e => ({
+                    date: e.date,
+                    value: toUnit(e.load, weightUnit),
+                    label: fmtCompact(e.load, weightUnit),
+                  }))}
+                  accentHex={accentHex}
+                />
+                <VolumeHistoryList entries={windowed} unit={weightUnit} onSelectDate={onSelectDate} />
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Dropdown — portalled to escape overflow clipping */}
-      {dropdownEntry && createPortal(
+      {/* Stat-card ⋮ menu — portalled to escape overflow clipping */}
+      {menuOpen && active && createPortal(
         <div
-          className={`ex-dropdown${dropdownClosing ? ' closing' : ''}`}
-          style={{ top: dropdownTop, right: dropdownRight }}
+          className={`ex-dropdown${menuClosing ? ' closing' : ''}`}
+          style={{ top: menuTop, right: menuRight }}
           onPointerDown={e => e.stopPropagation()}
         >
-          {/* Rename */}
-          {renamingFor === dropdownEntry.norm ? (
+          {renaming ? (
             <div className="ex-dropdown-nick-row">
               <input
                 className="nickname-input"
                 value={renameInput}
                 onChange={e => setRenameInput(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') handleRename(dropdownEntry.norm)
-                  if (e.key === 'Escape') { setRenamingFor(null); setRenameInput('') }
+                  if (e.key === 'Enter') handleRename()
+                  if (e.key === 'Escape') { setRenaming(false); setRenameInput('') }
                 }}
                 placeholder="display name…"
                 autoFocus
               />
-              <button className="nickname-confirm-btn" onClick={() => handleRename(dropdownEntry.norm)}>
+              <button className="nickname-confirm-btn" onClick={handleRename}>
                 <Check size={11} strokeWidth={2.5} />
               </button>
             </div>
           ) : (
-            <button className="data-btn" onPointerDown={tap} onClick={() => setRenamingFor(dropdownEntry.norm)}>
+            <button className="data-btn" onPointerDown={tap} onClick={() => setRenaming(true)}>
               <Pencil size={14} strokeWidth={2} />
               rename
             </button>
@@ -375,8 +369,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
 
           <div className="dd-sep" />
 
-          {/* Delete — two-step with mode selection */}
-          {deleteConfirmFor === dropdownEntry.norm ? (
+          {deleteMode ? (
             <div className="dd-confirm">
               <span className="dd-confirm-label">
                 {deleteMode === 'label-only'
@@ -384,29 +377,21 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                   : 'Remove preset + all exercises?'}
               </span>
               <div className="dd-confirm-btns">
-                <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => handleDelete(dropdownEntry.norm, deleteMode!)}>
+                <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => handleDelete(deleteMode)}>
                   <Trash2 size={13} strokeWidth={2} /> Remove
                 </button>
-                <button className="data-btn data-btn-ghost" onPointerDown={tap} onClick={() => { setDeleteConfirmFor(null); setDeleteMode(null) }}>
+                <button className="data-btn data-btn-ghost" onPointerDown={tap} onClick={() => setDeleteMode(null)}>
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
             <>
-              <button
-                className="data-btn data-btn-danger"
-                onPointerDown={tap}
-                onClick={() => { setDeleteConfirmFor(dropdownEntry.norm); setDeleteMode('label-only') }}
-              >
+              <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => setDeleteMode('label-only')}>
                 <Trash2 size={14} strokeWidth={2} />
                 delete label only
               </button>
-              <button
-                className="data-btn data-btn-danger"
-                onPointerDown={tap}
-                onClick={() => { setDeleteConfirmFor(dropdownEntry.norm); setDeleteMode('with-exercises') }}
-              >
+              <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => setDeleteMode('with-exercises')}>
                 <Trash2 size={14} strokeWidth={2} />
                 delete with exercises
               </button>
