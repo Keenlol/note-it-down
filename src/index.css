@@ -514,7 +514,7 @@ html, body {
 .settings-body {
   overflow-y: auto;
   flex: 1;
-  padding: 0 var(--pad) var(--pad);
+  padding: 0 var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -859,7 +859,7 @@ html, body {
 .exercise-list {
   overflow-y: auto;
   flex: 1;
-  padding: 0 var(--pad) var(--pad);
+  padding: 0 var(--pad) calc(var(--pad) + 56px);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1093,7 +1093,7 @@ html, body {
 .bw-body {
   overflow-y: auto;
   flex: 1;
-  padding: 0 var(--pad) var(--pad);
+  padding: 0 var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
   gap: 18px;

@@ -167,11 +167,11 @@ export function SettingsSheet({
           {confirm.kind === 'none' && (
             <div className="data-actions">
               <button className="data-btn" onPointerDown={tap} onClick={handleExport}>
-                <Download size={14} strokeWidth={2} />
+                <Upload size={14} strokeWidth={2} />
                 Export
               </button>
               <button className="data-btn" onPointerDown={tap} onClick={() => fileInputRef.current?.click()}>
-                <Upload size={14} strokeWidth={2} />
+                <Download size={14} strokeWidth={2} />
                 Import
               </button>
               <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => setConfirm({ kind: 'clear' })}>
