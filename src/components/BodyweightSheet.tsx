@@ -228,9 +228,10 @@ export function BodyweightSheet({ open, onClose, dataVersion, bwVersion, height,
               </div>
             </div>
 
-            <BwGraph entries={windowEntries} unit={weightUnit} accentHex={accentHex} />
-
-            <BwHistoryList entries={windowEntries} unit={weightUnit} />
+            <div className="bw-block">
+              <BwGraph entries={windowEntries} unit={weightUnit} accentHex={accentHex} />
+              <BwHistoryList entries={windowEntries} unit={weightUnit} />
+            </div>
           </>
         )}
       </div>

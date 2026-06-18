@@ -1099,10 +1099,15 @@ html, body {
   gap: 18px;
 }
 
-.bw-graph {
-  position: relative;
+/* One block: graph on top, history below, sharing a surface-2 field. */
+.bw-block {
   background: var(--surface-2);
   border-radius: 8px;
+  overflow: hidden;
+}
+
+.bw-graph {
+  position: relative;
   padding: 16px;
   height: 150px;
 }
@@ -1140,8 +1145,14 @@ html, body {
   box-shadow: 0 0 0 2px var(--surface-2);
 }
 
+/* Sits inside .bw-block — drop its own card chrome, add a divider from the graph. */
 .bw-history-list {
   max-height: none;
+  background: transparent;
+  border-radius: 0;
+  margin-bottom: 0;
+  border-top: 1px solid var(--surface-1);
+  padding-top: 12px;
 }
 
 /* Dropdown (portalled to body) */
