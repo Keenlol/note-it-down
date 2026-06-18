@@ -126,13 +126,14 @@ function BwGraph({ entries, unit, accentHex }: { entries: BwEntry[]; unit: Weigh
             vectorEffect="non-scaling-stroke"
           />
         )}
-        {pts.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={2.6} fill="var(--surface-2)" stroke={accentHex} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
-        ))}
       </svg>
-      <div className="bw-graph-labels">
+      <div className="bw-graph-nodes">
         {pts.map((p, i) => (
-          <span key={i} className="bw-graph-label" style={{ left: `${(p.x / VB_W) * 100}%` }}>
+          <span
+            key={i}
+            className="bw-node"
+            style={{ left: `${(p.x / VB_W) * 100}%`, top: `${(p.y / VB_H) * 100}%`, background: accentHex }}
+          >
             {compactWeight(p.entry.weight, unit)}
           </span>
         ))}
