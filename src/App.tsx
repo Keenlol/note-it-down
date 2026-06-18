@@ -6,6 +6,7 @@ import { ExerciseSheet } from './components/ExerciseSheet'
 import { PresetSheet } from './components/PresetSheet'
 import { BodyweightSheet } from './components/BodyweightSheet'
 import { SettingsSheet } from './components/SettingsSheet'
+import { Encouragement } from './components/Encouragement'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
@@ -731,6 +732,8 @@ export function App() {
             </span>
           )}
         </div>
+
+        {!isViewingPast && <Encouragement phase={hasExercises ? 'after' : 'before'} />}
 
         <div style={{ opacity: noteOpacity, transition: 'opacity 0.08s ease', flex: 1, display: 'flex', flexDirection: 'column' }}>
           {isViewingPast ? (

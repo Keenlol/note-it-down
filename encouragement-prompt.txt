@@ -1,0 +1,53 @@
+I'm building a personal workout-logging app. It greets me with ONE short line, credited to its
+source. I want a rich, varied mix — sometimes a friend hyping me up, sometimes real wisdom to
+sit with.
+
+I need TWO sets, because the app speaks to me at two moments:
+
+  1. BEFORE  — I just opened the app, haven't logged anything yet. The "let's do this" moment.
+               Get me off the couch and into it.
+  2. AFTER   — I just finished logging my workout. The "good job" moment. Make me feel rewarded,
+               proud, seen.
+
+Write me 20 phrases for EACH set (40 total).
+
+THE 50 / 50 SPLIT — this is important. Within EACH set, make it roughly:
+  • HALF "hype coach"  — YOUR OWN original words. A hype friend / coach in my corner / teammate
+    on the sideline. Warm, alive, personal. Uses "you" / "let's" / "we." Makes me FEEL something.
+  • HALF "wise words"  — a mix of:
+       - YOUR OWN original wise/reflective lines (calm truths about effort, patience, showing up),
+         AND
+       - REAL existing quotes about effort, discipline, sport, or perseverance — from athletes,
+         coaches, philosophers, or known figures. These must be genuine quotes, attributed to the
+         real person. Do NOT invent a fake quote and slap a famous name on it. If you're not sure
+         a quote is real, use your own words instead and leave the author blank.
+
+THE FEEL:
+- Hype lines: pumped, fired up, rooting for me, celebratory.
+- Wise lines: grounding, thoughtful, the kind of thing I'd reread on a hard day.
+- I keep getting BLAND, emotionless filler from AIs ("Consistency is key.") — for the hype half,
+  DO NOT do that. The wise half can be calm, but still has to mean something.
+- BEFORE = anticipation, momentum, "go get it."  AFTER = pride, reward, "you did it."
+
+RULES:
+- Each phrase is one line, max ~70 characters. Punchy enough to read at a glance.
+- No emojis, no hashtags, no quotation marks around the phrase text itself.
+- Originality for your own lines; accuracy for real quotes.
+
+OUTPUT FORMAT — return ONLY this JSON object, nothing else.
+Each entry is an object:
+  - "text"   : the phrase
+  - "kind"   : "hype" or "wise"
+  - "author" : the real person for a genuine quote, or null if it's your own words
+
+{
+  "before": [
+    { "text": "Let's go — today is YOURS to take.",        "kind": "hype", "author": null },
+    { "text": "It is not the mountain we conquer but ourselves.", "kind": "wise", "author": "Edmund Hillary" },
+    { "text": "Slow is smooth, and showing up is the whole game.", "kind": "wise", "author": null }
+  ],
+  "after": [
+    { "text": "Look at you. That's exactly how it's done.",  "kind": "hype", "author": null },
+    { "text": "The body achieves what the mind believes.",   "kind": "wise", "author": "Napoleon Hill" }
+  ]
+}

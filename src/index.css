@@ -186,6 +186,38 @@ html, body {
   color: var(--text-2);
 }
 
+.encouragement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: -12px;
+  margin-bottom: 18px;
+  animation: encouragement-in 0.45s ease both;
+}
+
+.encouragement-text {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.encouragement-author {
+  font-size: 0.74rem;
+  color: var(--accent-dim);
+  white-space: nowrap;
+}
+
+@keyframes encouragement-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .encouragement { animation: none; }
+}
+
 .save-icon {
   display: inline-flex;
   align-items: center;
