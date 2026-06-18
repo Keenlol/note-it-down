@@ -27,9 +27,9 @@ const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
 
 // SVG canvas in user units; scales to container width via width:100%.
 const VB_W = 320
-const VB_H = 130
-const PAD_X = 8
-const PAD_T = 12
+const VB_H = 100
+const PAD_X = 14
+const PAD_T = 14
 const PAD_B = 10
 
 /** First day of the 21-week heatmap window (Sunday-aligned), at local midnight. */
@@ -43,6 +43,25 @@ function windowStart(): Date {
 
 function toUnit(kg: number, unit: WeightUnit): number {
   return unit === 'lbs' ? kg / KG_PER_LB : kg
+}
+
+/** Compact numeric weight (no unit suffix) for the per-point graph labels. */
+function compactWeight(kg: number, unit: WeightUnit): string {
+  const v = toUnit(kg, unit)
+  const r = Math.round(v * 10) / 10
+  return r % 1 === 0 ? `${Math.round(v)}` : `${r}`
+}
+
+function daysAgoLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const days = Math.round((today.getTime() - date.getTime()) / 86_400_000)
+  if (days <= 0) return 'measured today'
+  if (days === 1) return 'measured yesterday'
+  return `measured ${days} days ago`
 }
 
 function shortDate(dateStr: string): string {
@@ -92,8 +111,6 @@ function BwGraph({ entries, unit, accentHex }: { entries: BwEntry[]; unit: Weigh
 
   return (
     <div className="bw-graph">
-      <span className="bw-graph-axis bw-graph-axis-hi">{formatWeightDisplay(unit === 'lbs' ? hi * KG_PER_LB : hi, unit)}</span>
-      <span className="bw-graph-axis bw-graph-axis-lo">{formatWeightDisplay(unit === 'lbs' ? lo * KG_PER_LB : lo, unit)}</span>
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="bw-graph-svg">
         {pts.length > 1 && (
           <polygon points={area} fill="var(--accent-tint)" />
@@ -110,9 +127,16 @@ function BwGraph({ entries, unit, accentHex }: { entries: BwEntry[]; unit: Weigh
           />
         )}
         {pts.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={2.6} fill="var(--bg)" stroke={accentHex} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
+          <circle key={i} cx={p.x} cy={p.y} r={2.6} fill="var(--surface-2)" stroke={accentHex} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
         ))}
       </svg>
+      <div className="bw-graph-labels">
+        {pts.map((p, i) => (
+          <span key={i} className="bw-graph-label" style={{ left: `${(p.x / VB_W) * 100}%` }}>
+            {compactWeight(p.entry.weight, unit)}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
@@ -191,7 +215,7 @@ export function BodyweightSheet({ open, onClose, dataVersion, bwVersion, height,
             <div className="data-stat-card">
               <div className="data-stat-size">
                 <span className="data-stat-size-value">{formatWeightDisplay(latest.weight, weightUnit)}</span>
-                <span className="data-stat-size-label">latest · {shortDate(latest.date)}</span>
+                <span className="data-stat-size-label">{daysAgoLabel(latest.date)}</span>
               </div>
               <div className="data-stat-counts">
                 <span className="data-stat-count"><strong>{windowEntries.length}</strong> entries</span>

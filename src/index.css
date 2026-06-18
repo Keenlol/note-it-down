@@ -1101,9 +1101,9 @@ html, body {
 
 .bw-graph {
   position: relative;
-  background: var(--surface-1);
+  background: var(--surface-2);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 10px 12px 24px;
   height: 150px;
 }
 
@@ -1114,17 +1114,22 @@ html, body {
   overflow: visible;
 }
 
-.bw-graph-axis {
+.bw-graph-labels {
   position: absolute;
+  left: 12px;
   right: 12px;
-  font-size: 0.62rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  pointer-events: none;
+  bottom: 6px;
+  height: 14px;
 }
 
-.bw-graph-axis-hi { top: 6px; }
-.bw-graph-axis-lo { bottom: 6px; }
+.bw-graph-label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
 
 .bw-history-list {
   max-height: none;
