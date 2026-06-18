@@ -88,7 +88,7 @@ function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHis
                   className="trend-item"
                   style={{ color: diff > 0 ? POS_COLOR : NEG_COLOR, background: diff > 0 ? POS_BG : NEG_BG }}
                 >
-                  <Icon size={11} strokeWidth={2.5} />{fmtFull(Math.abs(diff), unit)}
+                  <Icon size={11} strokeWidth={2.5} />{fmtFull(Math.abs(diff), unit)}{unit}
                 </span>
               </span>
             )}
