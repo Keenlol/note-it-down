@@ -618,15 +618,12 @@ export function App() {
     setPastCursorPos(0)
   }, [])
 
-  // Jump to a specific date from a history-list entry, then close any open sheet
-  // so the note for that day is visible.
+  // Jump to a specific date from a history-list entry. The sheet stays open so
+  // the user can keep browsing history.
   const goToDate = useCallback((date: string) => {
     setViewDate(date === todayKey() ? null : date)
     setCursorPos(0)
     setPastCursorPos(0)
-    setSheetOpen(false)
-    setPresetSheetOpen(false)
-    setBwSheetOpen(false)
   }, [])
 
   const handleTouchStart = (e: React.TouchEvent) => {
