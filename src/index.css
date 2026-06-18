@@ -1088,6 +1088,48 @@ html, body {
   gap: 2px;
 }
 
+/* ── Bodyweight sheet ── */
+
+.bw-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 var(--pad) var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.bw-graph {
+  position: relative;
+  background: var(--surface-1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  height: 150px;
+}
+
+.bw-graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.bw-graph-axis {
+  position: absolute;
+  right: 12px;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.bw-graph-axis-hi { top: 6px; }
+.bw-graph-axis-lo { bottom: 6px; }
+
+.bw-history-list {
+  max-height: none;
+}
+
 /* Dropdown (portalled to body) */
 
 /* ── Dropdown menu ── */

@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ArrowRight, Eye, Dumbbell, Hash, Settings } from 'lucide-react'
+import { Check, ArrowRight, Eye, Dumbbell, Hash, Settings, Scale } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { Editor, type Suggestion } from './components/Editor'
 import { ExerciseSheet } from './components/ExerciseSheet'
 import { PresetSheet } from './components/PresetSheet'
+import { BodyweightSheet } from './components/BodyweightSheet'
 import { SettingsSheet } from './components/SettingsSheet'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
 import { presetVolumePerDay } from './utils/presets'
-import { getBwOn, setBwEntry, isBwSet } from './utils/bodyweight'
+import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { tap } from './utils/tap'
 import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedSheetHeight, saveSheetHeight } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
@@ -259,6 +260,7 @@ export function App() {
   const [reveal, setReveal] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [presetSheetOpen, setPresetSheetOpen] = useState(false)
+  const [bwSheetOpen, setBwSheetOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [accentHex, setAccentHex] = useState(() => {
     const key = getSavedAccent()
@@ -310,12 +312,18 @@ export function App() {
 
   const filterVolumeMap = useMemo(
     () => {
+      // Bodyweight sheet open → highlight every day that has a weight entry (uniform accent).
+      if (bwSheetOpen) {
+        const map = new Map<string, number>()
+        for (const e of loadBwHistory()) map.set(e.date, 1)
+        return map
+      }
       if (focusedExercise) return exerciseVolumePerDay(focusedExercise, aliases)
       if (focusedPreset) return presetVolumePerDay(focusedPreset)
       return undefined
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [focusedExercise, focusedPreset, aliases, dataVersion],
+    [bwSheetOpen, focusedExercise, focusedPreset, aliases, dataVersion, bwVersion],
   )
 
   // Bodyweight applicable on the currently-viewed date
@@ -765,8 +773,16 @@ export function App() {
         <div className="bottom-bar-main">
           <button
             onPointerDown={tap}
+            className={`bottom-btn${bwSheetOpen ? ' active' : ''}`}
+            onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) }}
+            aria-label="Bodyweight"
+          >
+            <Scale size={23} strokeWidth={1.6} />
+          </button>
+          <button
+            onPointerDown={tap}
             className={`bottom-btn${sheetOpen ? ' active' : ''}`}
-            onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setSettingsOpen(false) }}
+            onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
             aria-label="Exercises"
           >
             <Dumbbell size={23} strokeWidth={1.6} />
@@ -774,7 +790,7 @@ export function App() {
           <button
             onPointerDown={tap}
             className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
-            onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setSettingsOpen(false) }}
+            onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
             aria-label="Presets"
           >
             <Hash size={23} strokeWidth={1.6} />
@@ -792,7 +808,7 @@ export function App() {
         <button
           onPointerDown={tap}
           className={`bottom-btn bottom-btn-settings${settingsOpen ? ' active' : ''}`}
-          onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false) }}
+          onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) }}
           aria-label="Settings"
         >
           <Settings size={21} strokeWidth={1.6} />
@@ -819,6 +835,17 @@ export function App() {
         onFocusPreset={setFocusedPreset}
         dataVersion={dataVersion}
         onDataChange={() => setDataVersion(v => v + 1)}
+        height={sheetHeight}
+        onResize={handleSheetResize}
+        onResizeEnd={handleSheetResizeEnd}
+        weightUnit={weightUnit}
+      />
+
+      <BodyweightSheet
+        open={bwSheetOpen}
+        onClose={() => setBwSheetOpen(false)}
+        dataVersion={dataVersion}
+        bwVersion={bwVersion}
         height={sheetHeight}
         onResize={handleSheetResize}
         onResizeEnd={handleSheetResizeEnd}
