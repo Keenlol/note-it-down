@@ -1,4 +1,5 @@
 import { windowStart, dayIndex } from '../utils/window'
+import { tap } from '../utils/tap'
 
 // SVG canvas in user units; scales to container width via width:100%.
 const VB_W = 320
@@ -13,14 +14,15 @@ export interface GraphPoint {
   label: string  // text rendered inside the data-point pill
 }
 
-interface Plotted { x: number; y: number; label: string }
+interface Plotted { x: number; y: number; label: string; date: string }
 
 /**
  * Line + area chart used by the bodyweight and preset panels. Points are placed
  * horizontally by date across the shared 21-week window (so they line up with
  * the heatmap) and vertically by value, auto-scaled to the series range.
+ * Tapping a node navigates to that date (via onSelectDate).
  */
-export function MetricGraph({ points, accentHex }: { points: GraphPoint[]; accentHex: string }) {
+export function MetricGraph({ points, accentHex, onSelectDate }: { points: GraphPoint[]; accentHex: string; onSelectDate?: (date: string) => void }) {
   const start = windowStart()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -38,7 +40,7 @@ export function MetricGraph({ points, accentHex }: { points: GraphPoint[]; accen
   const pts: Plotted[] = points.map(p => {
     const x = PAD_X + (dayIndex(p.date, start) / spanDays) * plotW
     const y = PAD_T + (1 - (p.value - lo) / range) * plotH
-    return { x, y, label: p.label }
+    return { x, y, label: p.label, date: p.date }
   })
 
   const line = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
@@ -70,6 +72,8 @@ export function MetricGraph({ points, accentHex }: { points: GraphPoint[]; accen
             key={i}
             className="bw-node"
             style={{ left: `${(p.x / VB_W) * 100}%`, top: `${(p.y / VB_H) * 100}%`, background: accentHex }}
+            onPointerDown={tap}
+            onClick={() => onSelectDate?.(p.date)}
           >
             {p.label}
           </span>

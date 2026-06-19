@@ -1211,6 +1211,8 @@ html, body {
   color: #000;
   white-space: nowrap;
   box-shadow: 0 0 0 2px var(--surface-2);
+  pointer-events: auto;   /* re-enable taps (the .bw-graph-nodes overlay disables them) */
+  cursor: pointer;
 }
 
 /* Sits inside .bw-block — drop its own card chrome, add a divider from the

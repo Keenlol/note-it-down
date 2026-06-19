@@ -159,6 +159,7 @@ export function BodyweightSheet({ open, onClose, onSelectDate, dataVersion, bwVe
                   label: compactWeight(e.weight, weightUnit),
                 }))}
                 accentHex={accentHex}
+                onSelectDate={onSelectDate}
               />
               <BwHistoryList entries={windowEntries} unit={weightUnit} onSelectDate={onSelectDate} />
             </div>

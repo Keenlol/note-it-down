@@ -318,6 +318,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                     label: fmtCompact(e.load, weightUnit),
                   }))}
                   accentHex={accentHex}
+                  onSelectDate={onSelectDate}
                 />
                 <VolumeHistoryList entries={windowed} unit={weightUnit} onSelectDate={onSelectDate} />
               </div>
