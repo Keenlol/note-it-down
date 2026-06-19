@@ -493,6 +493,14 @@ html, body {
   transform: translateY(0);
 }
 
+/* While snapping to a point on release, animate the height too (not just during
+   a live drag, where the panel must follow the finger instantly). */
+.app.sheet-snapping .exercise-sheet {
+  transition:
+    transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 .sheet-handle-wrap {
   display: flex;
   justify-content: center;
@@ -1139,27 +1147,30 @@ html, body {
 
 /* ── Bodyweight sheet ── */
 
+/* Scrolls as one page below the fixed title — graph and history flow with the
+   page rather than pinning the graph and scrolling the history internally. */
 .bw-body {
-  overflow: hidden;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 0 var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-/* One block: graph (fixed) on top, history (scrolls) below, sharing a
-   surface-2 field. Fills the remaining height so its bottom edge meets the
-   panel bottom, maximizing visible history. */
+/* Keep children at natural height so the body overflows (and scrolls) when the
+   panel is short, instead of compressing to fit. */
+.bw-body > * {
+  flex-shrink: 0;
+}
+
+/* Graph + history share one surface-2 field that grows with its content. */
 .bw-block {
   background: var(--surface-2);
   border-radius: 8px;
   overflow: hidden;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 .bw-graph {
@@ -1203,12 +1214,10 @@ html, body {
 }
 
 /* Sits inside .bw-block — drop its own card chrome, add a divider from the
-   graph, and take the remaining height so it (not the panel) scrolls. */
+   graph, and flow in the page scroll (no internal scrollbar). */
 .bw-history-list {
   max-height: none;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   background: transparent;
   border-radius: 0;
   margin-bottom: 0;
@@ -1381,4 +1390,42 @@ html, body {
   position: absolute;
   top: 12px;
   right: 12px;
+}
+
+/* Preset panel scrolls as one page below the fixed tabs — unlike the bodyweight
+   panel, the graph and history flow with the page rather than pinning the graph
+   and scrolling the history internally. */
+.preset-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--pad) calc(var(--pad) + 56px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Keep children at natural height so the body overflows (and scrolls) when the
+   panel is short, instead of compressing to fit the visible area. */
+.preset-body > * {
+  flex-shrink: 0;
+}
+
+/* Graph + history share one surface-2 field that grows with its content. */
+.preset-block {
+  background: var(--surface-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* History flows in the page scroll (no internal scrollbar). */
+.preset-history-list {
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  border-radius: 0;
+  margin-bottom: 0;
+  border-top: 1px solid var(--surface-1);
+  padding-top: 12px;
 }

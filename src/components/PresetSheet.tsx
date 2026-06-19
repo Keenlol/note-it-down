@@ -64,7 +64,7 @@ function shortDate(dateStr: string): string {
 /** Newest-first list of total-volume sessions; tapping a row jumps to that day. */
 function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHistoryEntry[]; unit: WeightUnit; onSelectDate: (date: string) => void }) {
   return (
-    <div className="history-list bw-history-list">
+    <div className="history-list preset-history-list">
       {entries.map((entry, i) => {
         const prev = entries[i + 1]
         const diff = prev ? entry.load - prev.load : 0
@@ -271,7 +271,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
         )}
       </div>
 
-      <div className="bw-body">
+      <div className="preset-body">
         {!active ? (
           <p className="exercise-empty">No presets logged yet.</p>
         ) : (
@@ -310,7 +310,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
             </div>
 
             {windowed.length > 0 && (
-              <div className="bw-block">
+              <div className="preset-block">
                 <MetricGraph
                   points={[...windowed].reverse().map(e => ({
                     date: e.date,

@@ -245,6 +245,10 @@ function extractBwFromText(text: string): number | null {
   return null
 }
 
+// Gap left above the panel when snapped to the top of the screen (also the
+// hard cap on how tall a drag can grow it).
+const SHEET_TOP_GAP = 12
+
 export function App() {
   const [todayText, setTodayText] = useState(() => loadDay(todayKey())?.rawText ?? '')
   const [viewDate, setViewDate] = useState<string | null>(null)
@@ -294,21 +298,93 @@ export function App() {
   // True once the user has dragged the handle — auto-sizing then stops overriding it.
   const manualSheetHeight = useRef(getSavedSheetHeight() !== undefined)
   const latestSheetHeight = useRef<number | undefined>(getSavedSheetHeight())
+  // Panel snapping: true only while animating to a snap point (enables a height
+  // transition; off during a live drag so the panel follows the finger).
+  const [sheetSnapping, setSheetSnapping] = useState(false)
+  // Which snap point the panel is parked at (ref, not state — only read in
+  // callbacks/effects, and we don't want changing it to retrigger the note effect).
+  const activeSnap = useRef<'top' | 'heatmap' | 'note' | null>(null)
+  const snapAnimTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const prevViewDate = useRef<string | null>(null)
+  // Set when the day changes while parked at the note snap — consumed (with
+  // animation) once the new day's text has actually landed in the textarea.
+  const daySnapArmed = useRef(false)
 
   function clampSheetHeight(px: number): number {
     const vh = window.visualViewport?.height ?? window.innerHeight
-    return Math.round(Math.max(220, Math.min(px, vh - 72)))
+    return Math.round(Math.max(220, Math.min(px, vh - SHEET_TOP_GAP)))
   }
 
   const handleSheetResize = (px: number) => {
     manualSheetHeight.current = true
+    if (snapAnimTimer.current) { clearTimeout(snapAnimTimer.current); snapAnimTimer.current = undefined }
+    setSheetSnapping(false)              // follow the finger with no transition
     const clamped = clampSheetHeight(px)
     latestSheetHeight.current = clamped
     setSheetHeight(clamped)
   }
 
+  // Animate the panel to a height (used for snapping); persists the result.
+  const animateSheetTo = (height: number) => {
+    if (snapAnimTimer.current) clearTimeout(snapAnimTimer.current)
+    const clamped = clampSheetHeight(height)
+    setSheetSnapping(true)
+    latestSheetHeight.current = clamped
+    setSheetHeight(clamped)
+    saveSheetHeight(clamped)
+    snapAnimTimer.current = setTimeout(() => setSheetSnapping(false), 320)
+  }
+
+  const closeAllSheets = () => {
+    setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false)
+  }
+
+  // Bottom of the note's last *non-empty* line — trailing blank lines are ignored
+  // so the note snap point doesn't sit below the visible content. Reads the live
+  // textarea value (never stale React state).
+  const measureNoteBottom = (): number => {
+    const heatmapBottom = heatmapRef.current?.getBoundingClientRect().bottom ?? SHEET_TOP_GAP
+    const ta = (viewDate ? pastTextareaRef : textareaRef).current
+    if (!ta) return heatmapBottom
+    const lines = ta.value.split('\n')
+    let trailingEmpty = 0
+    for (let i = lines.length - 1; i >= 0 && lines[i].trim() === ''; i--) trailingEmpty++
+    const lh = parseFloat(getComputedStyle(ta).lineHeight) || 0
+    return ta.getBoundingClientRect().bottom - trailingEmpty * lh
+  }
+
+  // On release, snap to the nearest of four points (measured by the panel's top
+  // edge): screen top, under the heatmap, under the note's last line, or — lowest
+  // — closed.
   const handleSheetResizeEnd = () => {
-    if (latestSheetHeight.current !== undefined) saveSheetHeight(latestSheetHeight.current)
+    const vh = window.visualViewport?.height ?? window.innerHeight
+    const sheetTop = vh - (latestSheetHeight.current ?? 0)
+    const heatmapBottom = heatmapRef.current?.getBoundingClientRect().bottom ?? SHEET_TOP_GAP
+    const noteBottom = measureNoteBottom()
+
+    const points: { snap: 'top' | 'heatmap' | 'note' | 'close'; topY: number }[] = [
+      { snap: 'top',     topY: SHEET_TOP_GAP },
+      { snap: 'heatmap', topY: heatmapBottom },
+      { snap: 'note',    topY: noteBottom },
+      { snap: 'close',   topY: vh },
+    ]
+    let best = points[0]
+    for (const p of points) {
+      if (Math.abs(p.topY - sheetTop) < Math.abs(best.topY - sheetTop)) best = p
+    }
+
+    const targetHeight = clampSheetHeight(vh - best.topY)
+    if (best.snap === 'close' || targetHeight <= 220) {
+      activeSnap.current = null
+      // Restore the last good height (hidden behind the slide-down) so reopening
+      // doesn't show the tiny height the drag ended at.
+      const restore = getSavedSheetHeight()
+      if (restore !== undefined) { latestSheetHeight.current = restore; setSheetHeight(restore) }
+      closeAllSheets()
+      return
+    }
+    activeSnap.current = best.snap
+    animateSheetTo(targetHeight)
   }
 
   const filterVolumeMap = useMemo(
@@ -409,6 +485,42 @@ export function App() {
     return () => { ro.disconnect(); window.removeEventListener('resize', update) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // While parked at the note snap point, follow the note's last line as it
+  // changes — animate on a day switch, track instantly while typing.
+  // The day switch arms an animated re-snap; it's applied once the new day's
+  // text has actually landed in the textarea (pastText loads a render later, so
+  // the first fire would otherwise measure stale content / cancel the animation).
+  useEffect(() => {
+    if (prevViewDate.current !== viewDate) {
+      prevViewDate.current = viewDate
+      daySnapArmed.current = true
+    }
+    if (activeSnap.current !== 'note' || !(sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen)) {
+      daySnapArmed.current = false
+      return
+    }
+    const id = requestAnimationFrame(() => {
+      const ta = (viewDate ? pastTextareaRef : textareaRef).current
+      if (!ta) return
+      const vh = window.visualViewport?.height ?? window.innerHeight
+      if (daySnapArmed.current) {
+        // Wait until the textarea holds the new day's saved text before animating.
+        const expected = viewDate ? (loadDay(viewDate)?.rawText ?? '') : todayText
+        if (ta.value !== expected) return
+        daySnapArmed.current = false
+        animateSheetTo(vh - measureNoteBottom())
+      } else {
+        if (snapAnimTimer.current) { clearTimeout(snapAnimTimer.current); snapAnimTimer.current = undefined }
+        setSheetSnapping(false)
+        const target = clampSheetHeight(vh - measureNoteBottom())
+        latestSheetHeight.current = target
+        setSheetHeight(target)
+      }
+    })
+    return () => cancelAnimationFrame(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewDate, todayText, pastText, sheetOpen, presetSheetOpen, bwSheetOpen, settingsOpen])
 
   useEffect(() => {
     const saved = loadDay(todayKey())
@@ -710,7 +822,7 @@ export function App() {
   const titleText = isViewingPast ? formatDisplayDate(viewDate!) : 'Today'
 
   return (
-    <div className="app">
+    <div className={`app${sheetSnapping ? ' sheet-snapping' : ''}`}>
       <div ref={heatmapRef}>
         <Heatmap
           onDayClick={handleDayClick}
