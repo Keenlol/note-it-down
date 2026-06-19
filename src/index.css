@@ -1197,7 +1197,9 @@ html, body {
 /* Weight value rendered inside the data point itself — accent pill, black text. */
 .bw-node {
   position: absolute;
-  transform: translate(-50%, -50%);
+  /* Center on the data point via the standalone `translate` property (not
+     `transform`) so the tap scale animation doesn't clobber the centering. */
+  translate: -50% -50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
