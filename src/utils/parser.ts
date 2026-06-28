@@ -112,14 +112,21 @@ function tokenize(line: string): Tok[] {
 }
 
 /**
- * Detect standalone bodyweight entry: "bodyweight 82", "bw 75.5", "bw 82kg".
+ * Detect standalone bodyweight entry: "bodyweight 82", "bw 75.5", "bw 82kg",
+ * "bw 165lbs". Stored weight is always kg: an explicit unit wins, otherwise the
+ * number is read in the active default unit (kg or lbs).
  * Lines with more than one number fall through and are parsed as exercises.
  */
 function parseBwEntryLine(line: string): ParsedLine | null {
-  // Group 1 = keyword+spaces prefix, Group 2 = full weight token (number+optional unit), Group 3 = number only
-  const m = /^(\s*(?:bodyweight|bw)\s+)((\d+(?:\.\d+)?)\s*(?:kg)?)\s*$/i.exec(line)
+  // Group 1 = keyword+spaces prefix, Group 2 = full weight token (number+optional unit),
+  // Group 3 = number only, Group 4 = optional unit
+  const m = /^(\s*(?:bodyweight|bw)\s+)((\d+(?:\.\d+)?)\s*(kg|lbs?|pounds?)?)\s*$/i.exec(line)
   if (!m) return null
-  const weight = parseFloat(m[3])
+  const num = parseFloat(m[3])
+  const unit = (m[4] || '').toLowerCase()
+  const weight = unit === 'kg' ? num
+    : unit ? num * LBS_TO_KG   // lb/lbs/pound/pounds
+    : num * _unitMul           // no unit → active default
   const numStart = m[1].length
   const numEnd = numStart + m[2].trimEnd().length
   return {
@@ -241,7 +248,7 @@ export function bwExtraLoadKg(ex: Exercise): number {
   switch (ex.bwExpr.op) {
     case 'plain': return 0
     case 'add':   return ex.bwExpr.offset * _unitMul
-    case 'mul':   return ex.weightKg * (1 - 1 / ex.bwExpr.factor)
+    case 'mul':   return ex.bwExpr.factor === 0 ? 0 : ex.weightKg * (1 - 1 / ex.bwExpr.factor)
   }
 }
 

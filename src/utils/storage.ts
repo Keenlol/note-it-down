@@ -24,7 +24,14 @@ export function saveDay(date: string, rawText: string): void {
 
 export function loadDay(date: string): DayData | null {
   const item = localStorage.getItem(PREFIX + date)
-  return item ? (JSON.parse(item) as DayData) : null
+  if (!item) return null
+  try {
+    return JSON.parse(item) as DayData
+  } catch {
+    // Corrupt entry (failed import, manual edit, truncated write) — skip it
+    // rather than crashing every aggregation that scans all days.
+    return null
+  }
 }
 
 export function getAllDayKeys(): string[] {
