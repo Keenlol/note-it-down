@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { ArrowDown, ArrowUp, CornerDownLeft } from 'lucide-react'
-import { parseLine, isKnownName, normalizeName, type ParsedLine, type Exercise } from '../utils/parser'
+import { parseLine, isKnownName, normalizeName, bwExtraLoadKg, type ParsedLine, type Exercise } from '../utils/parser'
 import { type WeightUnit, formatWeightDiff } from '../utils/settings'
 
 export interface Suggestion {
@@ -60,11 +60,15 @@ function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit): React.
     )
   }
 
-  // Skip weight diff when both are bodyweight (both use assumed BW constant).
+  // Compare load above bodyweight, not absolute weight: this suppresses raw
+  // bodyweight drift between days (plain bw → plain bw stays flat) while still
+  // catching genuine added load (bw → bw+6 reads as +6kg).
   // Threshold is 0.05 (half the 0.1kg display precision) so decimal/microplate
   // changes still register, and a true 0.5kg jump isn't dropped by float error.
-  const weightDiff = current.weightKg - prev.weightKg
-  if (Math.abs(weightDiff) >= 0.05 && !(current.bodyweight && prev.bodyweight)) {
+  const curLoad = current.bodyweight ? bwExtraLoadKg(current) : current.weightKg
+  const prevLoad = prev.bodyweight ? bwExtraLoadKg(prev) : prev.weightKg
+  const weightDiff = curLoad - prevLoad
+  if (Math.abs(weightDiff) >= 0.05) {
     const Icon = weightDiff > 0 ? ArrowUp : ArrowDown
     items.push(
       <span key="w" className="trend-item" style={{ color: weightDiff > 0 ? POS_COLOR : NEG_COLOR, background: weightDiff > 0 ? POS_BG : NEG_BG }}>

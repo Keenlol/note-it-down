@@ -227,6 +227,24 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
   }
 }
 
+/**
+ * Load added on top of bodyweight, in kg, for a bodyweight exercise.
+ *   plain bw   → 0
+ *   bw+N / bw-N → ±N (converted to kg via the active default unit)
+ *   bw×f       → weight − base = weightKg·(1 − 1/f)
+ * Non-bodyweight exercises return 0 (their weightKg is the load itself).
+ * Used for trend comparison so genuine added load registers while raw
+ * bodyweight drift between days does not.
+ */
+export function bwExtraLoadKg(ex: Exercise): number {
+  if (!ex.bodyweight || !ex.bwExpr) return 0
+  switch (ex.bwExpr.op) {
+    case 'plain': return 0
+    case 'add':   return ex.bwExpr.offset * _unitMul
+    case 'mul':   return ex.weightKg * (1 - 1 / ex.bwExpr.factor)
+  }
+}
+
 export function countExercises(text: string): number {
   return text.split('\n').filter(line => parseLine(line).exercise !== null).length
 }
