@@ -5,18 +5,29 @@ export interface BwEntry {
   weight: number // kg
 }
 
+// In-memory cache of the parsed+sorted history. getBwOn is called once per date
+// inside full-history scans, so without this we re-parse the whole blob N times.
+let _cache: BwEntry[] | null = null
+
 export function loadBwHistory(): BwEntry[] {
+  if (_cache) return _cache
   try {
     const raw = localStorage.getItem(BW_KEY)
-    if (!raw) return []
-    return (JSON.parse(raw) as BwEntry[]).sort((a, b) => a.date.localeCompare(b.date))
+    _cache = raw ? (JSON.parse(raw) as BwEntry[]).sort((a, b) => a.date.localeCompare(b.date)) : []
   } catch {
-    return []
+    _cache = []
   }
+  return _cache
+}
+
+/** Drop the cache — call after writing BW_KEY outside this module (e.g. import). */
+export function invalidateBwCache(): void {
+  _cache = null
 }
 
 function saveBwHistoryRaw(entries: BwEntry[]): void {
   localStorage.setItem(BW_KEY, JSON.stringify(entries))
+  _cache = entries
 }
 
 export function setBwEntry(date: string, weight: number): void {

@@ -1,6 +1,7 @@
 import { getAllDayKeys, loadDay, saveDay, type DayData } from './storage'
 import { loadAliases } from './aliases'
 import { parseLine, normalizeName } from './parser'
+import { invalidateBwCache } from './bodyweight'
 
 // ── Keys ─────────────────────────────────────────────────────────────────────
 
@@ -151,6 +152,7 @@ export function applyImport(bundle: ExportBundle, mode: 'add' | 'replace'): void
   // Bodyweight: replace always wins; in add mode, keep existing
   if (mode === 'replace') {
     localStorage.setItem(BW_KEY, JSON.stringify(bundle.bodyweight))
+    invalidateBwCache()  // we wrote BW_KEY directly, bypassing saveBwHistoryRaw
   }
   // add mode: keep existing bodyweight unchanged
 }
