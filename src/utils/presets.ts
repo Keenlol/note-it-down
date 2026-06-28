@@ -1,11 +1,49 @@
 import { getAllDayKeys, loadDay, saveDay } from './storage'
-import { parseLine } from './parser'
+import { parseLine, type ParsedLine } from './parser'
 import { getBwOn } from './bodyweight'
 import { type SortMode, relativeTime } from './exercises'
 
 export { type SortMode, relativeTime }
 
 const NICKNAMES_KEY = 'nid-preset-nicknames'
+
+export interface PresetBlock {
+  headerIndex: number       // line index of the "#" header
+  rawContent: string        // content after "#", trimmed (original case)
+  norm: string              // rawContent.toLowerCase() — the preset key
+  exerciseIndices: number[] // line indices of exercise lines under this header
+}
+
+/**
+ * Walk a day's parsed lines and yield each preset block: a "#" header plus the
+ * exercise lines that follow it until the next header. Bare "#" with no content
+ * is skipped. Single source of truth for preset grouping — every preset reader
+ * (catalog, history, suggestion, delete) goes through here so the break/collect
+ * rules can't drift apart.
+ */
+export function presetBlocks(parsed: ParsedLine[]): PresetBlock[] {
+  const blocks: PresetBlock[] = []
+  for (let i = 0; i < parsed.length; i++) {
+    const p = parsed[i]
+    if (p.exercise !== null || p.bodyweightEntry !== undefined) continue
+    if (!p.raw.trim().startsWith('#')) continue
+    const rawContent = p.raw.trim().replace(/^#+\s*/, '')
+    if (!rawContent) continue
+    const norm = rawContent.toLowerCase()
+
+    const exerciseIndices: number[] = []
+    let j = i + 1
+    while (j < parsed.length) {
+      const next = parsed[j]
+      if (next.exercise === null && next.bodyweightEntry === undefined &&
+          next.raw.trim().startsWith('#')) break
+      if (next.exercise !== null) exerciseIndices.push(j)
+      j++
+    }
+    blocks.push({ headerIndex: i, rawContent, norm, exerciseIndices })
+  }
+  return blocks
+}
 
 export interface PresetEntry {
   norm: string        // normalized key: lowercase content after "#"
@@ -47,36 +85,19 @@ export function buildPresetCatalog(sort: SortMode = 'count'): PresetEntry[] {
     const lines = day.rawText.split('\n')
     const parsed = lines.map(l => parseLine(l))
 
-    for (let i = 0; i < lines.length; i++) {
-      const p = parsed[i]
-      if (p.exercise !== null || p.bodyweightEntry !== undefined) continue
-      if (!lines[i].trim().startsWith('#')) continue
-
-      const rawContent = lines[i].trim().replace(/^#+\s*/, '')
-      if (!rawContent) continue
-      const norm = rawContent.toLowerCase()
-
-      // Collect exercise lines that immediately follow this header
-      const exercises: string[] = []
-      let j = i + 1
-      while (j < lines.length) {
-        const next = parsed[j]
-        if (next.exercise === null && next.bodyweightEntry === undefined &&
-            lines[j].trim().startsWith('#')) break
-        if (next.exercise !== null) exercises.push(lines[j])
-        j++
-      }
+    for (const block of presetBlocks(parsed)) {
+      const exercises = block.exerciseIndices.map(idx => lines[idx])
       if (exercises.length === 0) continue
 
-      const existing = map.get(norm)
+      const existing = map.get(block.norm)
       if (existing) {
         existing.count++
         // Overwrite with this date's data if it's newer (or same, since we iterate asc)
         existing.lastSeen = date
         existing.exercises = exercises
-        existing.rawContent = rawContent
+        existing.rawContent = block.rawContent
       } else {
-        map.set(norm, { rawContent, exercises, count: 1, lastSeen: date })
+        map.set(block.norm, { rawContent: block.rawContent, exercises, count: 1, lastSeen: date })
       }
     }
   }
@@ -121,27 +142,17 @@ export function getPresetHistory(norm: string): PresetHistoryEntry[] {
     const day = loadDay(date)
     if (!day) continue
     const bw = getBwOn(date)
-    const lines = day.rawText.split('\n')
-    const parsed = lines.map(l => parseLine(l, bw))
+    const parsed = day.rawText.split('\n').map(l => parseLine(l, bw))
 
-    for (let i = 0; i < lines.length; i++) {
-      const p = parsed[i]
-      if (p.exercise !== null || p.bodyweightEntry !== undefined) continue
-      if (!lines[i].trim().startsWith('#')) continue
-      if (lines[i].trim().replace(/^#+\s*/, '').toLowerCase() !== norm) continue
+    for (const block of presetBlocks(parsed)) {
+      if (block.norm !== norm) continue
 
       let vol = 0
       let load = 0
-      let j = i + 1
-      while (j < lines.length) {
-        const next = parsed[j]
-        if (next.exercise === null && next.bodyweightEntry === undefined &&
-            lines[j].trim().startsWith('#')) break
-        if (next.exercise !== null) {
-          vol += next.exercise.volume
-          load += next.exercise.weightKg * next.exercise.volume
-        }
-        j++
+      for (const idx of block.exerciseIndices) {
+        const ex = parsed[idx].exercise!
+        vol += ex.volume
+        load += ex.weightKg * ex.volume
       }
       if (vol > 0) {
         const acc = byDate.get(date) ?? { volume: 0, load: 0 }
@@ -192,22 +203,10 @@ export function deletePresetWithExercises(norm: string): void {
     const parsed = lines.map(l => parseLine(l))
 
     const drop = new Set<number>()
-    for (let i = 0; i < lines.length; i++) {
-      const p = parsed[i]
-      if (p.exercise !== null || p.bodyweightEntry !== undefined) continue
-      if (!lines[i].trim().startsWith('#')) continue
-      const norm2 = lines[i].trim().replace(/^#+\s*/, '').toLowerCase()
-      if (norm2 !== norm) continue
-
-      drop.add(i)
-      let j = i + 1
-      while (j < lines.length) {
-        const next = parsed[j]
-        if (next.exercise === null && next.bodyweightEntry === undefined &&
-            lines[j].trim().startsWith('#')) break
-        if (next.exercise !== null) drop.add(j)
-        j++
-      }
+    for (const block of presetBlocks(parsed)) {
+      if (block.norm !== norm) continue
+      drop.add(block.headerIndex)
+      for (const idx of block.exerciseIndices) drop.add(idx)
     }
 
     if (drop.size > 0) {

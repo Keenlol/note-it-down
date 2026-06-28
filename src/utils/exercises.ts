@@ -31,6 +31,22 @@ export function relativeTime(dateStr: string): string {
   return `${Math.floor(days / 365)} years ago`
 }
 
+/**
+ * All normalized names that resolve to `canonical` — the canonical itself plus
+ * every alias pointing at it. Used to gather/match every variant of a merged
+ * exercise across days.
+ */
+export function aliasesPointingTo(
+  canonical: string,
+  aliases: Record<string, string>,
+): Set<string> {
+  const set = new Set<string>([canonical])
+  for (const [from, to] of Object.entries(aliases)) {
+    if (to === canonical) set.add(from)
+  }
+  return set
+}
+
 export function buildCatalog(
   aliases: Record<string, string>,
   sort: SortMode = 'count',
@@ -124,10 +140,7 @@ export function deleteExercise(
   aliases: Record<string, string>,
 ): Record<string, string> {
   // All norms that resolve to this canonical
-  const toRemove = new Set<string>([normCanonical])
-  for (const [from, to] of Object.entries(aliases)) {
-    if (to === normCanonical) toRemove.add(from)
-  }
+  const toRemove = aliasesPointingTo(normCanonical, aliases)
 
   for (const date of getAllDayKeys()) {
     const day = loadDay(date)
@@ -159,10 +172,7 @@ export function exerciseVolumePerDay(
   normCanonical: string,
   aliases: Record<string, string>,
 ): Map<string, number> {
-  const toMatch = new Set<string>([normCanonical])
-  for (const [from, to] of Object.entries(aliases)) {
-    if (to === normCanonical) toMatch.add(from)
-  }
+  const toMatch = aliasesPointingTo(normCanonical, aliases)
 
   const result = new Map<string, number>()
   for (const date of getAllDayKeys()) {
@@ -203,10 +213,7 @@ export function getExerciseHistory(
   normCanonical: string,
   aliases: Record<string, string>,
 ): HistoryEntry[] {
-  const toMatch = new Set<string>([normCanonical])
-  for (const [from, to] of Object.entries(aliases)) {
-    if (to === normCanonical) toMatch.add(from)
-  }
+  const toMatch = aliasesPointingTo(normCanonical, aliases)
 
   const entries: HistoryEntry[] = []
   for (const date of getAllDayKeys()) {

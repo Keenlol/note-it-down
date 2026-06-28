@@ -11,7 +11,7 @@ import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/st
 import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
-import { presetVolumePerDay } from './utils/presets'
+import { presetVolumePerDay, presetBlocks } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { tap } from './utils/tap'
 import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedSheetHeight, saveSheetHeight } from './utils/settings'
@@ -117,31 +117,11 @@ function getHashPresetSuggestion(
 
   for (const day of pastDays) { // newest first
     const lines = day.parsedLines
-    for (let i = 0; i < lines.length; i++) {
-      const p = lines[i]
-      if (p.exercise !== null) continue
-      if (p.bodyweightEntry !== undefined) continue
-      if (!p.raw.trim().startsWith('#')) continue
-
-      const rawName   = p.raw.trim()
-      const rawContent = rawName.replace(/^#+\s*/, '') // "# Push Day" → "Push Day"
-      const normKey   = rawContent.toLowerCase()       // "push day"
-      if (!normKey) continue  // bare "#" with nothing after — skip
-
-      // Collect exercise lines that immediately follow this header
-      const exercises: string[] = []
-      let j = i + 1
-      while (j < lines.length) {
-        const next = lines[j]
-        if (next.exercise === null && next.bodyweightEntry === undefined &&
-            next.raw.trim().startsWith('#')) break  // next header → stop
-        if (next.exercise !== null) exercises.push(next.raw)
-        j++
-      }
-
+    for (const block of presetBlocks(lines)) {
+      const exercises = block.exerciseIndices.map(idx => lines[idx].raw)
       // Newest occurrence wins; only keep presets that actually have exercises
-      if (!presets.has(normKey) && exercises.length > 0) {
-        presets.set(normKey, { rawContent, exercises })
+      if (!presets.has(block.norm) && exercises.length > 0) {
+        presets.set(block.norm, { rawContent: block.rawContent, exercises })
       }
     }
   }
