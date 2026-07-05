@@ -17,10 +17,43 @@ interface Props {
   filterVolume?: Map<string, number>  // per-day volume for a specific exercise; triggers accent mode
   accentHex: string                   // current accent color hex, e.g. "#f97316"
   bloom?: { date: string; id: number } | null  // radial ripple origin; id retriggers the animation
+  weekOffset?: number  // shift the window this many weeks into the past (0 = today-anchored)
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const WEEKS = 21
+export const WEEKS = 21
+const DAY_MS = 86_400_000
+
+// First (Sunday) column of the today-anchored window (weekOffset 0), at local midnight.
+function set0Start(): Date {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const start = new Date(today)
+  start.setDate(today.getDate() - (WEEKS - 1) * 7 - today.getDay())
+  return start
+}
+
+// Which paged window (as a weekOffset, a multiple of WEEKS) contains `dateStr`.
+// Windows tile the past in 21-week blocks: set 0 is today-anchored, set 1 the
+// 21 weeks before it, etc. Returns 0 for today / recent dates and for null.
+export function weekOffsetForDate(dateStr: string | null): number {
+  if (!dateStr) return 0
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setHours(0, 0, 0, 0)
+  const dateWeekStart = new Date(date)
+  dateWeekStart.setDate(date.getDate() - date.getDay())
+
+  const weeksBefore = Math.round((set0Start().getTime() - dateWeekStart.getTime()) / (7 * DAY_MS))
+  if (weeksBefore <= 0) return 0
+  const setIndex = Math.floor((weeksBefore - 1) / WEEKS) + 1
+  return setIndex * WEEKS
+}
+
+// How many stacked 21-week sets are needed to cover history back to `oldestKey`.
+export function historySetCount(oldestKey: string | null): number {
+  return weekOffsetForDate(oldestKey) / WEEKS + 1
+}
 
 // Bloom timing: each cell's ripple is delayed by its Manhattan distance from the
 // origin, so the wavefront forms concentric 45°-rotated squares (diamonds) that
@@ -58,7 +91,7 @@ function cellColor(cell: Cell, maxVolume: number, filtered: boolean, accentRgb: 
   return `hsl(0, 0%, ${lightness}%)`
 }
 
-export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, accentHex, bloom }: Props) {
+export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, accentHex, bloom, weekOffset = 0 }: Props) {
   const accentRgb = useMemo(() => hexToRgb(accentHex), [accentHex])
 
   const { weeks, monthLabels, maxVolume } = useMemo(() => {
@@ -67,7 +100,7 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, a
     const todayStr = todayKey()
 
     const start = new Date(today)
-    start.setDate(today.getDate() - (WEEKS - 1) * 7 - today.getDay())
+    start.setDate(today.getDate() - (WEEKS - 1) * 7 - today.getDay() - weekOffset * 7)
 
     const cols: Cell[][] = []
     const labels: { col: number; label: string }[] = []
@@ -103,7 +136,7 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, a
 
     return { weeks: cols, monthLabels: labels, maxVolume: max }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataVersion, filterVolume])
+  }, [dataVersion, filterVolume, weekOffset])
 
   const filtered = !!filterVolume
 

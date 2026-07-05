@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ArrowRight, Eye, Dumbbell, Hash, Settings, Scale } from 'lucide-react'
-import { Heatmap } from './components/Heatmap'
+import { Heatmap, weekOffsetForDate, historySetCount } from './components/Heatmap'
+import { HeatmapHistory } from './components/HeatmapHistory'
 import { Editor, type Suggestion } from './components/Editor'
 import { ExerciseSheet } from './components/ExerciseSheet'
 import { PresetSheet } from './components/PresetSheet'
@@ -247,6 +248,7 @@ export function App() {
   const [presetSheetOpen, setPresetSheetOpen] = useState(false)
   const [bwSheetOpen, setBwSheetOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [accentHex, setAccentHex] = useState(() => {
     const key = getSavedAccent()
     return ACCENT_COLORS.find(c => c.key === key)?.hex ?? '#f97316'
@@ -718,6 +720,33 @@ export function App() {
     setPastCursorPos(0)
   }, [])
 
+  // Inline heatmap pages back a whole 21-week "set" once the viewed day falls
+  // outside the today-anchored window; returns to set 0 for recent days / today.
+  const heatmapWeekOffset = useMemo(() => weekOffsetForDate(viewDate), [viewDate])
+
+  // How many stacked sets the swipe-down history overlay needs to reach the
+  // oldest logged day.
+  const historySets = useMemo(
+    () => historySetCount(getAllDayKeys()[0] ?? null),
+    [dataVersion],
+  )
+
+  // Swipe down on the heatmap → open the stacked history overlay.
+  const hmTouchY = useRef(0)
+  const hmTouchX = useRef(0)
+  const handleHeatmapTouchStart = (e: React.TouchEvent) => {
+    hmTouchY.current = e.touches[0].clientY
+    hmTouchX.current = e.touches[0].clientX
+  }
+  const handleHeatmapTouchEnd = (e: React.TouchEvent) => {
+    const dy = e.changedTouches[0].clientY - hmTouchY.current
+    const dx = e.changedTouches[0].clientX - hmTouchX.current
+    if (!historyOpen && dy > 45 && dy > Math.abs(dx) * 1.3) {
+      closeAllSheets()
+      setHistoryOpen(true)
+    }
+  }
+
   const handleTouchStart = (e: React.TouchEvent) => {
     clearTimeout(swipeTimer.current)
     // If interrupted mid-animation, reset cleanly
@@ -803,7 +832,7 @@ export function App() {
 
   return (
     <div className={`app${sheetSnapping ? ' sheet-snapping' : ''}`}>
-      <div ref={heatmapRef}>
+      <div ref={heatmapRef} onTouchStart={handleHeatmapTouchStart} onTouchEnd={handleHeatmapTouchEnd}>
         <Heatmap
           onDayClick={handleDayClick}
           selectedDate={viewDate}
@@ -811,6 +840,7 @@ export function App() {
           filterVolume={filterVolumeMap}
           accentHex={accentHex}
           bloom={bloom}
+          weekOffset={heatmapWeekOffset}
         />
       </div>
 
@@ -917,6 +947,16 @@ export function App() {
           <Settings size={21} strokeWidth={1.6} />
         </button>
       </div>
+
+      <HeatmapHistory
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onSelectDate={goToDate}
+        selectedDate={viewDate}
+        dataVersion={dataVersion}
+        accentHex={accentHex}
+        setCount={historySets}
+      />
 
       <ExerciseSheet
         open={sheetOpen}

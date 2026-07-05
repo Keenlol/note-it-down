@@ -162,6 +162,44 @@ html, body {
   white-space: nowrap;
 }
 
+/* ── Stacked history overlay (swipe down on the heatmap) ── */
+
+.heatmap-history {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--bg);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+
+.heatmap-history.in {
+  opacity: 1;
+}
+
+.heatmap-history-inner {
+  padding: calc(env(safe-area-inset-top) + var(--pad)) 0
+           calc(env(safe-area-inset-bottom) + var(--pad));
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* Each set slides down + fades in, staggered via inline transition-delay. */
+.heatmap-history-set {
+  opacity: 0;
+  transform: translateY(-16px);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.heatmap-history.in .heatmap-history-set {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ── Title row ── */
 
 .title-row {
