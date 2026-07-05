@@ -162,42 +162,64 @@ html, body {
   white-space: nowrap;
 }
 
-/* ── Stacked history overlay (swipe down on the heatmap) ── */
+/* ── Stacked history overlay (drag down on the heatmap) ──
+   Finger-driven accordion. `--p` (0 = closed, 1 = open) is written imperatively
+   from App during the drag. Set 0 is pinned over the inline heatmap; older sets
+   collapse behind it at --p:0 and fan down to their flow position at --p:1. */
 
 .heatmap-history {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: var(--bg);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  opacity: 0;
-  transition: opacity 0.28s ease;
+  isolation: isolate;
+  --p: 0;
+  --set-gap: 9px;
 }
 
-.heatmap-history.in {
-  opacity: 1;
+/* Backdrop fades in with the reveal so the editor underneath is covered only as
+   far as the history is pulled down. */
+.heatmap-history::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: var(--bg);
+  opacity: var(--p);
+  pointer-events: none;
 }
 
 .heatmap-history-inner {
-  padding: calc(env(safe-area-inset-top) + var(--pad)) 0
-           calc(env(safe-area-inset-bottom) + var(--pad));
+  padding-top: calc(env(safe-area-inset-top) + var(--pad));
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--pad));
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  row-gap: var(--set-gap);
 }
 
-/* Each set slides down + fades in, staggered via inline transition-delay. */
 .heatmap-history-set {
-  opacity: 0;
-  transform: translateY(-16px);
-  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  background: var(--bg);   /* opaque so a set fully hides those stacked behind it */
+  /* Collapsed (--p:0): shift up by the set's own height + the gap, times its
+     index, landing every set exactly on top of set 0. Open (--p:1): identity. */
+  transform: translateY(calc((-100% - var(--set-gap)) * var(--i) * (1 - var(--p))));
 }
 
-.heatmap-history.in .heatmap-history-set {
-  opacity: 1;
-  transform: translateY(0);
+/* Set 0's wrap top padding is dropped — the inner's padding-top already matches
+   the inline heatmap's position, so set 0 overlaps it seamlessly. */
+.heatmap-history-set .heatmap-wrap {
+  padding-top: 0;
+}
+
+/* Only during a release snap do transform / backdrop animate; live dragging
+   updates --p with no transition so it tracks the finger. */
+.heatmap-history.snapping .heatmap-history-set {
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.heatmap-history.snapping::before {
+  transition: opacity 0.26s ease;
 }
 
 /* ── Title row ── */

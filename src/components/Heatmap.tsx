@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { dateToKey, todayKey } from '../utils/storage'
 import { getDayVolume } from '../utils/exercises'
 import { tap } from '../utils/tap'
+import { WEEKS } from '../utils/heatmapWindow'
 
 interface Cell {
   date: string | null
@@ -21,39 +22,6 @@ interface Props {
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-export const WEEKS = 21
-const DAY_MS = 86_400_000
-
-// First (Sunday) column of the today-anchored window (weekOffset 0), at local midnight.
-function set0Start(): Date {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const start = new Date(today)
-  start.setDate(today.getDate() - (WEEKS - 1) * 7 - today.getDay())
-  return start
-}
-
-// Which paged window (as a weekOffset, a multiple of WEEKS) contains `dateStr`.
-// Windows tile the past in 21-week blocks: set 0 is today-anchored, set 1 the
-// 21 weeks before it, etc. Returns 0 for today / recent dates and for null.
-export function weekOffsetForDate(dateStr: string | null): number {
-  if (!dateStr) return 0
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  date.setHours(0, 0, 0, 0)
-  const dateWeekStart = new Date(date)
-  dateWeekStart.setDate(date.getDate() - date.getDay())
-
-  const weeksBefore = Math.round((set0Start().getTime() - dateWeekStart.getTime()) / (7 * DAY_MS))
-  if (weeksBefore <= 0) return 0
-  const setIndex = Math.floor((weeksBefore - 1) / WEEKS) + 1
-  return setIndex * WEEKS
-}
-
-// How many stacked 21-week sets are needed to cover history back to `oldestKey`.
-export function historySetCount(oldestKey: string | null): number {
-  return weekOffsetForDate(oldestKey) / WEEKS + 1
-}
 
 // Bloom timing: each cell's ripple is delayed by its Manhattan distance from the
 // origin, so the wavefront forms concentric 45°-rotated squares (diamonds) that
@@ -118,7 +86,11 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, a
         const isFirstOfMonth = date.getDate() === 1
         const isFirstWeek = w === 0 && d === 0
         if (!isFuture && (isFirstOfMonth || isFirstWeek) && date.getMonth() !== lastMonth) {
-          labels.push({ col: w, label: MONTHS[date.getMonth()] })
+          // Append a 2-digit year for past years so older sets read "Jan 25".
+          const label = date.getFullYear() === today.getFullYear()
+            ? MONTHS[date.getMonth()]
+            : `${MONTHS[date.getMonth()]} ${String(date.getFullYear()).slice(2)}`
+          labels.push({ col: w, label })
           lastMonth = date.getMonth()
         }
 

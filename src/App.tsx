@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ArrowRight, Eye, Dumbbell, Hash, Settings, Scale } from 'lucide-react'
-import { Heatmap, weekOffsetForDate, historySetCount } from './components/Heatmap'
+import { Heatmap } from './components/Heatmap'
+import { weekOffsetForDate, historySetCount } from './utils/heatmapWindow'
 import { HeatmapHistory } from './components/HeatmapHistory'
 import { Editor, type Suggestion } from './components/Editor'
 import { ExerciseSheet } from './components/ExerciseSheet'
@@ -248,7 +249,7 @@ export function App() {
   const [presetSheetOpen, setPresetSheetOpen] = useState(false)
   const [bwSheetOpen, setBwSheetOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyMounted, setHistoryMounted] = useState(false)
   const [accentHex, setAccentHex] = useState(() => {
     const key = getSavedAccent()
     return ACCENT_COLORS.find(c => c.key === key)?.hex ?? '#f97316'
@@ -731,21 +732,98 @@ export function App() {
     [dataVersion],
   )
 
-  // Swipe down on the heatmap → open the stacked history overlay.
-  const hmTouchY = useRef(0)
-  const hmTouchX = useRef(0)
+  // ── Stacked-history reveal gesture ──────────────────────────────────────
+  // Finger-driven accordion. Progress 0..1 is written straight to the overlay's
+  // `--p` CSS var (imperatively, so dragging never re-renders the cell tree);
+  // set 0 stays pinned over the inline heatmap and older sets fan down from
+  // behind it. Same handlers drive open (drag down on the heatmap) and close
+  // (drag up from the top of the open overlay).
+  const HISTORY_TRAVEL = 150   // px of drag mapped to a full open/close
+  const HISTORY_COMMIT = 0.34  // progress past which release completes the action
+  const historyRef = useRef<HTMLDivElement>(null)
+  const histDrag = useRef({ active: false, mode: 'none' as 'none' | 'open' | 'close', startY: 0, startX: 0, progress: 0 })
+  const histSnapTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  const setHistProgress = (p: number) => {
+    histDrag.current.progress = p
+    historyRef.current?.style.setProperty('--p', String(p))
+  }
+
+  // Animate to fully open (1) or closed (0), then settle: unmount on close,
+  // drop the transition class on open so subsequent scrolling is free.
+  const snapHistory = (to: 0 | 1) => {
+    const el = historyRef.current
+    el?.classList.add('snapping')
+    setHistProgress(to)
+    clearTimeout(histSnapTimer.current)
+    histSnapTimer.current = setTimeout(() => {
+      el?.classList.remove('snapping')
+      if (to === 0) setHistoryMounted(false)
+    }, 280)
+  }
+
+  // Drag DOWN on the inline heatmap → reveal history.
   const handleHeatmapTouchStart = (e: React.TouchEvent) => {
-    hmTouchY.current = e.touches[0].clientY
-    hmTouchX.current = e.touches[0].clientX
+    if (historyMounted || historySets <= 1) return  // nothing older to reveal
+    histDrag.current = { active: false, mode: 'open', startY: e.touches[0].clientY, startX: e.touches[0].clientX, progress: 0 }
   }
-  const handleHeatmapTouchEnd = (e: React.TouchEvent) => {
-    const dy = e.changedTouches[0].clientY - hmTouchY.current
-    const dx = e.changedTouches[0].clientX - hmTouchX.current
-    if (!historyOpen && dy > 45 && dy > Math.abs(dx) * 1.3) {
-      closeAllSheets()
-      setHistoryOpen(true)
+  const handleHeatmapTouchMove = (e: React.TouchEvent) => {
+    const d = histDrag.current
+    if (d.mode !== 'open') return
+    const dy = e.touches[0].clientY - d.startY
+    const dx = e.touches[0].clientX - d.startX
+    if (!d.active) {
+      if (dy > 6 && dy > Math.abs(dx) * 1.2) {
+        d.active = true
+        closeAllSheets()
+        setHistoryMounted(true)
+      } else if (dy < -6 || Math.abs(dx) > 8) {
+        d.mode = 'none'  // resolved as an up/side gesture — not our reveal
+        return
+      } else return
     }
+    setHistProgress(Math.max(0, Math.min(dy / HISTORY_TRAVEL, 1)))
   }
+  const handleHeatmapTouchEnd = () => {
+    const d = histDrag.current
+    if (d.mode !== 'open' || !d.active) { d.mode = 'none'; return }
+    const open = d.progress > HISTORY_COMMIT
+    d.active = false; d.mode = 'none'
+    snapHistory(open ? 1 : 0)
+  }
+
+  // Drag UP from the top of the open overlay → retract history.
+  const handleHistoryTouchStart = (e: React.TouchEvent) => {
+    histDrag.current = { active: false, mode: 'close', startY: e.touches[0].clientY, startX: e.touches[0].clientX, progress: 1 }
+  }
+  const handleHistoryTouchMove = (e: React.TouchEvent) => {
+    const d = histDrag.current
+    if (d.mode !== 'close') return
+    const dy = e.touches[0].clientY - d.startY
+    const dx = e.touches[0].clientX - d.startX
+    const atTop = (historyRef.current?.scrollTop ?? 0) <= 0
+    if (!d.active) {
+      if (atTop && dy < -8 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+        d.active = true
+        historyRef.current?.classList.remove('snapping')  // follow the finger live
+      } else return
+    }
+    setHistProgress(Math.max(0, Math.min(1 - (-dy) / HISTORY_TRAVEL, 1)))
+  }
+  const handleHistoryTouchEnd = () => {
+    const d = histDrag.current
+    if (d.mode !== 'close' || !d.active) { d.mode = 'none'; return }
+    const close = d.progress < 1 - HISTORY_COMMIT
+    d.active = false; d.mode = 'none'
+    snapHistory(close ? 0 : 1)
+  }
+
+  // Tap a date in history → jump there and retract the overlay.
+  const handleHistorySelect = useCallback((date: string) => {
+    goToDate(date)
+    snapHistory(0)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleTouchStart = (e: React.TouchEvent) => {
     clearTimeout(swipeTimer.current)
@@ -832,7 +910,12 @@ export function App() {
 
   return (
     <div className={`app${sheetSnapping ? ' sheet-snapping' : ''}`}>
-      <div ref={heatmapRef} onTouchStart={handleHeatmapTouchStart} onTouchEnd={handleHeatmapTouchEnd}>
+      <div
+        ref={heatmapRef}
+        onTouchStart={handleHeatmapTouchStart}
+        onTouchMove={handleHeatmapTouchMove}
+        onTouchEnd={handleHeatmapTouchEnd}
+      >
         <Heatmap
           onDayClick={handleDayClick}
           selectedDate={viewDate}
@@ -948,15 +1031,19 @@ export function App() {
         </button>
       </div>
 
-      <HeatmapHistory
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        onSelectDate={goToDate}
-        selectedDate={viewDate}
-        dataVersion={dataVersion}
-        accentHex={accentHex}
-        setCount={historySets}
-      />
+      {historyMounted && (
+        <HeatmapHistory
+          rootRef={historyRef}
+          setCount={historySets}
+          selectedDate={viewDate}
+          dataVersion={dataVersion}
+          accentHex={accentHex}
+          onSelectDate={handleHistorySelect}
+          onTouchStart={handleHistoryTouchStart}
+          onTouchMove={handleHistoryTouchMove}
+          onTouchEnd={handleHistoryTouchEnd}
+        />
+      )}
 
       <ExerciseSheet
         open={sheetOpen}
