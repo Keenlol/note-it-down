@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, Check, ChevronRight, GitMerge, MoreVertical, Search, Tag, Trash2, X } from 'lucide-react'
+import { Check, ChevronRight, GitMerge, MoreVertical, Search, Tag, Trash2, X } from 'lucide-react'
 import {
   buildCatalog, mergeExercises, addNickname, deleteExercise,
   relativeTime, getExerciseHistory,
   type SortMode, type HistoryEntry,
 } from '../utils/exercises'
 import { type Exercise } from '../utils/parser'
-import {
-  type WeightUnit, formatWeightDisplay, formatWeightDiff,
-  TREND_POS_COLOR, TREND_POS_BG, TREND_NEG_COLOR, TREND_NEG_BG,
-} from '../utils/settings'
+import { type WeightUnit, formatWeightDisplay, formatWeightDiff } from '../utils/settings'
+import { TrendItem } from './TrendItem'
 import { tap } from '../utils/tap'
 import { SheetHandle } from './SheetHandle'
 
@@ -38,43 +36,24 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 ]
 
 function buildTrend(curr: Exercise, prev: Exercise, unit: WeightUnit, showDown: boolean): React.ReactNode | null {
-  const items: React.ReactNode[] = []
+  // Skip weight diff when both are plain bodyweight (same resolved weight means same bw day)
+  const rawWeight = curr.weightKg - prev.weightKg
+  const bothPlainBw = curr.bwExpr?.op === 'plain' && prev.bwExpr?.op === 'plain'
+  const wDiff = Math.abs(rawWeight) >= 0.5 && !bothPlainBw ? rawWeight : 0
 
   const sDiff = curr.sets - prev.sets
-  if (sDiff !== 0 && (sDiff > 0 || showDown)) {
-    const Icon = sDiff > 0 ? ArrowUp : ArrowDown
-    const abs = Math.abs(sDiff)
-    items.push(
-      <span key="s" className="trend-item" style={{ color: sDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: sDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
-        <Icon size={11} strokeWidth={2.5} />{abs} set{abs !== 1 ? 's' : ''}
-      </span>
-    )
-  }
-
   const rDiff = curr.reps - prev.reps
-  if (rDiff !== 0 && (rDiff > 0 || showDown)) {
-    const Icon = rDiff > 0 ? ArrowUp : ArrowDown
-    const abs = Math.abs(rDiff)
-    items.push(
-      <span key="r" className="trend-item" style={{ color: rDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: rDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
-        <Icon size={11} strokeWidth={2.5} />{abs} rep{abs !== 1 ? 's' : ''}
-      </span>
-    )
-  }
 
-  // Skip weight diff when both are plain bodyweight (same resolved weight means same bw day)
-  const wDiff = curr.weightKg - prev.weightKg
-  if (Math.abs(wDiff) >= 0.5 && (wDiff > 0 || showDown) && !(curr.bwExpr?.op === 'plain' && prev.bwExpr?.op === 'plain')) {
-    const Icon = wDiff > 0 ? ArrowUp : ArrowDown
-    items.push(
-      <span key="w" className="trend-item" style={{ color: wDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: wDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
-        <Icon size={11} strokeWidth={2.5} />{formatWeightDiff(Math.abs(wDiff), unit)}
-      </span>
-    )
-  }
+  const parts: { key: string; diff: number; label: React.ReactNode }[] = [
+    { key: 's', diff: sDiff, label: `${Math.abs(sDiff)} set${Math.abs(sDiff) !== 1 ? 's' : ''}` },
+    { key: 'r', diff: rDiff, label: `${Math.abs(rDiff)} rep${Math.abs(rDiff) !== 1 ? 's' : ''}` },
+    { key: 'w', diff: wDiff, label: formatWeightDiff(Math.abs(wDiff), unit) },
+  ].filter(p => p.diff !== 0 && (p.diff > 0 || showDown))
 
-  if (items.length === 0) return null
-  return <>{items}</>
+  if (parts.length === 0) return null
+  return <>{parts.map(p => (
+    <TrendItem key={p.key} diff={p.diff}>{p.label}</TrendItem>
+  ))}</>
 }
 
 function shortDate(dateStr: string): string {

@@ -1,10 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { ArrowDown, ArrowUp, CornerDownLeft } from 'lucide-react'
+import { CornerDownLeft } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, bwExtraLoadKg, type ParsedLine, type Exercise } from '../utils/parser'
-import {
-  type WeightUnit, formatWeightDiff,
-  TREND_POS_COLOR, TREND_POS_BG, TREND_NEG_COLOR, TREND_NEG_BG,
-} from '../utils/settings'
+import { type WeightUnit, formatWeightDiff } from '../utils/settings'
+import { TrendItem } from './TrendItem'
 
 export interface Suggestion {
   suffix: string
@@ -33,31 +31,8 @@ interface Props {
 }
 
 function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit, showDown: boolean): React.ReactNode | null {
-  const items: React.ReactNode[] = []
-
   const setsDiff = current.sets - prev.sets
-  if (setsDiff !== 0 && (setsDiff > 0 || showDown)) {
-    const Icon = setsDiff > 0 ? ArrowUp : ArrowDown
-    const abs = Math.abs(setsDiff)
-    items.push(
-      <span key="s" className="trend-item" style={{ color: setsDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: setsDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
-        <Icon size={13} strokeWidth={2.5} />
-        {abs} set{abs !== 1 ? 's' : ''}
-      </span>
-    )
-  }
-
   const repsDiff = current.reps - prev.reps
-  if (repsDiff !== 0 && (repsDiff > 0 || showDown)) {
-    const Icon = repsDiff > 0 ? ArrowUp : ArrowDown
-    const abs = Math.abs(repsDiff)
-    items.push(
-      <span key="r" className="trend-item" style={{ color: repsDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: repsDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
-        <Icon size={13} strokeWidth={2.5} />
-        {abs} rep{abs !== 1 ? 's' : ''}
-      </span>
-    )
-  }
 
   // Compare load above bodyweight, not absolute weight: this suppresses raw
   // bodyweight drift between days (plain bw → plain bw stays flat) while still
@@ -66,19 +41,19 @@ function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit, showDow
   // changes still register, and a true 0.5kg jump isn't dropped by float error.
   const curLoad = current.bodyweight ? bwExtraLoadKg(current) : current.weightKg
   const prevLoad = prev.bodyweight ? bwExtraLoadKg(prev) : prev.weightKg
-  const weightDiff = curLoad - prevLoad
-  if (Math.abs(weightDiff) >= 0.05 && (weightDiff > 0 || showDown)) {
-    const Icon = weightDiff > 0 ? ArrowUp : ArrowDown
-    items.push(
-      <span key="w" className="trend-item" style={{ color: weightDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: weightDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
-        <Icon size={13} strokeWidth={2.5} />
-        {formatWeightDiff(Math.abs(weightDiff), unit)}
-      </span>
-    )
-  }
+  const rawWeight = curLoad - prevLoad
+  const weightDiff = Math.abs(rawWeight) >= 0.05 ? rawWeight : 0
 
-  if (items.length === 0) return null
-  return <>{items}</>
+  const parts: { key: string; diff: number; label: React.ReactNode }[] = [
+    { key: 's', diff: setsDiff, label: `${Math.abs(setsDiff)} set${Math.abs(setsDiff) !== 1 ? 's' : ''}` },
+    { key: 'r', diff: repsDiff, label: `${Math.abs(repsDiff)} rep${Math.abs(repsDiff) !== 1 ? 's' : ''}` },
+    { key: 'w', diff: weightDiff, label: formatWeightDiff(Math.abs(weightDiff), unit) },
+  ].filter(p => p.diff !== 0 && (p.diff > 0 || showDown))
+
+  if (parts.length === 0) return null
+  return <>{parts.map(p => (
+    <TrendItem key={p.key} diff={p.diff} size={13}>{p.label}</TrendItem>
+  ))}</>
 }
 
 // Reveal overlay: exercise lines show formatted values (all orange), non-exercise lines render normally.

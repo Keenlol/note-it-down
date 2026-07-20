@@ -1099,6 +1099,7 @@ export function App() {
         onResize={handleSheetResize}
         onResizeEnd={handleSheetResizeEnd}
         weightUnit={weightUnit}
+        showDownTrend={showDownTrend}
       />
 
       <BodyweightSheet

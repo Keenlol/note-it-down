@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { ArrowDown, ArrowUp } from 'lucide-react'
 import { loadBwHistory, type BwEntry } from '../utils/bodyweight'
 import { formatWeightDisplay, formatWeightDiff, type WeightUnit } from '../utils/settings'
+import { TrendItem } from './TrendItem'
 import { todayKey } from '../utils/storage'
 import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
@@ -21,11 +21,6 @@ interface Props {
 }
 
 const KG_PER_LB = 0.453592
-
-const POS_COLOR = 'rgb(45, 149, 47)'
-const NEG_COLOR = 'rgb(200, 57, 57)'
-const POS_BG    = 'rgba(45, 149, 47, 0.1)'
-const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
 
 function toUnit(kg: number, unit: WeightUnit): number {
   return unit === 'lbs' ? kg / KG_PER_LB : kg
@@ -69,7 +64,6 @@ function BwHistoryList({ entries, unit, onSelectDate }: { entries: BwEntry[]; un
         const prev = ordered[i + 1]
         const diff = prev ? entry.weight - prev.weight : 0
         const shown = Math.round(toUnit(Math.abs(diff), unit) * 10) / 10
-        const Icon = diff > 0 ? ArrowUp : ArrowDown
         return (
           <div
             key={entry.date}
@@ -83,12 +77,10 @@ function BwHistoryList({ entries, unit, onSelectDate }: { entries: BwEntry[]; un
             </span>
             {prev && shown !== 0 && (
               <span className="history-trend">
-                <span
-                  className="trend-item"
-                  style={{ color: diff > 0 ? POS_COLOR : NEG_COLOR, background: diff > 0 ? POS_BG : NEG_BG }}
-                >
-                  <Icon size={11} strokeWidth={2.5} />{formatWeightDiff(Math.abs(diff), unit)}
-                </span>
+                {/* No showDown here: losing bodyweight isn't a regression — for anyone
+                    cutting it's the goal — so the "Downward trends" setting, which is
+                    about lift numbers, deliberately doesn't reach this list. */}
+                <TrendItem diff={diff}>{formatWeightDiff(Math.abs(diff), unit)}</TrendItem>
               </span>
             )}
           </div>

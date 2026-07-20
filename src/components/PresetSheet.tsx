@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
@@ -12,6 +12,7 @@ import { todayKey } from '../utils/storage'
 import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
 import { MetricGraph } from './MetricGraph'
+import { TrendItem } from './TrendItem'
 import { SheetHandle } from './SheetHandle'
 
 interface Props {
@@ -25,12 +26,9 @@ interface Props {
   onResize: (height: number) => void
   onResizeEnd: () => void
   weightUnit?: WeightUnit
+  showDownTrend?: boolean
 }
 
-const POS_COLOR = 'rgb(45, 149, 47)'
-const NEG_COLOR = 'rgb(200, 57, 57)'
-const POS_BG    = 'rgba(45, 149, 47, 0.1)'
-const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
 const KG_PER_LB = 0.453592
 
 function toUnit(kg: number, unit: WeightUnit): number {
@@ -62,14 +60,13 @@ function shortDate(dateStr: string): string {
 }
 
 /** Newest-first list of total-volume sessions; tapping a row jumps to that day. */
-function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHistoryEntry[]; unit: WeightUnit; onSelectDate: (date: string) => void }) {
+function VolumeHistoryList({ entries, unit, showDownTrend, onSelectDate }: { entries: PresetHistoryEntry[]; unit: WeightUnit; showDownTrend: boolean; onSelectDate: (date: string) => void }) {
   return (
     <div className="history-list preset-history-list">
       {entries.map((entry, i) => {
         const prev = entries[i + 1]
         const diff = prev ? entry.load - prev.load : 0
         const shown = Math.round(toUnit(Math.abs(diff), unit))
-        const Icon = diff > 0 ? ArrowUp : ArrowDown
         return (
           <div
             key={entry.date}
@@ -82,14 +79,11 @@ function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHis
               <span className="num">{fmtFull(entry.load, unit)}</span>
               <span className="history-sep"> {unit}</span>
             </span>
-            {prev && shown !== 0 && (
+            {prev && shown !== 0 && (diff > 0 || showDownTrend) && (
               <span className="history-trend">
-                <span
-                  className="trend-item"
-                  style={{ color: diff > 0 ? POS_COLOR : NEG_COLOR, background: diff > 0 ? POS_BG : NEG_BG }}
-                >
-                  <Icon size={11} strokeWidth={2.5} />{fmtFull(Math.abs(diff), unit)}{unit}
-                </span>
+                <TrendItem diff={diff} showDown={showDownTrend}>
+                  {fmtFull(Math.abs(diff), unit)}{unit}
+                </TrendItem>
               </span>
             )}
           </div>
@@ -101,7 +95,7 @@ function VolumeHistoryList({ entries, unit, onSelectDate }: { entries: PresetHis
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
-export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVersion, onDataChange, height, onResize, onResizeEnd, weightUnit = 'kg' }: Props) {
+export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVersion, onDataChange, height, onResize, onResizeEnd, weightUnit = 'kg', showDownTrend = true }: Props) {
   const [activeNorm, setActiveNorm] = useState<string | null>(null)
 
   // Stat-card ⋮ menu (rename / delete), portalled to body.
@@ -320,7 +314,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                   accentHex={accentHex}
                   onSelectDate={onSelectDate}
                 />
-                <VolumeHistoryList entries={windowed} unit={weightUnit} onSelectDate={onSelectDate} />
+                <VolumeHistoryList entries={windowed} unit={weightUnit} showDownTrend={showDownTrend} onSelectDate={onSelectDate} />
               </div>
             )}
           </>
