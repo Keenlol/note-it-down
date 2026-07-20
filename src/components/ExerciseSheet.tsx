@@ -7,7 +7,10 @@ import {
   type SortMode, type HistoryEntry,
 } from '../utils/exercises'
 import { type Exercise } from '../utils/parser'
-import { type WeightUnit, formatWeightDisplay, formatWeightDiff } from '../utils/settings'
+import {
+  type WeightUnit, formatWeightDisplay, formatWeightDiff,
+  TREND_POS_COLOR, TREND_POS_BG, TREND_NEG_COLOR, TREND_NEG_BG,
+} from '../utils/settings'
 import { tap } from '../utils/tap'
 import { SheetHandle } from './SheetHandle'
 
@@ -24,6 +27,7 @@ interface Props {
   onResize: (height: number) => void
   onResizeEnd: () => void
   weightUnit?: WeightUnit
+  showDownTrend?: boolean
 }
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
@@ -33,31 +37,26 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: 'za',     label: 'Z → A' },
 ]
 
-const POS_COLOR = 'rgb(45, 149, 47)'
-const NEG_COLOR = 'rgb(200, 57, 57)'
-const POS_BG    = 'rgba(45, 149, 47, 0.1)'
-const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
-
-function buildTrend(curr: Exercise, prev: Exercise, unit: WeightUnit): React.ReactNode | null {
+function buildTrend(curr: Exercise, prev: Exercise, unit: WeightUnit, showDown: boolean): React.ReactNode | null {
   const items: React.ReactNode[] = []
 
   const sDiff = curr.sets - prev.sets
-  if (sDiff !== 0) {
+  if (sDiff !== 0 && (sDiff > 0 || showDown)) {
     const Icon = sDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(sDiff)
     items.push(
-      <span key="s" className="trend-item" style={{ color: sDiff > 0 ? POS_COLOR : NEG_COLOR, background: sDiff > 0 ? POS_BG : NEG_BG }}>
+      <span key="s" className="trend-item" style={{ color: sDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: sDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
         <Icon size={11} strokeWidth={2.5} />{abs} set{abs !== 1 ? 's' : ''}
       </span>
     )
   }
 
   const rDiff = curr.reps - prev.reps
-  if (rDiff !== 0) {
+  if (rDiff !== 0 && (rDiff > 0 || showDown)) {
     const Icon = rDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(rDiff)
     items.push(
-      <span key="r" className="trend-item" style={{ color: rDiff > 0 ? POS_COLOR : NEG_COLOR, background: rDiff > 0 ? POS_BG : NEG_BG }}>
+      <span key="r" className="trend-item" style={{ color: rDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: rDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
         <Icon size={11} strokeWidth={2.5} />{abs} rep{abs !== 1 ? 's' : ''}
       </span>
     )
@@ -65,10 +64,10 @@ function buildTrend(curr: Exercise, prev: Exercise, unit: WeightUnit): React.Rea
 
   // Skip weight diff when both are plain bodyweight (same resolved weight means same bw day)
   const wDiff = curr.weightKg - prev.weightKg
-  if (Math.abs(wDiff) >= 0.5 && !(curr.bwExpr?.op === 'plain' && prev.bwExpr?.op === 'plain')) {
+  if (Math.abs(wDiff) >= 0.5 && (wDiff > 0 || showDown) && !(curr.bwExpr?.op === 'plain' && prev.bwExpr?.op === 'plain')) {
     const Icon = wDiff > 0 ? ArrowUp : ArrowDown
     items.push(
-      <span key="w" className="trend-item" style={{ color: wDiff > 0 ? POS_COLOR : NEG_COLOR, background: wDiff > 0 ? POS_BG : NEG_BG }}>
+      <span key="w" className="trend-item" style={{ color: wDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: wDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
         <Icon size={11} strokeWidth={2.5} />{formatWeightDiff(Math.abs(wDiff), unit)}
       </span>
     )
@@ -87,7 +86,7 @@ function shortDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', opts)
 }
 
-function HistoryList({ entries, unit, onSelectDate }: { entries: HistoryEntry[]; unit: WeightUnit; onSelectDate: (date: string) => void }) {
+function HistoryList({ entries, unit, showDownTrend, onSelectDate }: { entries: HistoryEntry[]; unit: WeightUnit; showDownTrend: boolean; onSelectDate: (date: string) => void }) {
   if (entries.length === 0) {
     return <div className="history-empty">No entries found.</div>
   }
@@ -95,7 +94,7 @@ function HistoryList({ entries, unit, onSelectDate }: { entries: HistoryEntry[];
     <div className="history-list">
       {entries.map((entry, i) => {
         const prev = entries[i + 1]
-        const trend = prev ? buildTrend(entry.exercise, prev.exercise, unit) : null
+        const trend = prev ? buildTrend(entry.exercise, prev.exercise, unit, showDownTrend) : null
         return (
           <div
             key={`${entry.date}-${i}`}
@@ -121,7 +120,7 @@ function HistoryList({ entries, unit, onSelectDate }: { entries: HistoryEntry[];
 
 export function ExerciseSheet({
   open, onClose, aliases, onAliasesChange, onFocusExercise, onSelectDate, dataVersion, onDataChange, height,
-  onResize, onResizeEnd, weightUnit = 'kg',
+  onResize, onResizeEnd, weightUnit = 'kg', showDownTrend = true,
 }: Props) {
   const [sortMode, setSortMode]           = useState<SortMode>('count')
   const [query, setQuery]                 = useState('')
@@ -429,7 +428,7 @@ export function ExerciseSheet({
               {/* ── Expanded history ── */}
               <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
                 <div className="history-expand-inner">
-                  <HistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} onSelectDate={onSelectDate} />
+                  <HistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} showDownTrend={showDownTrend} onSelectDate={onSelectDate} />
                 </div>
               </div>
             </div>

@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { ArrowDown, ArrowUp, CornerDownLeft } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, bwExtraLoadKg, type ParsedLine, type Exercise } from '../utils/parser'
-import { type WeightUnit, formatWeightDiff } from '../utils/settings'
+import {
+  type WeightUnit, formatWeightDiff,
+  TREND_POS_COLOR, TREND_POS_BG, TREND_NEG_COLOR, TREND_NEG_BG,
+} from '../utils/settings'
 
 export interface Suggestion {
   suffix: string
@@ -26,22 +29,18 @@ interface Props {
   readOnly?: boolean
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   weightUnit?: WeightUnit
+  showDownTrend?: boolean
 }
 
-const POS_COLOR = 'rgb(45, 149, 47)'    // green – improvement
-const NEG_COLOR = 'rgb(200, 57, 57)'   // red   – decline
-const POS_BG    = 'rgba(45, 149, 47, 0.1)'
-const NEG_BG    = 'rgba(200, 57, 57, 0.1)'
-
-function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit): React.ReactNode | null {
+function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit, showDown: boolean): React.ReactNode | null {
   const items: React.ReactNode[] = []
 
   const setsDiff = current.sets - prev.sets
-  if (setsDiff !== 0) {
+  if (setsDiff !== 0 && (setsDiff > 0 || showDown)) {
     const Icon = setsDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(setsDiff)
     items.push(
-      <span key="s" className="trend-item" style={{ color: setsDiff > 0 ? POS_COLOR : NEG_COLOR, background: setsDiff > 0 ? POS_BG : NEG_BG }}>
+      <span key="s" className="trend-item" style={{ color: setsDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: setsDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
         <Icon size={13} strokeWidth={2.5} />
         {abs} set{abs !== 1 ? 's' : ''}
       </span>
@@ -49,11 +48,11 @@ function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit): React.
   }
 
   const repsDiff = current.reps - prev.reps
-  if (repsDiff !== 0) {
+  if (repsDiff !== 0 && (repsDiff > 0 || showDown)) {
     const Icon = repsDiff > 0 ? ArrowUp : ArrowDown
     const abs = Math.abs(repsDiff)
     items.push(
-      <span key="r" className="trend-item" style={{ color: repsDiff > 0 ? POS_COLOR : NEG_COLOR, background: repsDiff > 0 ? POS_BG : NEG_BG }}>
+      <span key="r" className="trend-item" style={{ color: repsDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: repsDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
         <Icon size={13} strokeWidth={2.5} />
         {abs} rep{abs !== 1 ? 's' : ''}
       </span>
@@ -68,10 +67,10 @@ function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit): React.
   const curLoad = current.bodyweight ? bwExtraLoadKg(current) : current.weightKg
   const prevLoad = prev.bodyweight ? bwExtraLoadKg(prev) : prev.weightKg
   const weightDiff = curLoad - prevLoad
-  if (Math.abs(weightDiff) >= 0.05) {
+  if (Math.abs(weightDiff) >= 0.05 && (weightDiff > 0 || showDown)) {
     const Icon = weightDiff > 0 ? ArrowUp : ArrowDown
     items.push(
-      <span key="w" className="trend-item" style={{ color: weightDiff > 0 ? POS_COLOR : NEG_COLOR, background: weightDiff > 0 ? POS_BG : NEG_BG }}>
+      <span key="w" className="trend-item" style={{ color: weightDiff > 0 ? TREND_POS_COLOR : TREND_NEG_COLOR, background: weightDiff > 0 ? TREND_POS_BG : TREND_NEG_BG }}>
         <Icon size={13} strokeWidth={2.5} />
         {formatWeightDiff(Math.abs(weightDiff), unit)}
       </span>
@@ -201,7 +200,7 @@ export function Editor({
   value, onChange, onCursorChange, onTabConfirm,
   suggestion, knownPast, todayCounts, previousExercises,
   bodyweightKg = 60, bwIsSet = true,
-  reveal, readOnly, textareaRef, weightUnit = 'kg',
+  reveal, readOnly, textareaRef, weightUnit = 'kg', showDownTrend = true,
 }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
@@ -226,7 +225,7 @@ export function Editor({
     const isNew = !isKnownName(parsed.exercise.name, knownPast, todayCounts)
 
     if (prev) {
-      const node = buildTrend(parsed.exercise, prev, weightUnit)
+      const node = buildTrend(parsed.exercise, prev, weightUnit, showDownTrend)
       if (node) lineTrends.push({ lineIndex: i, node })
     } else if (isNew) {
       lineNewItems.push(i)

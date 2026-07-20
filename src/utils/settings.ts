@@ -31,6 +31,27 @@ export function formatWeightDiff(absKgDiff: number, unit: WeightUnit): string {
   return `${display}${unit}`
 }
 
+// ── Trend badges ──────────────────────────────────────────────────────────────
+
+// Improvements are green; declines are deliberately neutral grey, not red.
+// A red "you went down" badge pressures people into either not deloading or
+// logging a weight they didn't lift — the badge should report, not judge.
+export const TREND_POS_COLOR = 'rgb(45, 149, 47)'
+export const TREND_POS_BG    = 'rgba(45, 149, 47, 0.1)'
+export const TREND_NEG_COLOR = 'rgb(140, 140, 140)'
+export const TREND_NEG_BG    = 'rgba(140, 140, 140, 0.1)'
+
+const SHOW_DOWN_TREND_KEY = 'settings_showDownTrend'
+
+/** Whether downward trend badges are shown at all. Defaults to on. */
+export function getSavedShowDownTrend(): boolean {
+  return localStorage.getItem(SHOW_DOWN_TREND_KEY) !== 'off'
+}
+
+export function saveShowDownTrend(show: boolean) {
+  localStorage.setItem(SHOW_DOWN_TREND_KEY, show ? 'on' : 'off')
+}
+
 // ── Bottom-sheet height (user-resizable, remembered) ──────────────────────────
 
 const SHEET_HEIGHT_KEY = 'settings_sheetHeight'

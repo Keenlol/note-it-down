@@ -3,6 +3,7 @@ import { Check, Download, Upload, Trash2, AlertTriangle, ExternalLink } from 'lu
 import {
   ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent,
   type WeightUnit, getSavedWeightUnit, saveWeightUnit,
+  getSavedShowDownTrend, saveShowDownTrend,
 } from '../utils/settings'
 import {
   getDataStats, formatSize, exportData, parseImportFile, applyImport,
@@ -15,6 +16,13 @@ import { tap } from '../utils/tap'
 const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
   { value: 'kg',  label: 'kg'  },
   { value: 'lbs', label: 'lbs' },
+]
+
+type DownTrend = 'show' | 'hide'
+
+const DOWN_TREND_OPTIONS: { value: DownTrend; label: string }[] = [
+  { value: 'show', label: 'Show' },
+  { value: 'hide', label: 'Hide' },
 ]
 
 type ConfirmState =
@@ -33,14 +41,16 @@ interface Props {
   onDataChange: () => void
   onAccentChange?: (key: AccentKey) => void
   onWeightUnitChange?: (unit: WeightUnit) => void
+  onShowDownTrendChange?: (show: boolean) => void
 }
 
 export function SettingsSheet({
   open, onClose, height, onResize, onResizeEnd, dataVersion, onDataChange,
-  onAccentChange, onWeightUnitChange,
+  onAccentChange, onWeightUnitChange, onShowDownTrendChange,
 }: Props) {
   const [accent, setAccent]         = useState<AccentKey>(() => getSavedAccent())
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
+  const [downTrend, setDownTrend]   = useState<DownTrend>(() => getSavedShowDownTrend() ? 'show' : 'hide')
   const [confirm, setConfirm]       = useState<ConfirmState>({ kind: 'none' })
   const fileInputRef                = useRef<HTMLInputElement>(null)
 
@@ -60,6 +70,12 @@ export function SettingsSheet({
     saveWeightUnit(unit)
     setWeightUnit(unit)
     onWeightUnitChange?.(unit)
+  }
+
+  function handleDownTrend(v: DownTrend) {
+    saveShowDownTrend(v === 'show')
+    setDownTrend(v)
+    onShowDownTrendChange?.(v === 'show')
   }
 
   function handleExport() {
@@ -143,6 +159,20 @@ export function SettingsSheet({
             options={WEIGHT_UNIT_OPTIONS}
             value={weightUnit}
             onChange={handleWeightUnit}
+          />
+        </div>
+
+        {/* ── Downward trends ─────────────────────────────────── */}
+        <div className="settings-section">
+          <span className="settings-section-label">Downward trends</span>
+          <p className="settings-section-hint">
+            Badges for lighter or fewer than last time. Hide them if seeing a drop makes
+            you want to log something you didn't lift — a deload is training, not a setback.
+          </p>
+          <SegmentedControl
+            options={DOWN_TREND_OPTIONS}
+            value={downTrend}
+            onChange={handleDownTrend}
           />
         </div>
 

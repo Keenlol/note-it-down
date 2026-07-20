@@ -16,7 +16,7 @@ import { exerciseVolumePerDay } from './utils/exercises'
 import { presetVolumePerDay, presetBlocks } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { tap } from './utils/tap'
-import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedSheetHeight, saveSheetHeight } from './utils/settings'
+import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedSheetHeight, saveSheetHeight } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
@@ -255,6 +255,7 @@ export function App() {
     return ACCENT_COLORS.find(c => c.key === key)?.hex ?? '#f97316'
   })
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
+  const [showDownTrend, setShowDownTrend] = useState<boolean>(() => getSavedShowDownTrend())
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [focusedPreset, setFocusedPreset] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
@@ -989,6 +990,7 @@ export function App() {
               reveal={reveal}
               textareaRef={pastTextareaRef}
               weightUnit={weightUnit}
+              showDownTrend={showDownTrend}
             />
           ) : (
             <Editor
@@ -1005,6 +1007,7 @@ export function App() {
               reveal={reveal}
               textareaRef={textareaRef}
               weightUnit={weightUnit}
+              showDownTrend={showDownTrend}
             />
           )}
         </div>
@@ -1082,6 +1085,7 @@ export function App() {
         onResize={handleSheetResize}
         onResizeEnd={handleSheetResizeEnd}
         weightUnit={weightUnit}
+        showDownTrend={showDownTrend}
       />
 
       <PresetSheet
@@ -1121,6 +1125,7 @@ export function App() {
           const def = ACCENT_COLORS.find(c => c.key === key)!
           setAccentHex(def.hex)
         }}
+        onShowDownTrendChange={setShowDownTrend}
         onWeightUnitChange={(unit: WeightUnit) => {
           setDefaultWeightUnit(unit)
           setWeightUnit(unit)
