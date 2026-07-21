@@ -11,7 +11,7 @@ import { todayKey } from '../utils/storage'
 import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
 import { MetricGraph } from './MetricGraph'
-import { TrendItem } from './TrendItem'
+import { ExerciseHistoryList } from './ExerciseHistoryList'
 import { SheetHandle } from './SheetHandle'
 
 interface Props {
@@ -50,48 +50,6 @@ function fmtCompact(kg: number, unit: WeightUnit): string {
   return `${v}`
 }
 
-function shortDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  const now = new Date()
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  if (date.getFullYear() !== now.getFullYear()) opts.year = 'numeric'
-  return date.toLocaleDateString('en-US', opts)
-}
-
-/** Newest-first list of total-volume sessions; tapping a row jumps to that day. */
-function VolumeHistoryList({ entries, unit, showDownTrend, onSelectDate }: { entries: PresetHistoryEntry[]; unit: WeightUnit; showDownTrend: boolean; onSelectDate: (date: string) => void }) {
-  return (
-    <div className="history-list preset-history-list">
-      {entries.map((entry, i) => {
-        const prev = entries[i + 1]
-        const diff = prev ? entry.load - prev.load : 0
-        const shown = Math.round(toUnit(Math.abs(diff), unit))
-        return (
-          <div
-            key={entry.date}
-            className="history-entry"
-            onPointerDown={tap}
-            onClick={() => onSelectDate(entry.date)}
-          >
-            <span className="history-date">{shortDate(entry.date)}</span>
-            <span className="history-values">
-              <span className="num">{fmtFull(entry.load, unit)}</span>
-              <span className="history-sep"> {unit}</span>
-            </span>
-            {prev && shown !== 0 && (diff > 0 || showDownTrend) && (
-              <span className="history-trend">
-                <TrendItem diff={diff} showDown={showDownTrend}>
-                  {fmtFull(Math.abs(diff), unit)}{unit}
-                </TrendItem>
-              </span>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
@@ -189,9 +147,10 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
     return getPresetExerciseSeries(activeNorm, aliases)
       .map(s => ({
         ...s,
+        points: s.points.filter(e => dayIndex(e.date, start) >= 0 && e.date <= today),
         entries: s.entries.filter(e => dayIndex(e.date, start) >= 0 && e.date <= today),
       }))
-      .filter(s => s.entries.length > 0)
+      .filter(s => s.points.length > 0)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNorm, dataVersion, open, aliases])
 
@@ -309,7 +268,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
             </div>
 
             {series.map(ex => {
-              const chrono = [...ex.entries].reverse()
+              const chrono = [...ex.points].reverse()
               const done = new Set(chrono.map(e => e.date))
               return (
                 <div key={ex.norm} className="preset-block">
@@ -322,9 +281,6 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                   >
                     <span className="preset-ex-head">
                       <span className="preset-ex-name">{ex.displayName}</span>
-                      <span className="preset-ex-latest">
-                        {fmtFull(chrono[chrono.length - 1].load, weightUnit)}{weightUnit}
-                      </span>
                       <ChevronRight
                         size={14}
                         strokeWidth={2}
@@ -352,11 +308,12 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                   </button>
 
                   {expandedEx === ex.norm && (
-                    <VolumeHistoryList
+                    <ExerciseHistoryList
                       entries={ex.entries}
                       unit={weightUnit}
                       showDownTrend={showDownTrend}
                       onSelectDate={onSelectDate}
+                      className="history-list preset-history-list"
                     />
                   )}
                 </div>

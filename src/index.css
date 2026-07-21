@@ -1491,14 +1491,8 @@ html, body {
   white-space: nowrap;
 }
 
-.preset-ex-latest {
-  margin-left: auto;
-  font-size: 0.72rem;
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
 .preset-ex-chevron {
+  margin-left: auto;
   color: var(--text-muted);
   flex-shrink: 0;
   transition: transform 0.15s ease;

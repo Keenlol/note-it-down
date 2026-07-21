@@ -6,9 +6,8 @@ import {
   relativeTime, getExerciseHistory,
   type SortMode, type HistoryEntry,
 } from '../utils/exercises'
-import { type Exercise } from '../utils/parser'
-import { type WeightUnit, formatWeightDisplay, formatWeightDiff } from '../utils/settings'
-import { TrendItem } from './TrendItem'
+import { type WeightUnit } from '../utils/settings'
+import { ExerciseHistoryList } from './ExerciseHistoryList'
 import { tap } from '../utils/tap'
 import { SheetHandle } from './SheetHandle'
 
@@ -34,68 +33,6 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: 'az',     label: 'A → Z' },
   { value: 'za',     label: 'Z → A' },
 ]
-
-function buildTrend(curr: Exercise, prev: Exercise, unit: WeightUnit, showDown: boolean): React.ReactNode | null {
-  // Skip weight diff when both are plain bodyweight (same resolved weight means same bw day)
-  const rawWeight = curr.weightKg - prev.weightKg
-  const bothPlainBw = curr.bwExpr?.op === 'plain' && prev.bwExpr?.op === 'plain'
-  const wDiff = Math.abs(rawWeight) >= 0.5 && !bothPlainBw ? rawWeight : 0
-
-  const sDiff = curr.sets - prev.sets
-  const rDiff = curr.reps - prev.reps
-
-  const parts: { key: string; diff: number; label: React.ReactNode }[] = [
-    { key: 's', diff: sDiff, label: `${Math.abs(sDiff)} set${Math.abs(sDiff) !== 1 ? 's' : ''}` },
-    { key: 'r', diff: rDiff, label: `${Math.abs(rDiff)} rep${Math.abs(rDiff) !== 1 ? 's' : ''}` },
-    { key: 'w', diff: wDiff, label: formatWeightDiff(Math.abs(wDiff), unit) },
-  ].filter(p => p.diff !== 0 && (p.diff > 0 || showDown))
-
-  if (parts.length === 0) return null
-  return <>{parts.map(p => (
-    <TrendItem key={p.key} diff={p.diff}>{p.label}</TrendItem>
-  ))}</>
-}
-
-function shortDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  const now = new Date()
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  if (date.getFullYear() !== now.getFullYear()) opts.year = 'numeric'
-  return date.toLocaleDateString('en-US', opts)
-}
-
-function HistoryList({ entries, unit, showDownTrend, onSelectDate }: { entries: HistoryEntry[]; unit: WeightUnit; showDownTrend: boolean; onSelectDate: (date: string) => void }) {
-  if (entries.length === 0) {
-    return <div className="history-empty">No entries found.</div>
-  }
-  return (
-    <div className="history-list">
-      {entries.map((entry, i) => {
-        const prev = entries[i + 1]
-        const trend = prev ? buildTrend(entry.exercise, prev.exercise, unit, showDownTrend) : null
-        return (
-          <div
-            key={`${entry.date}-${i}`}
-            className="history-entry"
-            onPointerDown={tap}
-            onClick={() => onSelectDate(entry.date)}
-          >
-            <span className="history-date">{shortDate(entry.date)}</span>
-            <span className="history-values">
-              <span className="num">{formatWeightDisplay(entry.exercise.weightKg, unit)}</span>
-              <span className="history-sep"> × </span>
-              <span className="num">{entry.exercise.reps}</span>
-              <span className="history-sep"> × </span>
-              <span className="num">{entry.exercise.sets}</span>
-            </span>
-            {trend && <span className="history-trend">{trend}</span>}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 export function ExerciseSheet({
   open, onClose, aliases, onAliasesChange, onFocusExercise, onSelectDate, dataVersion, onDataChange, height,
@@ -407,7 +344,7 @@ export function ExerciseSheet({
               {/* ── Expanded history ── */}
               <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
                 <div className="history-expand-inner">
-                  <HistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} showDownTrend={showDownTrend} onSelectDate={onSelectDate} />
+                  <ExerciseHistoryList entries={historyMap.get(entry.norm) ?? []} unit={weightUnit} showDownTrend={showDownTrend} onSelectDate={onSelectDate} />
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { getAllDayKeys, loadDay, saveDay } from './storage'
 import { parseLine, normalizeName, type ParsedLine } from './parser'
 import { getBwOn } from './bodyweight'
-import { type SortMode, relativeTime } from './exercises'
+import { type SortMode, relativeTime, type HistoryEntry } from './exercises'
 
 export { type SortMode, relativeTime }
 
@@ -168,9 +168,10 @@ export function getPresetHistory(norm: string): PresetHistoryEntry[] {
 }
 
 export interface PresetExerciseSeries {
-  norm: string                   // canonical exercise key (alias-resolved)
-  displayName: string            // name as written in the most recent session
-  entries: PresetHistoryEntry[]  // newest first, one per session that included it
+  norm: string             // canonical exercise key (alias-resolved)
+  displayName: string      // name as written in the most recent session
+  points: { date: string; load: number }[]  // newest first, one per session
+  entries: HistoryEntry[]  // newest first, one per logged line (graph aggregates these)
 }
 
 /**
@@ -194,13 +195,15 @@ export function getPresetExerciseSeries(
   interface Acc {
     displayName: string
     order: number
-    byDate: Map<string, { volume: number; load: number }>
+    loadByDate: Map<string, number>
+    entries: HistoryEntry[]
   }
   const byExercise = new Map<string, Acc>()
   let order = 0
 
   // Newest day first, so the first time we see an exercise is its most recent
-  // occurrence — that fixes both its display name and its position in the list.
+  // occurrence — that fixes both its display name and its position in the list,
+  // and leaves `entries` already newest-first without a sort.
   const dates = [...getAllDayKeys()].sort((a, b) => b.localeCompare(a))
 
   for (const date of dates) {
@@ -220,14 +223,13 @@ export function getPresetExerciseSeries(
 
         let acc = byExercise.get(canonical)
         if (!acc) {
-          acc = { displayName: ex.name, order: order++, byDate: new Map() }
+          acc = { displayName: ex.name, order: order++, loadByDate: new Map(), entries: [] }
           byExercise.set(canonical, acc)
         }
-        // Same exercise logged twice in one session sums into that session's point.
-        const cur = acc.byDate.get(date) ?? { volume: 0, load: 0 }
-        cur.volume += ex.volume
-        cur.load += ex.weightKg * ex.volume
-        acc.byDate.set(date, cur)
+        acc.entries.push({ date, exercise: ex })
+        // The graph plots one point per session, so a movement logged twice in
+        // a day sums — while the history below still lists both lines.
+        acc.loadByDate.set(date, (acc.loadByDate.get(date) ?? 0) + ex.weightKg * ex.volume)
       }
     }
   }
@@ -236,11 +238,11 @@ export function getPresetExerciseSeries(
     norm,
     displayName: acc.displayName,
     order: acc.order,
-    entries: Array.from(acc.byDate, ([date, { volume, load }]) => ({ date, volume, load }))
-      .sort((a, b) => b.date.localeCompare(a.date)),
+    points: Array.from(acc.loadByDate, ([date, load]) => ({ date, load })),
+    entries: acc.entries,
   }))
     .sort((a, b) => a.order - b.order)
-    .map(({ norm, displayName, entries }) => ({ norm, displayName, entries }))
+    .map(({ norm, displayName, points, entries }) => ({ norm, displayName, points, entries }))
 }
 
 /** Per-day total volume (reps × sets) for a preset — feeds the heatmap accent highlight. */
