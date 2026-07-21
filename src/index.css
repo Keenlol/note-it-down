@@ -1277,6 +1277,26 @@ html, body {
   cursor: pointer;
 }
 
+/* Repeat of the previous value: same height, so a full pill would stack onto
+   the one before it. Collapses to a dot — the run's leftmost point keeps the
+   pill and carries the label for all of them. */
+.bw-node.is-dot {
+  min-width: 0;
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--surface-2);
+}
+
+/* A 6px dot is below a comfortable tap target, so extend the hit area
+   invisibly — tapping a point still navigates to its date. */
+.bw-node.is-dot::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+
 /* Sits inside .bw-block — drop its own card chrome, add a divider from the
    graph, and flow in the page scroll (no internal scrollbar). */
 .bw-history-list {

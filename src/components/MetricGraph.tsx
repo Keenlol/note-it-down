@@ -15,7 +15,7 @@ export interface GraphPoint {
   gapAfter?: boolean  // break the line between this point and the next
 }
 
-interface Plotted { x: number; y: number; label: string; date: string; gapAfter: boolean }
+interface Plotted { x: number; y: number; label: string; date: string; gapAfter: boolean; dot: boolean }
 
 /**
  * Line + area chart used by the bodyweight and preset panels. Points are placed
@@ -38,10 +38,16 @@ export function MetricGraph({ points, accentHex, onSelectDate }: { points: Graph
   const plotW = VB_W - PAD_X * 2
   const plotH = VB_H - PAD_T - PAD_B
 
-  const pts: Plotted[] = points.map(p => {
+  const pts: Plotted[] = points.map((p, i) => {
     const x = PAD_X + (dayIndex(p.date, start) / spanDays) * plotW
     const y = PAD_T + (1 - (p.value - lo) / range) * plotH
-    return { x, y, label: p.label, date: p.date, gapAfter: p.gapAfter === true }
+    // A repeated value plots at the identical height, so a run of them stacks
+    // its pills into an unreadable pile. Only the leftmost of each run keeps
+    // its pill; the rest collapse to dots. A changed value — or a gap, which
+    // starts a fresh segment — begins a new run and so gets a pill again.
+    const prev = points[i - 1]
+    const dot = prev !== undefined && prev.value === p.value && prev.gapAfter !== true
+    return { x, y, label: p.label, date: p.date, gapAfter: p.gapAfter === true, dot }
   })
 
   // Split into contiguous runs: a point flagged gapAfter ends its run, so a
@@ -85,14 +91,15 @@ export function MetricGraph({ points, accentHex, onSelectDate }: { points: Graph
         {pts.map((p, i) => (
           <span
             key={i}
-            className="bw-node"
+            className={`bw-node${p.dot ? ' is-dot' : ''}`}
             style={{ left: `${(p.x / VB_W) * 100}%`, top: `${(p.y / VB_H) * 100}%`, background: accentHex }}
+            title={p.dot ? p.label : undefined}
             onPointerDown={tap}
             // Stop here so tapping a node jumps to that date without also
             // toggling the expandable row the graph may sit inside.
             onClick={e => { e.stopPropagation(); onSelectDate?.(p.date) }}
           >
-            {p.label}
+            {p.dot ? null : p.label}
           </span>
         ))}
       </div>
