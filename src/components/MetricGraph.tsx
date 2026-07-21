@@ -12,9 +12,10 @@ export interface GraphPoint {
   date: string   // YYYY-MM-DD — drives horizontal position within the window
   value: number  // drives vertical position (auto-scaled to the series min/max)
   label: string  // text rendered inside the data-point pill
+  gapAfter?: boolean  // break the line between this point and the next
 }
 
-interface Plotted { x: number; y: number; label: string; date: string }
+interface Plotted { x: number; y: number; label: string; date: string; gapAfter: boolean }
 
 /**
  * Line + area chart used by the bodyweight and preset panels. Points are placed
@@ -40,23 +41,37 @@ export function MetricGraph({ points, accentHex, onSelectDate }: { points: Graph
   const pts: Plotted[] = points.map(p => {
     const x = PAD_X + (dayIndex(p.date, start) / spanDays) * plotW
     const y = PAD_T + (1 - (p.value - lo) / range) * plotH
-    return { x, y, label: p.label, date: p.date }
+    return { x, y, label: p.label, date: p.date, gapAfter: p.gapAfter === true }
   })
 
-  const line = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-  const area = pts.length > 1
-    ? `${pts[0].x.toFixed(1)},${VB_H - PAD_B} ${line} ${pts[pts.length - 1].x.toFixed(1)},${VB_H - PAD_B}`
-    : ''
+  // Split into contiguous runs: a point flagged gapAfter ends its run, so a
+  // session where the exercise wasn't done shows as a break rather than being
+  // drawn through (which would read as a straight line across missing data).
+  const segments: Plotted[][] = []
+  let run: Plotted[] = []
+  for (const p of pts) {
+    run.push(p)
+    if (p.gapAfter) { segments.push(run); run = [] }
+  }
+  if (run.length > 0) segments.push(run)
+
+  const pathOf = (seg: Plotted[]) =>
+    seg.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
 
   return (
     <div className="bw-graph">
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="bw-graph-svg">
-        {pts.length > 1 && (
-          <polygon points={area} fill="var(--accent-tint)" />
-        )}
-        {pts.length > 1 && (
+        {segments.map((seg, i) => seg.length > 1 && (
+          <polygon
+            key={`a${i}`}
+            points={`${seg[0].x.toFixed(1)},${VB_H - PAD_B} ${pathOf(seg)} ${seg[seg.length - 1].x.toFixed(1)},${VB_H - PAD_B}`}
+            fill="var(--accent-tint)"
+          />
+        ))}
+        {segments.map((seg, i) => seg.length > 1 && (
           <polyline
-            points={line}
+            key={`l${i}`}
+            points={pathOf(seg)}
             fill="none"
             stroke={accentHex}
             strokeWidth={2}
@@ -64,7 +79,7 @@ export function MetricGraph({ points, accentHex, onSelectDate }: { points: Graph
             strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
-        )}
+        ))}
       </svg>
       <div className="bw-graph-nodes">
         {pts.map((p, i) => (
@@ -73,7 +88,9 @@ export function MetricGraph({ points, accentHex, onSelectDate }: { points: Graph
             className="bw-node"
             style={{ left: `${(p.x / VB_W) * 100}%`, top: `${(p.y / VB_H) * 100}%`, background: accentHex }}
             onPointerDown={tap}
-            onClick={() => onSelectDate?.(p.date)}
+            // Stop here so tapping a node jumps to that date without also
+            // toggling the expandable row the graph may sit inside.
+            onClick={e => { e.stopPropagation(); onSelectDate?.(p.date) }}
           >
             {p.label}
           </span>

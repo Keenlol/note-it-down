@@ -1,5 +1,5 @@
 import { getAllDayKeys, loadDay, saveDay } from './storage'
-import { parseLine, type ParsedLine } from './parser'
+import { parseLine, normalizeName, type ParsedLine } from './parser'
 import { getBwOn } from './bodyweight'
 import { type SortMode, relativeTime } from './exercises'
 
@@ -165,6 +165,82 @@ export function getPresetHistory(norm: string): PresetHistoryEntry[] {
 
   return Array.from(byDate, ([date, { volume, load }]) => ({ date, volume, load }))
     .sort((a, b) => b.date.localeCompare(a.date))
+}
+
+export interface PresetExerciseSeries {
+  norm: string                   // canonical exercise key (alias-resolved)
+  displayName: string            // name as written in the most recent session
+  entries: PresetHistoryEntry[]  // newest first, one per session that included it
+}
+
+/**
+ * Split a preset's history into one series per exercise, instead of collapsing
+ * each session into a single total.
+ *
+ * The combined total can't distinguish "trained harder" from "did one more
+ * movement" — dropping a single bodyweight exercise swings it by more than any
+ * real strength change, so the shape of the combined line is dominated by which
+ * exercises were present rather than by progress. Per-exercise series each
+ * auto-scale to their own range, so each one reads as its own progression.
+ *
+ * Ordering follows the most recent session's line order (so the list matches
+ * how the workout is actually written), with exercises that have since been
+ * dropped appended after, in the order they were last seen.
+ */
+export function getPresetExerciseSeries(
+  presetNorm: string,
+  aliases: Record<string, string> = {},
+): PresetExerciseSeries[] {
+  interface Acc {
+    displayName: string
+    order: number
+    byDate: Map<string, { volume: number; load: number }>
+  }
+  const byExercise = new Map<string, Acc>()
+  let order = 0
+
+  // Newest day first, so the first time we see an exercise is its most recent
+  // occurrence — that fixes both its display name and its position in the list.
+  const dates = [...getAllDayKeys()].sort((a, b) => b.localeCompare(a))
+
+  for (const date of dates) {
+    const day = loadDay(date)
+    if (!day) continue
+    const bw = getBwOn(date)
+    const parsed = day.rawText.split('\n').map(l => parseLine(l, bw))
+
+    for (const block of presetBlocks(parsed)) {
+      if (block.norm !== presetNorm) continue
+
+      for (const idx of block.exerciseIndices) {
+        const ex = parsed[idx].exercise!
+        if (ex.volume <= 0) continue
+        const raw = normalizeName(ex.name)
+        const canonical = aliases[raw] ?? raw
+
+        let acc = byExercise.get(canonical)
+        if (!acc) {
+          acc = { displayName: ex.name, order: order++, byDate: new Map() }
+          byExercise.set(canonical, acc)
+        }
+        // Same exercise logged twice in one session sums into that session's point.
+        const cur = acc.byDate.get(date) ?? { volume: 0, load: 0 }
+        cur.volume += ex.volume
+        cur.load += ex.weightKg * ex.volume
+        acc.byDate.set(date, cur)
+      }
+    }
+  }
+
+  return Array.from(byExercise, ([norm, acc]) => ({
+    norm,
+    displayName: acc.displayName,
+    order: acc.order,
+    entries: Array.from(acc.byDate, ([date, { volume, load }]) => ({ date, volume, load }))
+      .sort((a, b) => b.date.localeCompare(a.date)),
+  }))
+    .sort((a, b) => a.order - b.order)
+    .map(({ norm, displayName, entries }) => ({ norm, displayName, entries }))
 }
 
 /** Per-day total volume (reps × sets) for a preset — feeds the heatmap accent highlight. */

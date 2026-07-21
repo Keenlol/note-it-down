@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Check, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
-  getPresetHistory, type PresetHistoryEntry,
+  getPresetHistory, getPresetExerciseSeries, type PresetHistoryEntry,
 } from '../utils/presets'
-import { parseLine } from '../utils/parser'
 import { type WeightUnit } from '../utils/settings'
 import { todayKey } from '../utils/storage'
 import { windowStart, dayIndex } from '../utils/window'
@@ -27,6 +26,7 @@ interface Props {
   onResizeEnd: () => void
   weightUnit?: WeightUnit
   showDownTrend?: boolean
+  aliases?: Record<string, string>
 }
 
 const KG_PER_LB = 0.453592
@@ -95,8 +95,10 @@ function VolumeHistoryList({ entries, unit, showDownTrend, onSelectDate }: { ent
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
-export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVersion, onDataChange, height, onResize, onResizeEnd, weightUnit = 'kg', showDownTrend = true }: Props) {
+export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVersion, onDataChange, height, onResize, onResizeEnd, weightUnit = 'kg', showDownTrend = true, aliases = {} }: Props) {
   const [activeNorm, setActiveNorm] = useState<string | null>(null)
+  // Which exercise row has its history expanded (accordion — one at a time).
+  const [expandedEx, setExpandedEx] = useState<string | null>(null)
 
   // Stat-card ⋮ menu (rename / delete), portalled to body.
   const [menuOpen, setMenuOpen]         = useState(false)
@@ -158,6 +160,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
   useEffect(() => {
     if (!open) {
       setActiveNorm(null)
+      setExpandedEx(null)
       setMenuOpen(false)
       setRenaming(false)
       setRenameInput('')
@@ -178,25 +181,33 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNorm, dataVersion, open])
 
-  const latest = windowed[0]
+  // Per-exercise series, each clipped to the same visible window as `windowed`.
+  const series = useMemo(() => {
+    if (!activeNorm) return []
+    const start = windowStart()
+    const today = todayKey()
+    return getPresetExerciseSeries(activeNorm, aliases)
+      .map(s => ({
+        ...s,
+        entries: s.entries.filter(e => dayIndex(e.date, start) >= 0 && e.date <= today),
+      }))
+      .filter(s => s.entries.length > 0)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNorm, dataVersion, open, aliases])
+
+  // Session dates for this preset, oldest first — used to detect that an
+  // exercise was skipped on a session that did happen (a real gap in its line).
+  const sessionDates = useMemo(
+    () => [...windowed].map(e => e.date).reverse(),
+    [windowed],
+  )
+
   const totalLoad = windowed.reduce((sum, e) => sum + e.load, 0)
   // Recent cadence: average days between the last 5 sessions (needs ≥2).
   const recent = windowed.slice(0, 5)
   const cadence = recent.length >= 2
     ? Math.max(1, Math.round((dayIndex(recent[0].date, windowStart()) - dayIndex(recent[recent.length - 1].date, windowStart())) / (recent.length - 1)))
     : null
-
-  // Unique exercise names in the active preset (no weight/sets/reps) for the tag row.
-  const exerciseNames: string[] = []
-  if (active) {
-    const seen = new Set<string>()
-    for (const line of active.exercises) {
-      const name = parseLine(line).exercise?.name
-      if (!name) continue
-      const key = name.toLowerCase()
-      if (!seen.has(key)) { seen.add(key); exerciseNames.push(name) }
-    }
-  }
 
   function openMenu(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
@@ -256,7 +267,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                 key={entry.norm}
                 onPointerDown={tap}
                 className={`data-btn${activeNorm === entry.norm ? ' data-btn-filled' : ''}`}
-                onClick={() => setActiveNorm(entry.norm)}
+                onClick={() => { setActiveNorm(entry.norm); setExpandedEx(null) }}
               >
                 # {entry.displayName}
               </button>
@@ -274,10 +285,10 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
               {windowed.length > 0 ? (
                 <div className="data-stat-card">
                   <div className="data-stat-size">
-                    <span className="data-stat-size-value">{fmtFull(latest.load, weightUnit)} {weightUnit}</span>
+                    <span className="data-stat-size-value">{windowed.length}</span>
+                    <span className="data-stat-size-label">session{windowed.length !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="data-stat-counts">
-                    <span className="data-stat-count"><strong>{windowed.length}</strong> session{windowed.length !== 1 ? 's' : ''}</span>
                     <span className="data-stat-count"><strong>{fmtFull(totalLoad, weightUnit)}{weightUnit}</strong> total</span>
                     {cadence !== null && (
                       <span className="data-stat-count"><strong>~{cadence}d</strong> cadence</span>
@@ -297,26 +308,56 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
               </button>
             </div>
 
-            <div className="preset-tags">
-              {exerciseNames.map((name, i) => (
-                <span key={i} className="preset-tag">{name}</span>
-              ))}
-            </div>
+            {series.map(ex => {
+              const chrono = [...ex.entries].reverse()
+              const done = new Set(chrono.map(e => e.date))
+              return (
+                <div key={ex.norm} className="preset-block">
+                  <button
+                    className="preset-ex-head"
+                    onPointerDown={tap}
+                    onClick={() => setExpandedEx(cur => cur === ex.norm ? null : ex.norm)}
+                  >
+                    <span className="preset-ex-name">{ex.displayName}</span>
+                    <span className="preset-ex-latest">
+                      {fmtFull(chrono[chrono.length - 1].load, weightUnit)}{weightUnit}
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      className={`preset-ex-chevron${expandedEx === ex.norm ? ' open' : ''}`}
+                    />
+                  </button>
 
-            {windowed.length > 0 && (
-              <div className="preset-block">
-                <MetricGraph
-                  points={[...windowed].reverse().map(e => ({
-                    date: e.date,
-                    value: toUnit(e.load, weightUnit),
-                    label: fmtCompact(e.load, weightUnit),
-                  }))}
-                  accentHex={accentHex}
-                  onSelectDate={onSelectDate}
-                />
-                <VolumeHistoryList entries={windowed} unit={weightUnit} showDownTrend={showDownTrend} onSelectDate={onSelectDate} />
-              </div>
-            )}
+                  <MetricGraph
+                    points={chrono.map((e, i) => {
+                      // Gap when a later session happened that this exercise sat out.
+                      const next = chrono[i + 1]
+                      const skipped = next !== undefined && sessionDates.some(
+                        d => d > e.date && d < next.date && !done.has(d),
+                      )
+                      return {
+                        date: e.date,
+                        value: toUnit(e.load, weightUnit),
+                        label: fmtCompact(e.load, weightUnit),
+                        gapAfter: skipped,
+                      }
+                    })}
+                    accentHex={accentHex}
+                    onSelectDate={onSelectDate}
+                  />
+
+                  {expandedEx === ex.norm && (
+                    <VolumeHistoryList
+                      entries={ex.entries}
+                      unit={weightUnit}
+                      showDownTrend={showDownTrend}
+                      onSelectDate={onSelectDate}
+                    />
+                  )}
+                </div>
+              )
+            })}
           </>
         )}
       </div>

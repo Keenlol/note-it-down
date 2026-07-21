@@ -1419,25 +1419,45 @@ html, body {
 /* ── Preset sheet ── */
 
 /* Exercise lines inside each preset card — inner box */
-/* Contained exercises of the active preset, rendered as wrapping name-only tags
-   (styled like the settings Export/Import buttons) to save vertical space. */
-.preset-tags {
+/* Header of each per-exercise graph row: name, latest load, expand chevron.
+   The whole bar toggles that exercise's history (graph nodes stop propagation
+   so tapping a point still navigates to its date). */
+.preset-ex-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 5px 5px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.preset-ex-name {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-ex-latest {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--accent);
   flex-shrink: 0;
 }
 
-.preset-tag {
-  display: inline-flex;
-  align-items: center;
-  background: var(--surface-1);
-  color: var(--text-2);
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 6px 11px;
-  border-radius: 8px;
-  white-space: nowrap;
+.preset-ex-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.preset-ex-chevron.open {
+  transform: rotate(90deg);
 }
 
 /* Preset tabs reuse the sort-chip look but wrap to multiple rows. */
