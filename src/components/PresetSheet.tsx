@@ -313,39 +313,43 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
               const done = new Set(chrono.map(e => e.date))
               return (
                 <div key={ex.norm} className="preset-block">
+                  {/* The whole graph field is the expand hitbox; the name/latest
+                      row floats on top of it rather than taking its own band. */}
                   <button
-                    className="preset-ex-head"
+                    className="preset-ex-field"
                     onPointerDown={tap}
                     onClick={() => setExpandedEx(cur => cur === ex.norm ? null : ex.norm)}
                   >
-                    <span className="preset-ex-name">{ex.displayName}</span>
-                    <span className="preset-ex-latest">
-                      {fmtFull(chrono[chrono.length - 1].load, weightUnit)}{weightUnit}
+                    <span className="preset-ex-head">
+                      <span className="preset-ex-name">{ex.displayName}</span>
+                      <span className="preset-ex-latest">
+                        {fmtFull(chrono[chrono.length - 1].load, weightUnit)}{weightUnit}
+                      </span>
+                      <ChevronRight
+                        size={14}
+                        strokeWidth={2}
+                        className={`preset-ex-chevron${expandedEx === ex.norm ? ' open' : ''}`}
+                      />
                     </span>
-                    <ChevronRight
-                      size={14}
-                      strokeWidth={2}
-                      className={`preset-ex-chevron${expandedEx === ex.norm ? ' open' : ''}`}
+
+                    <MetricGraph
+                      points={chrono.map((e, i) => {
+                        // Gap when a later session happened that this exercise sat out.
+                        const next = chrono[i + 1]
+                        const skipped = next !== undefined && sessionDates.some(
+                          d => d > e.date && d < next.date && !done.has(d),
+                        )
+                        return {
+                          date: e.date,
+                          value: toUnit(e.load, weightUnit),
+                          label: fmtCompact(e.load, weightUnit),
+                          gapAfter: skipped,
+                        }
+                      })}
+                      accentHex={accentHex}
+                      onSelectDate={onSelectDate}
                     />
                   </button>
-
-                  <MetricGraph
-                    points={chrono.map((e, i) => {
-                      // Gap when a later session happened that this exercise sat out.
-                      const next = chrono[i + 1]
-                      const skipped = next !== undefined && sessionDates.some(
-                        d => d > e.date && d < next.date && !done.has(d),
-                      )
-                      return {
-                        date: e.date,
-                        value: toUnit(e.load, weightUnit),
-                        label: fmtCompact(e.load, weightUnit),
-                        gapAfter: skipped,
-                      }
-                    })}
-                    accentHex={accentHex}
-                    onSelectDate={onSelectDate}
-                  />
 
                   {expandedEx === ex.norm && (
                     <VolumeHistoryList

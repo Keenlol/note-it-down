@@ -1419,19 +1419,43 @@ html, body {
 /* ── Preset sheet ── */
 
 /* Exercise lines inside each preset card — inner box */
-/* Header of each per-exercise graph row: name, latest load, expand chevron.
-   The whole bar toggles that exercise's history (graph nodes stop propagation
-   so tapping a point still navigates to its date). */
-.preset-ex-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* The whole graph field is the expand hitbox (graph nodes stop propagation, so
+   tapping a data point still navigates to its date instead of toggling). */
+.preset-ex-field {
+  position: relative;
+  display: block;
   width: 100%;
-  padding: 7px 5px 5px;
+  padding: 0;
   background: none;
   border: none;
   text-align: left;
   cursor: pointer;
+}
+
+/* Name + latest load float on top of the graph rather than taking their own
+   band above it. pointer-events:none so taps fall through to the field (and to
+   any data-point pill sitting underneath). */
+.preset-ex-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 0;
+  pointer-events: none;
+}
+
+/* Shorter than the stat card above it — five of these stack in one sheet. */
+.preset-block .bw-graph {
+  height: 74px;
+  padding: 22px 12px 8px;
+}
+
+.preset-block .bw-graph-nodes {
+  inset: 22px 12px 8px;
 }
 
 .preset-ex-name {
