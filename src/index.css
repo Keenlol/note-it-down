@@ -1275,6 +1275,9 @@ html, body {
   box-shadow: 0 0 0 2px var(--surface-2);
   pointer-events: auto;   /* re-enable taps (the .bw-graph-nodes overlay disables them) */
   cursor: pointer;
+  /* Dots sit later in DOM order than the pill that labels them, so without
+     this they would paint over it. Pills always win. */
+  z-index: 2;
 }
 
 /* Repeat of the previous value: same height, so a full pill would stack onto
@@ -1287,6 +1290,7 @@ html, body {
   padding: 0;
   border-radius: 50%;
   box-shadow: 0 0 0 1.5px var(--surface-2);
+  z-index: 1;   /* below every pill */
 }
 
 /* A 6px dot is below a comfortable tap target, so extend the hit area
@@ -1460,7 +1464,7 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1;
+  z-index: 3;   /* above the node pills (2) and dots (1) */
   display: flex;
   align-items: center;
   gap: 8px;
