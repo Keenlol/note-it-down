@@ -44,6 +44,24 @@ export function saveShowDownTrend(show: boolean) {
   localStorage.setItem(SHOW_DOWN_TREND_KEY, show ? 'on' : 'off')
 }
 
+// ── Preset graph metric ───────────────────────────────────────────────────────
+
+/** Which figure the per-exercise graphs in the preset panel plot. */
+export type PresetMetric = 'load' | 'weight' | 'reps'
+
+const PRESET_METRIC_KEY = 'settings_presetMetric'
+
+const PRESET_METRICS: PresetMetric[] = ['load', 'weight', 'reps']
+
+export function getSavedPresetMetric(): PresetMetric {
+  const v = localStorage.getItem(PRESET_METRIC_KEY) as PresetMetric | null
+  return v && PRESET_METRICS.includes(v) ? v : 'load'
+}
+
+export function savePresetMetric(metric: PresetMetric): void {
+  localStorage.setItem(PRESET_METRIC_KEY, metric)
+}
+
 // ── Bottom-sheet height (user-resizable, remembered) ──────────────────────────
 
 const SHEET_HEIGHT_KEY = 'settings_sheetHeight'

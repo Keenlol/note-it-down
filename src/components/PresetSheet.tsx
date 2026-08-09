@@ -4,14 +4,19 @@ import { Check, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
-  getPresetHistory, getPresetExerciseSeries, type PresetHistoryEntry,
+  getPresetHistory, getPresetExerciseSeries,
+  type PresetHistoryEntry, type PresetExercisePoint,
 } from '../utils/presets'
-import { type WeightUnit } from '../utils/settings'
+import {
+  type WeightUnit, type PresetMetric,
+  getSavedPresetMetric, savePresetMetric,
+} from '../utils/settings'
 import { todayKey } from '../utils/storage'
 import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
 import { MetricGraph } from './MetricGraph'
 import { ExerciseHistoryList } from './ExerciseHistoryList'
+import { SegmentedControl } from './SegmentedControl'
 import { SheetHandle } from './SheetHandle'
 
 interface Props {
@@ -50,6 +55,17 @@ function fmtCompact(kg: number, unit: WeightUnit): string {
   return `${v}`
 }
 
+/** Plain number for the weight/reps pills — no unit suffix, it wouldn't fit. */
+function fmtNum(v: number): string {
+  const r = Math.round(v * 10) / 10
+  return r % 1 === 0 ? `${Math.round(r)}` : `${r}`
+}
+
+const METRIC_OPTIONS: { value: PresetMetric; label: string }[] = [
+  { value: 'load',   label: 'Volume' },
+  { value: 'weight', label: 'Weight' },
+  { value: 'reps',   label: 'Reps' },
+]
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
@@ -57,6 +73,9 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
   const [activeNorm, setActiveNorm] = useState<string | null>(null)
   // Which exercise row has its history expanded (accordion — one at a time).
   const [expandedEx, setExpandedEx] = useState<string | null>(null)
+  // Which figure every graph in the panel plots. Panel-local view preference,
+  // but remembered — re-picking it on every open would be tedious.
+  const [metric, setMetric] = useState<PresetMetric>(getSavedPresetMetric)
 
   // Stat-card ⋮ menu (rename / delete), portalled to body.
   const [menuOpen, setMenuOpen]         = useState(false)
@@ -129,6 +148,32 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
   }, [open])
 
   const active = activeNorm ? catalog.find(e => e.norm === activeNorm) ?? null : null
+
+  // How the selected metric is read off a session point, labelled, and scaled.
+  const metricView = useMemo(() => {
+    switch (metric) {
+      case 'weight':
+        return {
+          value: (p: PresetExercisePoint) => toUnit(p.weight, weightUnit),
+          label: (p: PresetExercisePoint) => fmtNum(toUnit(p.weight, weightUnit)),
+          // Roughly one plate change — a 2.5kg bump should read as a step up,
+          // not as the same full-height climb a 40kg one gets.
+          minRange: weightUnit === 'lbs' ? 10 : 5,
+        }
+      case 'reps':
+        return {
+          value: (p: PresetExercisePoint) => p.reps,
+          label: (p: PresetExercisePoint) => `${p.reps}`,
+          minRange: 4,
+        }
+      default:
+        return {
+          value: (p: PresetExercisePoint) => toUnit(p.load, weightUnit),
+          label: (p: PresetExercisePoint) => fmtCompact(p.load, weightUnit),
+          minRange: 0,   // spans orders of magnitude already — let it auto-scale
+        }
+    }
+  }, [metric, weightUnit])
 
   // Sessions within the visible heatmap window, newest first (graph reverses it).
   const windowed = useMemo(() => {
@@ -233,6 +278,15 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
             ))}
           </div>
         )}
+        {active && series.length > 0 && (
+          <div className="preset-metric-seg">
+            <SegmentedControl
+              options={METRIC_OPTIONS}
+              value={metric}
+              onChange={m => { setMetric(m); savePresetMetric(m) }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="preset-body">
@@ -270,6 +324,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
             {series.map(ex => {
               const chrono = [...ex.points].reverse()
               const done = new Set(chrono.map(e => e.date))
+              const latestSets = ex.entries[0]?.exercise.sets
               return (
                 <div key={ex.norm} className="preset-block">
                   {/* The whole graph field is the expand hitbox; the name/latest
@@ -281,6 +336,11 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                   >
                     <span className="preset-ex-head">
                       <span className="preset-ex-name">{ex.displayName}</span>
+                      {/* Sets rarely move, so they don't earn a graph of their
+                          own — the latest count rides along in the header. */}
+                      {latestSets !== undefined && (
+                        <span className="preset-ex-sets">{latestSets} set{latestSets !== 1 ? 's' : ''}</span>
+                      )}
                       <ChevronRight
                         size={14}
                         strokeWidth={2}
@@ -297,12 +357,13 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                         )
                         return {
                           date: e.date,
-                          value: toUnit(e.load, weightUnit),
-                          label: fmtCompact(e.load, weightUnit),
+                          value: metricView.value(e),
+                          label: metricView.label(e),
                           gapAfter: skipped,
                         }
                       })}
                       accentHex={accentHex}
+                      minRange={metricView.minRange}
                       onSelectDate={onSelectDate}
                     />
                   </button>

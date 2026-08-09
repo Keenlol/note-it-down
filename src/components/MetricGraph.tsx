@@ -23,7 +23,19 @@ interface Plotted { x: number; y: number; label: string; date: string; gapAfter:
  * the heatmap) and vertically by value, auto-scaled to the series range.
  * Tapping a node navigates to that date (via onSelectDate).
  */
-export function MetricGraph({ points, accentHex, onSelectDate }: { points: GraphPoint[]; accentHex: string; onSelectDate?: (date: string) => void }) {
+export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0 }: {
+  points: GraphPoint[]
+  accentHex: string
+  onSelectDate?: (date: string) => void
+  /**
+   * Smallest vertical span the plot is allowed to represent. Without it the
+   * series always fills the full height, so on a small-integer metric like reps
+   * an 8→9 change draws the same dramatic climb as a 60→100kg one. Pass the
+   * change size that should look meaningful for the metric; 0 keeps the plot
+   * fully auto-scaled.
+   */
+  minRange?: number
+}) {
   const start = windowStart()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -33,6 +45,13 @@ export function MetricGraph({ points, accentHex, onSelectDate }: { points: Graph
   let lo = Math.min(...values)
   let hi = Math.max(...values)
   if (lo === hi) { lo -= 1; hi += 1 }     // flat line → give it vertical room
+  // Widen a too-narrow span around its midpoint, so a small change reads as a
+  // small change instead of being stretched across the whole plot.
+  if (hi - lo < minRange) {
+    const mid = (lo + hi) / 2
+    lo = mid - minRange / 2
+    hi = mid + minRange / 2
+  }
   const range = hi - lo
 
   const plotW = VB_W - PAD_X * 2

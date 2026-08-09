@@ -1491,6 +1491,13 @@ html, body {
   white-space: nowrap;
 }
 
+.preset-ex-sets {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .preset-ex-chevron {
   margin-left: auto;
   color: var(--text-muted);
@@ -1505,6 +1512,16 @@ html, body {
 /* Preset tabs reuse the sort-chip look but wrap to multiple rows. */
 .preset-tabs {
   flex-wrap: wrap;
+}
+
+/* Metric switch for every graph in the panel — full width under the tabs. */
+.preset-metric-seg {
+  margin-top: 8px;
+}
+
+.preset-metric-seg .seg-control {
+  display: flex;
+  width: 100%;
 }
 
 /* ⋮ menu anchored to the top-right of the active preset's stat card. */

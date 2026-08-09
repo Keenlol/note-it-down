@@ -167,10 +167,18 @@ export function getPresetHistory(norm: string): PresetHistoryEntry[] {
     .sort((a, b) => b.date.localeCompare(a.date))
 }
 
+/** One session's figures for a single exercise — the graph plots one of these fields. */
+export interface PresetExercisePoint {
+  date: string
+  load: number    // Σ weightKg × reps × sets across the day's lines
+  weight: number  // heaviest weightKg logged that day (top set)
+  reps: number    // most reps logged in a single line that day (top set)
+}
+
 export interface PresetExerciseSeries {
   norm: string             // canonical exercise key (alias-resolved)
   displayName: string      // name as written in the most recent session
-  points: { date: string; load: number }[]  // newest first, one per session
+  points: PresetExercisePoint[]  // newest first, one per session
   entries: HistoryEntry[]  // newest first, one per logged line (graph aggregates these)
 }
 
@@ -195,7 +203,7 @@ export function getPresetExerciseSeries(
   interface Acc {
     displayName: string
     order: number
-    loadByDate: Map<string, number>
+    byDate: Map<string, { load: number; weight: number; reps: number }>
     entries: HistoryEntry[]
   }
   const byExercise = new Map<string, Acc>()
@@ -223,13 +231,20 @@ export function getPresetExerciseSeries(
 
         let acc = byExercise.get(canonical)
         if (!acc) {
-          acc = { displayName: ex.name, order: order++, loadByDate: new Map(), entries: [] }
+          acc = { displayName: ex.name, order: order++, byDate: new Map(), entries: [] }
           byExercise.set(canonical, acc)
         }
         acc.entries.push({ date, exercise: ex })
         // The graph plots one point per session, so a movement logged twice in
-        // a day sums — while the history below still lists both lines.
-        acc.loadByDate.set(date, (acc.loadByDate.get(date) ?? 0) + ex.weightKg * ex.volume)
+        // a day collapses — while the history below still lists both lines.
+        // Load sums (total work done), but weight and reps take the top set:
+        // averaging them would drag a heavy top set down toward the warm-ups,
+        // which reads as a regression when the session was actually stronger.
+        const day = acc.byDate.get(date) ?? { load: 0, weight: 0, reps: 0 }
+        day.load  += ex.weightKg * ex.volume
+        day.weight = Math.max(day.weight, ex.weightKg)
+        day.reps   = Math.max(day.reps, ex.reps)
+        acc.byDate.set(date, day)
       }
     }
   }
@@ -238,7 +253,7 @@ export function getPresetExerciseSeries(
     norm,
     displayName: acc.displayName,
     order: acc.order,
-    points: Array.from(acc.loadByDate, ([date, load]) => ({ date, load })),
+    points: Array.from(acc.byDate, ([date, d]) => ({ date, ...d })),
     entries: acc.entries,
   }))
     .sort((a, b) => a.order - b.order)
