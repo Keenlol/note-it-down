@@ -23,6 +23,11 @@ export function formatWeightDisplay(kg: number, unit: WeightUnit): string {
   return kg % 1 === 0 ? `${kg}kg` : `${Math.round(kg * 10) / 10}kg`
 }
 
+/** Convert a stored-kg value to a bare number in the user's preferred unit. */
+export function toDisplayWeight(kg: number, unit: WeightUnit): number {
+  return unit === 'lbs' ? kg / KG_PER_LB : kg
+}
+
 /** Format an absolute kg difference for display (used in trend chips). */
 export function formatWeightDiff(absKgDiff: number, unit: WeightUnit): string {
   const val = unit === 'lbs' ? absKgDiff / KG_PER_LB : absKgDiff
@@ -60,6 +65,24 @@ export function getSavedPresetMetric(): PresetMetric {
 
 export function savePresetMetric(metric: PresetMetric): void {
   localStorage.setItem(PRESET_METRIC_KEY, metric)
+}
+
+// ── AI export range ───────────────────────────────────────────────────────────
+
+/** How far back the AI-report export reaches. */
+export type AiRange = '1m' | '3m' | '1y' | 'all'
+
+const AI_RANGE_KEY = 'settings_aiRange'
+
+const AI_RANGES: AiRange[] = ['1m', '3m', '1y', 'all']
+
+export function getSavedAiRange(): AiRange {
+  const v = localStorage.getItem(AI_RANGE_KEY) as AiRange | null
+  return v && AI_RANGES.includes(v) ? v : '3m'
+}
+
+export function saveAiRange(range: AiRange): void {
+  localStorage.setItem(AI_RANGE_KEY, range)
 }
 
 // ── Bottom-sheet height (user-resizable, remembered) ──────────────────────────

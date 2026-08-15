@@ -1,14 +1,21 @@
-import { useRef, useState, useMemo } from 'react'
-import { Check, Download, Upload, Trash2, AlertTriangle, ExternalLink } from 'lucide-react'
+import { useRef, useState, useMemo, useEffect } from 'react'
+import {
+  Check, Download, Upload, Trash2, AlertTriangle, ExternalLink,
+  ClipboardCopy, FileDown,
+} from 'lucide-react'
 import {
   ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent,
   type WeightUnit, getSavedWeightUnit, saveWeightUnit,
   getSavedShowDownTrend, saveShowDownTrend,
+  type AiRange, getSavedAiRange, saveAiRange,
 } from '../utils/settings'
 import {
   getDataStats, formatSize, exportData, parseImportFile, applyImport,
   clearData, type ImportSummary,
 } from '../utils/data'
+import {
+  buildAiExport, aiExportStats, formatTokens, copyText, downloadMarkdown,
+} from '../utils/aiExport'
 import { SegmentedControl } from './SegmentedControl'
 import { SheetHandle } from './SheetHandle'
 import { tap } from '../utils/tap'
@@ -23,6 +30,13 @@ type DownTrend = 'show' | 'hide'
 const DOWN_TREND_OPTIONS: { value: DownTrend; label: string }[] = [
   { value: 'show', label: 'Show' },
   { value: 'hide', label: 'Hide' },
+]
+
+const AI_RANGE_OPTIONS: { value: AiRange; label: string }[] = [
+  { value: '1m',  label: '1M'  },
+  { value: '3m',  label: '3M'  },
+  { value: '1y',  label: '1Y'  },
+  { value: 'all', label: 'All' },
 ]
 
 type ConfirmState =
@@ -52,6 +66,8 @@ export function SettingsSheet({
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
   const [downTrend, setDownTrend]   = useState<DownTrend>(() => getSavedShowDownTrend() ? 'show' : 'hide')
   const [confirm, setConfirm]       = useState<ConfirmState>({ kind: 'none' })
+  const [aiRange, setAiRange]       = useState<AiRange>(() => getSavedAiRange())
+  const [copyState, setCopyState]   = useState<'idle' | 'ok' | 'fail'>('idle')
   const fileInputRef                = useRef<HTMLInputElement>(null)
 
   const stats = useMemo(
@@ -59,6 +75,21 @@ export function SettingsSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dataVersion],
   )
+
+  // Building the report walks every stored day, so only do it while the sheet
+  // is actually open.
+  const aiReport = useMemo(
+    () => (open ? buildAiExport(aiRange, weightUnit) : ''),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [open, aiRange, weightUnit, dataVersion],
+  )
+  const aiStats = useMemo(() => aiExportStats(aiReport), [aiReport])
+
+  useEffect(() => {
+    if (copyState === 'idle') return
+    const t = setTimeout(() => setCopyState('idle'), 1600)
+    return () => clearTimeout(t)
+  }, [copyState])
 
   function handleAccent(key: AccentKey) {
     saveAndApplyAccent(key)
@@ -80,6 +111,15 @@ export function SettingsSheet({
 
   function handleExport() {
     exportData()
+  }
+
+  function handleAiRange(range: AiRange) {
+    saveAiRange(range)
+    setAiRange(range)
+  }
+
+  async function handleAiCopy() {
+    setCopyState(await copyText(aiReport) ? 'ok' : 'fail')
   }
 
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -260,6 +300,56 @@ export function SettingsSheet({
                 </button>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* ── Analyse with AI ──────────────────────────────────── */}
+        <div className="settings-section">
+          <span className="settings-section-label">Analyse with AI</span>
+          <p className="settings-section-hint">
+            Writes your log as a compact report — totals, per-exercise progress, weekly
+            rollup, then every session — with a legend so any AI reads it correctly.
+            Paste it into ChatGPT, Claude or anything else. Nothing leaves this device
+            on its own; you send it yourself.
+          </p>
+
+          <SegmentedControl
+            options={AI_RANGE_OPTIONS}
+            value={aiRange}
+            onChange={handleAiRange}
+          />
+
+          {aiStats.sessions === 0 ? (
+            <p className="settings-section-hint">Nothing logged in this range yet.</p>
+          ) : (
+            <>
+              <div className="data-stat-counts">
+                <span className="data-stat-count"><strong>{aiStats.sessions}</strong> sessions</span>
+                <span className="data-stat-count"><strong>{formatTokens(aiStats.tokens)}</strong> tokens</span>
+                <span className="data-stat-count"><strong>{formatSize(aiStats.chars)}</strong> of text</span>
+              </div>
+
+              <div className="data-actions">
+                <button
+                  className="data-btn data-btn-filled"
+                  onPointerDown={tap}
+                  onClick={handleAiCopy}
+                >
+                  {copyState === 'ok'
+                    ? <Check size={14} strokeWidth={2} />
+                    : <ClipboardCopy size={14} strokeWidth={2} />}
+                  {copyState === 'ok' ? 'Copied' : copyState === 'fail' ? 'Copy failed' : 'Copy report'}
+                </button>
+                <button
+                  className="data-btn"
+                  onPointerDown={tap}
+                  onClick={() => downloadMarkdown(aiReport)}
+                >
+                  <FileDown size={14} strokeWidth={2} />
+                  Save .md
+                </button>
+              </div>
+            </>
           )}
         </div>
 
