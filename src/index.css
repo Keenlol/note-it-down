@@ -1,3 +1,24 @@
+/* ── Satoshi ──
+   One variable file per slant, wght 300–900. Vite fingerprints these into
+   dist/assets and the service worker caches them on first visit, so the app
+   keeps its typography offline. Everything else from the Satoshi package was
+   discarded — the static weights are redundant against the variable axis. */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./fonts/Satoshi-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./fonts/Satoshi-VariableItalic.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -26,8 +47,20 @@
   --delete:  rgba(220, 80, 80, 0.85);
 
   --cell-empty: var(--surface-1);
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-  --editor-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  /* Three type roles. All Satoshi today — the split exists so the display face
+     can be swapped without touching every heading rule. Hierarchy is carried by
+     weight, size and tracking off the single wght axis. */
+  --font-display: 'Satoshi', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font:         'Satoshi', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --editor-font:  'Satoshi', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* Satoshi's regular reads a touch thin as light-on-dark; 450 is the optical
+     match for what SF Pro 400 gave us. Small dim text steps up again to 500. */
+  --w-body:  450;
+  --w-mid:   500;
+  --w-label: 550;
+  --w-strong: 650;
+  --w-display: 800;
   --editor-size: 1.125rem;
   --editor-lh: 1.65;
   --pad: 24px;
@@ -37,6 +70,7 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
+  font-weight: var(--w-body);
   height: 100%;
   overscroll-behavior: none;
 }
@@ -224,6 +258,30 @@ html, body {
 
 /* ── Title row ── */
 
+/* Satoshi's lighter grades thin out fast at small sizes on a dark ground.
+   Everything at or below 0.75rem that also uses a dimmed colour steps up
+   one grade so it stays readable. */
+.heatmap-months,
+.encouragement-author,
+.settings-section-hint,
+.about-val,
+.about-sep,
+.about-link,
+.data-stat-count,
+.data-confirm-hint,
+.ex-last,
+.ex-count,
+.history-date,
+.history-values,
+.history-empty,
+.history-trend .trend-item,
+.dd-confirm-label,
+.preset-ex-sets,
+.trend,
+.new-label {
+  font-weight: var(--w-mid);
+}
+
 .title-row {
   display: flex;
   align-items: baseline;
@@ -233,16 +291,21 @@ html, body {
 }
 
 .title {
-  font-size: 2.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: var(--w-display);
+  letter-spacing: -0.04em;
   color: var(--text);
   line-height: 1.1;
 }
 
+/* Held at 1.375rem: this renders "Wednesday, September 24" beside the
+   Today button, and Satoshi is wider than SF Pro. The tighter tracking
+   buys the room back instead of spending more. */
 .title.past {
-  font-size: 1.375rem;
-  font-weight: 600;
+  font-size: clamp(1.2rem, 5.6vw, 1.375rem);
+  font-weight: var(--w-strong);
+  letter-spacing: -0.025em;
   color: var(--text-2);
 }
 
@@ -315,6 +378,7 @@ html, body {
 .editor-textarea {
   font-family: var(--editor-font);
   font-size: var(--editor-size);
+  font-weight: var(--w-body);
   line-height: var(--editor-lh);
   letter-spacing: normal;
   word-spacing: normal;
@@ -590,9 +654,10 @@ html, body {
 }
 
 .sheet-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: var(--w-display);
+  letter-spacing: -0.025em;
 }
 
 /* Keep both header states in DOM; whichever is active is in normal flow,
@@ -627,9 +692,9 @@ html, body {
 }
 
 .settings-section-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.7rem;
+  font-weight: var(--w-strong);
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-dim);
 }
@@ -665,7 +730,7 @@ html, body {
   color: var(--text-dim);
   font-family: var(--font);
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: var(--w-label);
   padding: 5px 0;
   border-radius: 6px;
   cursor: pointer;
@@ -744,18 +809,20 @@ html, body {
 }
 
 .data-stat-size-value {
-  font-size: 1.6rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: var(--w-display);
+  letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
 .data-stat-size-label {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
+  font-weight: var(--w-mid);
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .data-stat-counts {
@@ -771,7 +838,7 @@ html, body {
 
 .data-stat-count strong {
   color: var(--text-2);
-  font-weight: 600;
+  font-weight: var(--w-strong);
 }
 
 .data-actions {
@@ -789,7 +856,7 @@ html, body {
   color: var(--text-2);
   font-family: var(--font);
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: var(--w-label);
   padding: 6px 11px;
   border-radius: 8px;
   cursor: pointer;
@@ -853,7 +920,7 @@ html, body {
 
 .data-confirm-title {
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: var(--w-strong);
   color: var(--text);
 }
 
@@ -1070,8 +1137,8 @@ html, body {
 
 .ex-name {
   font-size: 0.92rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-weight: var(--w-label);
+  letter-spacing: -0.015em;
 }
 
 .ex-nickname {
@@ -1268,7 +1335,7 @@ html, body {
   padding: 0 5px;
   border-radius: 8px;
   font-size: 0.6rem;
-  font-weight: 700;
+  font-weight: var(--w-display);
   font-variant-numeric: tabular-nums;
   color: #000;
   white-space: nowrap;
@@ -1484,7 +1551,8 @@ html, body {
 
 .preset-ex-name {
   font-size: 0.92rem;
-  font-weight: 500;
+  font-weight: var(--w-label);
+  letter-spacing: -0.015em;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;

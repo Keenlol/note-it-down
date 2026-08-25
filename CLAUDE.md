@@ -47,6 +47,56 @@ Use CSS variables exclusively — never hardcode these values in new rules.
 
 The one exception to solid borders: `#2e2e2e` is used for input/circle borders that need slight visibility against a `--surface-1` background.
 
+### Typefaces
+
+**Satoshi** (Fontshare, FFL) is the only family. Two self-hosted variable
+woff2 files live in `src/fonts/` — `Satoshi-Variable.woff2` (upright) and
+`Satoshi-VariableItalic.woff2` — each covering `wght 300–900` on a single
+axis, 86 KB together. The static weights from the original package were
+discarded; do not re-add them. `src/fonts/LICENSE.txt` must stay.
+
+Vite fingerprints both files into `dist/assets` and the `sw-generator`
+plugin precaches them, so the app keeps its typography fully offline.
+Never load a font from a CDN here — it would break the offline install.
+
+Three role variables, all Satoshi today. The split exists so a display face
+can be swapped without touching every heading rule:
+
+| Variable         | Used by |
+|------------------|---------|
+| `--font-display` | `.title`, `.sheet-title`, `.data-stat-size-value` |
+| `--font`         | everything else |
+| `--editor-font`  | `.editor-overlay` + `.editor-textarea` |
+
+### Weight scale
+
+Hierarchy is carried by weight, size and tracking off the one `wght` axis.
+Use these tokens — do not write raw weight numbers.
+
+| Variable      | Value | Usage |
+|---------------|-------|-------|
+| `--w-body`    | `450` | Body default on `html, body` and the editor. Satoshi 400 reads thin as light-on-dark; 450 is the optical match for SF Pro 400 |
+| `--w-mid`     | `500` | Dim text at or below 0.75rem (see the grouped rule above `.title-row`) |
+| `--w-label`   | `550` | Row names, buttons, segmented control |
+| `--w-strong`  | `650` | Uppercase section labels, confirm titles, `.title.past` |
+| `--w-display` | `800` | `.title`, `.sheet-title`, storage figure, `.bw-node` |
+
+**Tracking travels with size.** Satoshi is wider than SF Pro and needs
+negative tracking as it gets bigger: `-0.04em` at 2.5rem, `-0.025em` at
+1.15–1.375rem, `-0.015em` at 0.92rem, `normal` in the editor. Uppercase
+micro-labels go positive (`0.04–0.05em`).
+
+Two constraints worth knowing:
+
+- **The editor must stay `letter-spacing: normal`.** `.editor-overlay` and
+  `.editor-textarea` have to be pixel-identical or the orange number
+  highlights drift off their digits. Any font property there goes on the
+  shared rule so both get it.
+- **`.title.past` is clamped**, not fixed: it renders
+  `"Wednesday, September 24"` beside the Today button, and at 1.375rem in
+  Satoshi that is flush against it at 375px. `clamp(1.2rem, 5.6vw, 1.375rem)`
+  shrinks it only where it is tight.
+
 ### Card / list row pattern
 Every list row uses a two-level nested box:
 
