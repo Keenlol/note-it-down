@@ -1,21 +1,24 @@
-/* ── Satoshi ──
-   One variable file per slant, wght 300–900. Vite fingerprints these into
-   dist/assets and the service worker caches them on first visit, so the app
-   keeps its typography offline. Everything else from the Satoshi package was
-   discarded — the static weights are redundant against the variable axis. */
+/* ── Typefaces ──
+   General Sans Semibold for display + UI chrome, Gambetta Regular for the
+   note itself. Both self-hosted from the Fontshare kit; Vite fingerprints
+   them and the sw-generator plugin precaches them, so the app keeps its
+   typography offline. Never load a font from a CDN here.
+
+   The kit ships ONE style per family — no other weights, no italics. See
+   the weight note in :root. */
 @font-face {
-  font-family: 'Satoshi';
-  src: url('./fonts/Satoshi-Variable.woff2') format('woff2');
-  font-weight: 300 900;
+  font-family: 'General Sans';
+  src: url('./fonts/GeneralSans-Semibold.woff2') format('woff2');
+  font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Satoshi';
-  src: url('./fonts/Satoshi-VariableItalic.woff2') format('woff2');
-  font-weight: 300 900;
-  font-style: italic;
+  font-family: 'Gambetta';
+  src: url('./fonts/Gambetta-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
   font-display: swap;
 }
 
@@ -47,21 +50,21 @@
   --delete:  rgba(220, 80, 80, 0.85);
 
   --cell-empty: var(--surface-1);
-  /* Three type roles. All Satoshi today — the split exists so the display face
-     can be swapped without touching every heading rule. Hierarchy is carried by
-     weight, size and tracking off the single wght axis. */
-  --font-display: 'Satoshi', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font:         'Satoshi', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --editor-font:  'Satoshi', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* Three type roles. General Sans carries the display and the UI chrome;
+     Gambetta carries the note text, which is the one surface that reads as
+     prose rather than as interface. */
+  --font-display: 'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font:         'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --editor-font:  'Gambetta', Georgia, 'Times New Roman', serif;
 
-  /* Satoshi's regular reads a touch thin as light-on-dark; 450 is the optical
-     match for what SF Pro 400 gave us. Small dim text steps up again to 500. */
-  --w-body:  450;
-  --w-mid:   500;
-  --w-label: 550;
-  --w-strong: 650;
-  --w-display: 800;
-  --editor-size: 1.125rem;
+  /* This kit has exactly one weight per family, so hierarchy rests on size,
+     tracking and colour — not weight. Restore a real scale here if the
+     variable families ever land. */
+  --w-ui:      600;   /* General Sans Semibold — the only sans weight we have */
+  --w-display: 600;
+  --w-editor:  400;   /* Gambetta Regular */
+
+  --editor-size: 1.25rem;
   --editor-lh: 1.65;
   --pad: 24px;
 }
@@ -70,7 +73,9 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-weight: var(--w-body);
+  font-weight: var(--w-ui);
+  /* One weight per family — never let the browser fake a heavier one. */
+  font-synthesis-weight: none;
   height: 100%;
   overscroll-behavior: none;
 }
@@ -258,28 +263,9 @@ html, body {
 
 /* ── Title row ── */
 
-/* Satoshi's lighter grades thin out fast at small sizes on a dark ground.
-   Everything at or below 0.75rem that also uses a dimmed colour steps up
-   one grade so it stays readable. */
-.heatmap-months,
-.encouragement-author,
-.settings-section-hint,
-.about-val,
-.about-sep,
-.about-link,
-.data-stat-count,
-.data-confirm-hint,
-.ex-last,
-.ex-count,
-.history-date,
-.history-values,
-.history-empty,
-.history-trend .trend-item,
-.dd-confirm-label,
-.preset-ex-sets,
-.trend,
-.new-label {
-  font-weight: var(--w-mid);
+strong, b {
+  font-weight: inherit;
+  color: var(--text);
 }
 
 .title-row {
@@ -294,18 +280,18 @@ html, body {
   font-family: var(--font-display);
   font-size: 2.5rem;
   font-weight: var(--w-display);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   color: var(--text);
   line-height: 1.1;
 }
 
-/* Held at 1.375rem: this renders "Wednesday, September 24" beside the
-   Today button, and Satoshi is wider than SF Pro. The tighter tracking
-   buys the room back instead of spending more. */
+/* Clamped, not fixed: this renders "Wednesday, September 24" beside the
+   Today button. In General Sans at 1.375rem that is 272px against 262px of
+   room at 375px wide, so it shrinks on narrow screens only. */
 .title.past {
-  font-size: clamp(1.2rem, 5.6vw, 1.375rem);
-  font-weight: var(--w-strong);
-  letter-spacing: -0.025em;
+  font-size: clamp(1.2rem, 5.4vw, 1.375rem);
+  font-weight: var(--w-ui);
+  letter-spacing: -0.02em;
   color: var(--text-2);
 }
 
@@ -378,7 +364,7 @@ html, body {
 .editor-textarea {
   font-family: var(--editor-font);
   font-size: var(--editor-size);
-  font-weight: var(--w-body);
+  font-weight: var(--w-editor);
   line-height: var(--editor-lh);
   letter-spacing: normal;
   word-spacing: normal;
@@ -693,7 +679,7 @@ html, body {
 
 .settings-section-label {
   font-size: 0.7rem;
-  font-weight: var(--w-strong);
+  font-weight: var(--w-ui);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -730,7 +716,7 @@ html, body {
   color: var(--text-dim);
   font-family: var(--font);
   font-size: 0.8rem;
-  font-weight: var(--w-label);
+  font-weight: var(--w-ui);
   padding: 5px 0;
   border-radius: 6px;
   cursor: pointer;
@@ -812,14 +798,14 @@ html, body {
   font-family: var(--font-display);
   font-size: 1.7rem;
   font-weight: var(--w-display);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
 .data-stat-size-label {
   font-size: 0.66rem;
-  font-weight: var(--w-mid);
+  font-weight: var(--w-ui);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -838,7 +824,7 @@ html, body {
 
 .data-stat-count strong {
   color: var(--text-2);
-  font-weight: var(--w-strong);
+  font-weight: var(--w-ui);
 }
 
 .data-actions {
@@ -856,7 +842,7 @@ html, body {
   color: var(--text-2);
   font-family: var(--font);
   font-size: 0.75rem;
-  font-weight: var(--w-label);
+  font-weight: var(--w-ui);
   padding: 6px 11px;
   border-radius: 8px;
   cursor: pointer;
@@ -920,7 +906,7 @@ html, body {
 
 .data-confirm-title {
   font-size: 0.82rem;
-  font-weight: var(--w-strong);
+  font-weight: var(--w-ui);
   color: var(--text);
 }
 
@@ -1137,7 +1123,7 @@ html, body {
 
 .ex-name {
   font-size: 0.92rem;
-  font-weight: var(--w-label);
+  font-weight: var(--w-ui);
   letter-spacing: -0.015em;
 }
 
@@ -1551,7 +1537,7 @@ html, body {
 
 .preset-ex-name {
   font-size: 0.92rem;
-  font-weight: var(--w-label);
+  font-weight: var(--w-ui);
   letter-spacing: -0.015em;
   color: var(--text);
   overflow: hidden;

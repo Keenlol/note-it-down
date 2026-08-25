@@ -49,53 +49,73 @@ The one exception to solid borders: `#2e2e2e` is used for input/circle borders t
 
 ### Typefaces
 
-**Satoshi** (Fontshare, FFL) is the only family. Two self-hosted variable
-woff2 files live in `src/fonts/` — `Satoshi-Variable.woff2` (upright) and
-`Satoshi-VariableItalic.woff2` — each covering `wght 300–900` on a single
-axis, 86 KB together. The static weights from the original package were
-discarded; do not re-add them. `src/fonts/LICENSE.txt` must stay.
+Two families, self-hosted in `src/fonts/` from a Fontshare kit (47 KB total):
 
-Vite fingerprints both files into `dist/assets` and the `sw-generator`
-plugin precaches them, so the app keeps its typography fully offline.
-Never load a font from a CDN here — it would break the offline install.
+| File | Role |
+|------|------|
+| `GeneralSans-Semibold.woff2` | display + all UI chrome |
+| `Gambetta-Regular.woff2` | the note text only |
 
-Three role variables, all Satoshi today. The split exists so a display face
-can be swapped without touching every heading rule:
+Both licence files (`LICENSE-GeneralSans.txt`, `LICENSE-Gambetta.txt`) must
+stay. Vite fingerprints the woff2 files into `dist/assets` and the
+`sw-generator` plugin precaches them, so the app keeps its typography fully
+offline. **Never load a font from a CDN here** — it would break the offline
+install.
 
-| Variable         | Used by |
-|------------------|---------|
-| `--font-display` | `.title`, `.sheet-title`, `.data-stat-size-value` |
-| `--font`         | everything else |
-| `--editor-font`  | `.editor-overlay` + `.editor-textarea` |
+| Variable         | Family | Used by |
+|------------------|--------|---------|
+| `--font-display` | General Sans | `.title`, `.sheet-title`, `.data-stat-size-value` |
+| `--font`         | General Sans | everything else |
+| `--editor-font`  | Gambetta | `.editor-overlay` + `.editor-textarea` |
 
-### Weight scale
+The split is prose vs. interface: Gambetta carries the one surface that
+reads as writing, General Sans carries everything that behaves as a control.
 
-Hierarchy is carried by weight, size and tracking off the one `wght` axis.
-Use these tokens — do not write raw weight numbers.
+### Weight
 
-| Variable      | Value | Usage |
-|---------------|-------|-------|
-| `--w-body`    | `450` | Body default on `html, body` and the editor. Satoshi 400 reads thin as light-on-dark; 450 is the optical match for SF Pro 400 |
-| `--w-mid`     | `500` | Dim text at or below 0.75rem (see the grouped rule above `.title-row`) |
-| `--w-label`   | `550` | Row names, buttons, segmented control |
-| `--w-strong`  | `650` | Uppercase section labels, confirm titles, `.title.past` |
-| `--w-display` | `800` | `.title`, `.sheet-title`, storage figure, `.bw-node` |
+**This kit ships exactly one style per family.** There is no second weight
+and no italic. Hierarchy therefore rests on size, tracking and colour — not
+weight. Use these tokens; do not write raw weight numbers.
 
-**Tracking travels with size.** Satoshi is wider than SF Pro and needs
-negative tracking as it gets bigger: `-0.04em` at 2.5rem, `-0.025em` at
-1.15–1.375rem, `-0.015em` at 0.92rem, `normal` in the editor. Uppercase
-micro-labels go positive (`0.04–0.05em`).
+| Variable      | Value | Meaning |
+|---------------|-------|---------|
+| `--w-ui`      | `600` | General Sans Semibold — the only sans weight available |
+| `--w-display` | `600` | same face; display reads larger, not heavier |
+| `--w-editor`  | `400` | Gambetta Regular |
 
-Two constraints worth knowing:
+Consequences to keep in mind:
 
+- `html, body` sets `font-synthesis-weight: none` so the browser never fakes
+  a heavier cut. A bare `<strong>` (default 700) would otherwise smear.
+- **`<strong>` means brighter, not bolder.** A global `strong, b` rule keeps
+  `font-weight: inherit` and lifts the colour to `--text` instead.
+- `font-variant-numeric: tabular-nums` is a **no-op** — neither family has a
+  `tnum` feature and both have proportional digits. The rules using it
+  (`.history-values`, `.ex-count`, `.about-val`, `.data-stat-size-value`,
+  `.bw-node`) are harmless but no longer align columns.
+- The five `font-style: italic` rules render as **synthetic oblique**, since
+  neither family ships an italic.
+
+Downloading the complete variable families from Fontshare would restore the
+weight range and real italics; the tokens above are the only edit needed.
+
+### Sizing and tracking
+
+- `--editor-size: 1.25rem`. Gambetta's x-height is `0.452` of its em against
+  General Sans's `0.534`, so it needs a larger size to read at the same
+  optical scale. At 1.25rem the line is also marginally narrower than the
+  previous 1.125rem setting, so nothing wraps sooner.
+- Tracking tightens as size grows: `-0.03em` at 2.5rem and 1.7rem,
+  `-0.02em` on `.title.past`, `-0.015em` at 0.92rem, `normal` in the editor.
+  Uppercase micro-labels go positive (`0.04–0.05em`).
 - **The editor must stay `letter-spacing: normal`.** `.editor-overlay` and
   `.editor-textarea` have to be pixel-identical or the orange number
   highlights drift off their digits. Any font property there goes on the
-  shared rule so both get it.
+  shared rule so both elements get it.
 - **`.title.past` is clamped**, not fixed: it renders
-  `"Wednesday, September 24"` beside the Today button, and at 1.375rem in
-  Satoshi that is flush against it at 375px. `clamp(1.2rem, 5.6vw, 1.375rem)`
-  shrinks it only where it is tight.
+  `"Wednesday, September 24"` beside the Today button, which in General Sans
+  at 1.375rem is 272px against 262px of room at 375px wide.
+  `clamp(1.2rem, 5.4vw, 1.375rem)` shrinks it on narrow screens only.
 
 ### Card / list row pattern
 Every list row uses a two-level nested box:
