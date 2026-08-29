@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dateToKey, todayKey } from '../utils/storage'
 import { getDayVolume } from '../utils/exercises'
 import { tap } from '../utils/tap'
@@ -135,9 +135,27 @@ export function Heatmap({ onDayClick, selectedDate, dataVersion, filterVolume, a
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bloom?.id])
 
+  // The cells are flex-sized, so the rounding setting (a percentage of a cell)
+  // only becomes a length once we know how wide one actually is. Publishing it
+  // as --heat-cell on the grid lets the cell and its selection ring share one
+  // radius calc instead of each guessing.
+  const gridRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+    const measure = () => {
+      const cell = grid.querySelector('.heatmap-cell')
+      if (cell) grid.style.setProperty('--heat-cell', `${cell.getBoundingClientRect().width}px`)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(grid)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <div className="heatmap-wrap">
-      <div className="heatmap-grid">
+      <div className="heatmap-grid" ref={gridRef}>
         {weeks.map((col, w) => (
           <div key={w} className="heatmap-col">
             {col.map((cell, d) => (

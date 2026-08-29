@@ -16,7 +16,7 @@ import { exerciseVolumePerDay } from './utils/exercises'
 import { presetVolumePerDay, presetBlocks } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { tap } from './utils/tap'
-import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedSheetHeight, saveSheetHeight } from './utils/settings'
+import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
@@ -512,9 +512,10 @@ export function App() {
   }, [])
 
 
-  // Apply saved accent color and weight unit on first render
+  // Apply saved accent color, weight unit and heatmap rounding on first render
   useEffect(() => {
     applyAccent(accentHex)
+    applyHeatRound(getSavedHeatRound())
     setDefaultWeightUnit(weightUnit)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

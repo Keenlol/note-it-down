@@ -140,3 +140,32 @@ export function saveAndApplyAccent(key: AccentKey) {
   applyAccent(def.hex)
   localStorage.setItem(ACCENT_STORAGE_KEY, key)
 }
+
+// ── Heatmap corner rounding ───────────────────────────────────────────────────
+
+/* Stored as a percentage of the cell's own size, not a pixel radius: cells are
+   flex-sized, so a fixed radius would read differently on a phone than on a
+   wide screen. 50 is already a full circle — the scale runs past it so the top
+   of the slider is unambiguously round rather than "almost". */
+export const HEAT_ROUND_MIN = 0
+export const HEAT_ROUND_MAX = 60
+export const HEAT_ROUND_DEFAULT = 24   // ≈ the 3px radius the grid shipped with
+
+const HEAT_ROUND_KEY = 'settings_heatRound'
+
+/** Write the rounding onto :root; the grid and its selection ring derive from it. */
+export function applyHeatRound(pct: number) {
+  document.documentElement.style.setProperty('--heat-round', String(pct))
+}
+
+export function getSavedHeatRound(): number {
+  const raw = localStorage.getItem(HEAT_ROUND_KEY)
+  if (raw === null) return HEAT_ROUND_DEFAULT
+  const v = Number(raw)
+  return Number.isFinite(v) && v >= HEAT_ROUND_MIN && v <= HEAT_ROUND_MAX ? v : HEAT_ROUND_DEFAULT
+}
+
+export function saveAndApplyHeatRound(pct: number) {
+  applyHeatRound(pct)
+  localStorage.setItem(HEAT_ROUND_KEY, String(pct))
+}

@@ -8,6 +8,8 @@ import {
   type WeightUnit, getSavedWeightUnit, saveWeightUnit,
   getSavedShowDownTrend, saveShowDownTrend,
   type AiRange, getSavedAiRange, saveAiRange,
+  HEAT_ROUND_MIN, HEAT_ROUND_MAX, HEAT_ROUND_DEFAULT,
+  getSavedHeatRound, saveAndApplyHeatRound,
 } from '../utils/settings'
 import {
   getDataStats, formatSize, exportData, parseImportFile, applyImport,
@@ -17,6 +19,7 @@ import {
   buildAiExport, aiExportStats, formatTokens, copyText, downloadMarkdown,
 } from '../utils/aiExport'
 import { SegmentedControl } from './SegmentedControl'
+import { Slider } from './Slider'
 import { SheetHandle } from './SheetHandle'
 import { tap } from '../utils/tap'
 
@@ -63,6 +66,7 @@ export function SettingsSheet({
   onAccentChange, onWeightUnitChange, onShowDownTrendChange,
 }: Props) {
   const [accent, setAccent]         = useState<AccentKey>(() => getSavedAccent())
+  const [heatRound, setHeatRound]   = useState<number>(() => getSavedHeatRound())
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
   const [downTrend, setDownTrend]   = useState<DownTrend>(() => getSavedShowDownTrend() ? 'show' : 'hide')
   const [confirm, setConfirm]       = useState<ConfirmState>({ kind: 'none' })
@@ -95,6 +99,11 @@ export function SettingsSheet({
     saveAndApplyAccent(key)
     setAccent(key)
     onAccentChange?.(key)
+  }
+
+  function handleHeatRound(pct: number) {
+    saveAndApplyHeatRound(pct)
+    setHeatRound(pct)
   }
 
   function handleWeightUnit(unit: WeightUnit) {
@@ -187,6 +196,26 @@ export function SettingsSheet({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* ── Heatmap corners ──────────────────────────────────── */}
+        <div className="settings-section">
+          <span className="settings-section-label">Heatmap corners</span>
+          <p className="settings-section-hint">
+            How round each day is in the grid above — it updates as you drag. The last
+            stretch of the slider is all circle; the selection ring follows the shape.
+          </p>
+          <Slider
+            value={heatRound}
+            min={HEAT_ROUND_MIN}
+            max={HEAT_ROUND_MAX}
+            defaultValue={HEAT_ROUND_DEFAULT}
+            snapWithin={2}
+            minLabel="Square"
+            maxLabel="Circle"
+            onChange={handleHeatRound}
+            ariaLabel="Heatmap corner rounding"
+          />
         </div>
 
         {/* ── Weight unit ─────────────────────────────────────── */}

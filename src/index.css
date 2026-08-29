@@ -67,6 +67,15 @@
   --editor-size: 1.25rem;
   --editor-lh: 1.65;
   --pad: 24px;
+
+  /* Heatmap cell geometry. --heat-round is a bare number: the corner radius as
+     a percentage of the cell's own size, overwritten on :root from settings
+     (50 and up is a full circle). --heat-cell is the measured cell size in px,
+     written per grid by Heatmap.tsx — the radius has to resolve to a length so
+     the selection ring can be offset from it and stay concentric. */
+  --heat-round: 24;
+  --heat-cell: 12px;    /* fallback only — each grid overwrites it on layout */
+  --heat-ring: 2.5px;   /* 1px clear of the cell + a 1.5px ring */
 }
 
 html, body {
@@ -148,10 +157,14 @@ html, body {
 }
 
 .heatmap-cell {
+  /* Declared here, not on :root: a custom property is substituted where it is
+     declared, so on :root this would bake in the fallback cell size instead of
+     the grid's measured one. The ring inherits the resolved length. */
+  --heat-radius: calc(var(--heat-round) * var(--heat-cell) / 100);
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 3px;
+  border-radius: var(--heat-radius);
   cursor: pointer;
   transition: opacity 0.15s;
 }
@@ -161,9 +174,21 @@ html, body {
 }
 
 .heatmap-cell.selected {
-  outline: 1.5px solid var(--accent);
-  outline-offset: 1px;
-  z-index: 1;   /* keep the selection outline above neighbouring bloom overlays */
+  z-index: 1;   /* keep the selection ring above neighbouring bloom overlays */
+}
+
+/* Drawn as a ring rather than an `outline` so its own rounding is ours to set.
+   A concentric ring's radius is the cell's plus the gap between them, which is
+   exactly --heat-ring — at any rounding the two curves stay parallel, and once
+   the cell reaches a circle the ring's radius exceeds half its box and the
+   browser clamps it to a circle too. */
+.heatmap-cell.selected::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--heat-ring));
+  border: 1.5px solid var(--accent);
+  border-radius: calc(var(--heat-radius) + var(--heat-ring));
+  pointer-events: none;
 }
 
 /* Radial bloom: each cell snaps straight to the accent color, then fades out.
@@ -769,6 +794,121 @@ strong, b {
 
 .seg-btn.active {
   color: var(--bg);
+}
+
+/* ── Slider ──
+   Continuous counterpart to the segmented control. `--p` (thumb) and `--t`
+   (default marker) are set inline by Slider.tsx; both are positioned along the
+   thumb's travel, which is inset by half a thumb at each end. */
+
+.slider {
+  --slider-thumb: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.slider-row {
+  position: relative;
+  height: 20px;
+}
+
+.slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* Filled portion is a hard-stop gradient on the track itself, so there is no
+   second element to keep in sync with the thumb. */
+.slider-input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--accent) calc(var(--p) * 100%),
+    var(--surface-1) 0
+  );
+}
+
+.slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--slider-thumb);
+  height: var(--slider-thumb);
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  margin-top: calc((4px - var(--slider-thumb)) / 2);   /* centre on the track */
+}
+
+.slider-input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-1);
+}
+
+.slider-input::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.slider-input::-moz-range-thumb {
+  width: var(--slider-thumb);
+  height: var(--slider-thumb);
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+}
+
+/* Both the notch and its caption hang off the same travel calc, so they stay
+   in one vertical line whatever the default is. */
+.slider-notch,
+.slider-default {
+  position: absolute;
+  left: calc(var(--slider-thumb) / 2 + var(--t) * (100% - var(--slider-thumb)));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.slider-notch {
+  top: 14px;
+  width: 2px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--text-muted);
+}
+
+.slider-legend {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.slider-default {
+  top: 0;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  margin: -4px 0 0;
+  font-family: var(--font);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.slider-default.active {
+  color: var(--text-2);
 }
 
 .settings-section-hint {

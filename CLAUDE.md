@@ -117,6 +117,22 @@ weight range and real italics; the tokens above are the only edit needed.
   (327px at 375px wide) since the Today button moved to the right edge, so
   `clamp(1.2rem, 5.4vw, 1.375rem)` only catches narrower screens.
 
+### Heatmap cell geometry
+Cell rounding is user-set, so nothing may hardcode a cell radius.
+
+| Variable        | Where | Meaning |
+|-----------------|-------|---------|
+| `--heat-round`  | `:root`, from settings | radius as a *percentage number* of the cell (50+ = circle) |
+| `--heat-cell`   | each `.heatmap-grid`, measured | cell size in px |
+| `--heat-radius` | `.heatmap-cell` | the two multiplied out |
+| `--heat-ring`   | `:root` | gap + width of the selection ring (2.5px) |
+
+`--heat-radius` must stay declared on `.heatmap-cell`: a custom property is
+substituted where it is declared, so putting the calc on `:root` would bake in
+the fallback cell size for every grid. The selection ring is a `::after`, not
+an `outline`, so its radius can be set to `--heat-radius + --heat-ring` — the
+value that keeps it concentric at every rounding.
+
 ### Card / list row pattern
 Every list row uses a two-level nested box:
 
@@ -220,6 +236,19 @@ const OPTIONS: { value: MyType; label: string }[] = [
 ]
 <SegmentedControl options={OPTIONS} value={current} onChange={setCurrent} />
 ```
+
+### Slider
+Use `<Slider>` for a continuous setting — the counterpart to SegmentedControl.
+```tsx
+<Slider
+  value={v} min={0} max={60}
+  defaultValue={24} snapWithin={2}      /* marks the default; taps back to it */
+  minLabel="Square" maxLabel="Circle"
+  onChange={setV}
+/>
+```
+Thumb and marker positions are CSS custom properties (`--p`, `--t`), no JS
+layout math. Both ride the thumb's travel, inset half a thumb at each end.
 
 ### Stat card (prominent value + supporting counts)
 Use when a section has one headline metric and several supporting counts.
