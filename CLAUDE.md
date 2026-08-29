@@ -184,17 +184,33 @@ background: linear-gradient(to top, var(--bg) 55%, transparent);
 ```
 
 ### Daily message
-The encouragement line lives in the bottom bar, above the icons. `.bottom-bar`
-is a bottom-anchored flex column and is `pointer-events: none`; its rows
-(`.bottom-bar-row`, `.encouragement`) re-enable them. A longer phrase grows the
-bar upward — the icon row never moves — and the taller gradient cannot swallow
-taps meant for the note underneath. `.content` reserves `104px` for it.
+`.encouragement-bar` is its own fixed strip above the icon row, and a **sibling**
+of `.bottom-bar`, not a child: at `z-index: 10` it passes under an open sheet
+(20) while the bar stays above at 30. A child could never do that — the bar's
+own z-index would carry it along. Both strips are `pointer-events: none` with
+only their contents re-enabling, so their gradients can't swallow taps meant
+for the note. `.content` reserves `104px` for the pair.
 
 The phrase does **not** flip on logged exercises: a preset drops a whole
 session in at once, which says it was planned, not trained. Finishing is a
-600 ms hold on the message (`done_YYYY-MM-DD` in localStorage, so it clears
+700 ms hold on the message (`done_YYYY-MM-DD` in localStorage, so it clears
 itself at midnight); holding again undoes it. The hold is inert on a day with
 no note text at all.
+
+Three animations, on two elements on purpose:
+
+| Class | Element | Plays |
+|-------|---------|-------|
+| `encouragement-in` / `-pop` | `.encouragement-anim` | on state change, via `key` |
+| `encouragement-charge` | `.encouragement-msg.holding` | the wind-up, `--hold-ms` long |
+| `confetti-x` / `-y` | portalled `.confetti` | on finish |
+
+Keeping the entry animation off the button matters: removing `.holding` sets
+the button's `animation-name` to `none` rather than swapping it, and a swap
+would restart whatever the button had been animating before the hold.
+`--hold-ms` (index.css) and `HOLD_MS` (Encouragement.tsx) must stay in step.
+The confetti is portalled to `<body>` so the burst covers the sheets, which the
+strip itself deliberately sits under.
 
 ### Ghost / suggestion text
 ```css

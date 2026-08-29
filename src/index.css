@@ -329,19 +329,39 @@ strong, b {
 }
 
 /* ── Daily message ──
-   Sits above the icons in the bottom bar. Holding it closes the day out: the
-   phrase swaps to the reward pool, the pill pops and throws confetti. It is a
-   deliberate gesture on purpose — a preset drops five exercises in at once,
-   which is not the same as having trained them. */
+   Its own fixed strip directly above the icon row. Deliberately a sibling of
+   the bar rather than a child: at z-index 10 it passes *under* an open sheet,
+   while the bar stays above at 30. A child could never do that — the bar's own
+   z-index would carry it along. Holding the message closes the day out.
 
-.encouragement {
-  position: relative;
+   --hold-ms must stay in step with HOLD_MS in Encouragement.tsx. */
+
+.encouragement-bar {
+  --hold-ms: 700ms;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(56px + env(safe-area-inset-bottom));   /* clears the icon row */
+  z-index: 10;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  max-width: min(440px, calc(100% - var(--pad) * 2));
+  justify-content: center;
+  padding: 10px var(--pad) 8px;
+  background: linear-gradient(to top, var(--bg) 62%, transparent);
+  pointer-events: none;
+}
+
+/* Carries the entry / pop only. Keeping those off the button means removing
+   .holding sets the button's animation to none rather than swapping names,
+   which would restart whatever the button was animating before the hold. */
+.encouragement-anim {
+  display: flex;
+  max-width: 440px;
   pointer-events: auto;
+  animation: encouragement-in 0.45s ease both;
+}
+
+.encouragement-anim.is-done {
+  animation: encouragement-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .encouragement-msg {
@@ -362,7 +382,6 @@ strong, b {
   -webkit-touch-callout: none;
   touch-action: manipulation;
   transition: transform 0.16s ease, background 0.25s ease;
-  animation: encouragement-in 0.45s ease both;
 }
 
 /* A day with something written in it is a day that can be finished — the pill
@@ -374,16 +393,31 @@ strong, b {
 
 .encouragement-msg.is-done {
   background: var(--accent-tint);
-  /* Replaces the entry fade — the button is re-keyed on finish, so this plays
-     exactly when the phrase swaps. */
-  animation: encouragement-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* The slow squeeze is the hold's progress bar: it runs for the hold duration,
-   and snaps back on release via the shorter transition above. */
+/* The wind-up doubles as the hold's progress bar: it runs for exactly the hold
+   duration, tightening and rattling harder the closer it gets to firing, so
+   the pop lands the moment the shaking peaks. Releasing drops the class and the
+   transition above snaps it back. */
 .encouragement-msg.holding {
-  transform: scale(0.94);
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.6, 1);
+  animation: encouragement-charge var(--hold-ms) linear both;
+}
+
+@keyframes encouragement-charge {
+  0%   { transform: scale(1)     translate(0, 0)          rotate(0deg); }
+  12%  { transform: scale(0.985) translate(0.4px, 0)      rotate(0.12deg); }
+  24%  { transform: scale(0.972) translate(-0.6px, 0.3px) rotate(-0.2deg); }
+  36%  { transform: scale(0.958) translate(1px, -0.4px)   rotate(0.35deg); }
+  46%  { transform: scale(0.946) translate(-1.4px, 0.5px) rotate(-0.5deg); }
+  56%  { transform: scale(0.934) translate(1.9px, -0.7px) rotate(0.7deg); }
+  64%  { transform: scale(0.925) translate(-2.4px, 0.9px) rotate(-0.9deg); }
+  72%  { transform: scale(0.917) translate(2.9px, -1.1px) rotate(1.1deg); }
+  79%  { transform: scale(0.91)  translate(-3.4px, 1.3px) rotate(-1.35deg); }
+  85%  { transform: scale(0.904) translate(3.9px, -1.6px) rotate(1.6deg); }
+  90%  { transform: scale(0.899) translate(-4.4px, 1.8px) rotate(-1.85deg); }
+  94%  { transform: scale(0.895) translate(4.8px, -2px)   rotate(2.1deg); }
+  97%  { transform: scale(0.892) translate(-5.2px, 2.2px) rotate(-2.35deg); }
+  100% { transform: scale(0.89)  translate(5.4px, -2.3px) rotate(2.5deg); }
 }
 
 .encouragement-text {
@@ -406,13 +440,6 @@ strong, b {
   flex-shrink: 0;
 }
 
-.encouragement-hint {
-  font-size: 0.64rem;
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 @keyframes encouragement-in {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -425,44 +452,60 @@ strong, b {
 }
 
 /* ── Confetti ──
-   Bursts from the centre of the message. Each bit carries its own vector,
-   spin and delay as custom properties; one keyframe flies them all. */
+   Full-screen burst, portalled to <body> so it covers the sheets too. Two
+   cannons fire inward from the sides: the outer span carries the horizontal
+   travel and the inner paper the arc, since one element can only interpolate
+   one transform — split in two, X decelerates while Y rises and falls. */
 
 .confetti {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
   pointer-events: none;
-  z-index: 1;
 }
 
 .confetti-bit {
   position: absolute;
-  border-radius: 1px;
-  background: var(--c);
-  animation: confetti-fly 1s cubic-bezier(0.15, 0.6, 0.35, 1) var(--delay) both;
+  animation: confetti-x var(--dur) cubic-bezier(0.12, 0.62, 0.3, 1) var(--delay) both;
 }
 
-@keyframes confetti-fly {
+@keyframes confetti-x {
+  from { transform: translateX(0); }
+  to   { transform: translateX(var(--dx)); }
+}
+
+.confetti-paper {
+  display: block;
+  border-radius: 1px;
+  background: var(--c);
+  animation: confetti-y var(--dur) linear var(--delay) both;
+}
+
+/* Per-segment easing: up on a decelerating curve, down on an accelerating one,
+   which is as close to gravity as two keyframe stops get. */
+@keyframes confetti-y {
   0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1);
   }
-  12% { opacity: 1; }
+  35% {
+    opacity: 1;
+    transform: translateY(var(--peak)) rotate(calc(var(--rot) * 0.35));
+    animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.6);
+  }
+  80% { opacity: 1; }
   100% {
     opacity: 0;
-    transform:
-      translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
-      scale(1)
-      rotate(var(--rot));
+    transform: translateY(var(--fall)) rotate(var(--rot));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .encouragement-msg { animation: none; }
-  .encouragement-msg.holding { transform: none; }
+  .encouragement-anim,
+  .encouragement-anim.is-done,
+  .encouragement-msg.holding { animation: none; }
 }
 
 .save-icon {
@@ -699,12 +742,8 @@ strong, b {
 
 /* ── Bottom bar ── */
 
-/* Two stacked rows: the day's message, then the icons. The icon row is the
-   last child of a bottom-anchored flex column, so it never moves — a longer
-   phrase grows the bar upward instead of pushing the buttons down.
-
-   The bar itself is click-through; only its rows take pointer events, so the
-   taller gradient can't swallow taps meant for the note underneath. */
+/* Click-through except for its row, so the gradient can't swallow taps meant
+   for the note underneath. */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -712,10 +751,8 @@ strong, b {
   right: 0;
   z-index: 30;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
-  gap: 10px;
   padding: 10px 0 calc(12px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, var(--bg) 62%, transparent);
   pointer-events: none;

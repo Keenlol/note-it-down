@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check } from 'lucide-react'
 import {
-  getEncouragement, isDayDone, setDayDone, isFinishHintSeen, markFinishHintSeen,
-  type Phrase,
+  getEncouragement, isDayDone, setDayDone, type Phrase,
 } from '../utils/encouragement'
 import { todayKey } from '../utils/storage'
 
@@ -11,9 +11,10 @@ interface Props {
   canFinish: boolean
 }
 
-const HOLD_MS = 600
-const CONFETTI_MS = 1000
-const BITS = 26
+/** Must stay in step with --hold-ms in index.css, which drives the charge-up. */
+const HOLD_MS = 700
+const BITS = 56
+const CONFETTI_CLEAR_MS = 2800
 
 // Confetti stays on the app's own palette rather than going full party-store:
 // the accent plus the two hues either side of it, and paper white.
@@ -22,23 +23,40 @@ const CONFETTI_COLORS = ['var(--accent)', '#eab308', '#22c55e', 'var(--text)']
 interface Bit {
   id: number
   style: React.CSSProperties
+  paper: React.CSSProperties
 }
 
+const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
+
+/**
+ * Two cannons, one per side, firing inward and upward. Horizontal travel is on
+ * the outer span and the arc on the inner paper, because a single element can
+ * only interpolate one transform — split in two, the X can decelerate while
+ * the Y rises and falls.
+ */
 function makeBits(seed: number): Bit[] {
   return Array.from({ length: BITS }, (_, i) => {
-    // Fan upward: angles from -170° to -10°, so nothing fires straight down.
-    const angle = (-170 + Math.random() * 160) * (Math.PI / 180)
-    const dist = 60 + Math.random() * 110
+    const fromLeft = i % 2 === 0
+    const dur = rand(1.4, 2.2)
+    const delay = rand(0, 260)
     return {
       id: seed * 1000 + i,
       style: {
-        '--dx': `${Math.cos(angle) * dist}px`,
-        '--dy': `${Math.sin(angle) * dist * 0.75 + 25}px`,   // a little gravity on the way out
-        '--rot': `${(Math.random() - 0.5) * 900}deg`,
-        '--delay': `${Math.random() * 90}ms`,
+        left: fromLeft ? '-14px' : 'calc(100% + 14px)',
+        bottom: `${rand(0, 38)}vh`,
+        '--dx': `${(fromLeft ? 1 : -1) * rand(45, 115)}vw`,
+        '--dur': `${dur}s`,
+        '--delay': `${delay}ms`,
+      } as React.CSSProperties,
+      paper: {
+        '--peak': `${-rand(18, 46)}vh`,
+        '--fall': `${rand(8, 60)}vh`,
+        '--rot': `${(Math.random() < 0.5 ? -1 : 1) * rand(360, 1440)}deg`,
+        '--dur': `${dur}s`,
+        '--delay': `${delay}ms`,
         '--c': CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        width: `${4 + Math.random() * 3}px`,
-        height: `${7 + Math.random() * 5}px`,
+        width: `${rand(5, 9)}px`,
+        height: `${rand(8, 14)}px`,
       } as React.CSSProperties,
     }
   })
@@ -49,8 +67,8 @@ function makeBits(seed: number): Bit[] {
  *
  * The phrase does not flip on its own: logging exercises means the work is
  * planned, not finished. Holding the message is the deliberate "I'm done" —
- * it pops, throws confetti, and swaps to the reward phrase for the rest of the
- * day. Holding again takes it back, for a misfire.
+ * it winds up, pops, throws confetti and swaps to the reward phrase for the
+ * rest of the day. Holding again takes it back, for a misfire.
  */
 export function Encouragement({ canFinish }: Props) {
   const [date] = useState(todayKey)
@@ -60,7 +78,6 @@ export function Encouragement({ canFinish }: Props) {
   )
   const [holding, setHolding] = useState(false)
   const [bits, setBits] = useState<Bit[]>([])
-  const [hintSeen, setHintSeen] = useState(isFinishHintSeen)
 
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const bitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -75,14 +92,12 @@ export function Encouragement({ canFinish }: Props) {
     setDayDone(date, true)
     setDone(true)
     setPhrase(getEncouragement(date, 'after'))
-    markFinishHintSeen()
-    setHintSeen(true)
     navigator.vibrate?.(35)
 
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setBits(makeBits(++burstId.current))
       clearTimeout(bitTimer.current)
-      bitTimer.current = setTimeout(() => setBits([]), CONFETTI_MS + 200)
+      bitTimer.current = setTimeout(() => setBits([]), CONFETTI_CLEAR_MS)
     }
   }
 
@@ -109,36 +124,47 @@ export function Encouragement({ canFinish }: Props) {
 
   if (!phrase) return null
 
-  const showHint = canFinish && !done && !hintSeen
-
   return (
-    <div className="encouragement">
-      {bits.length > 0 && (
-        <div className="confetti" aria-hidden="true">
-          {bits.map(b => <span key={b.id} className="confetti-bit" style={b.style} />)}
+    <>
+      <div className="encouragement-bar">
+        {/* Entry and pop live on this wrapper, the wind-up on the button, so
+            releasing a hold never restarts the wrapper's animation. */}
+        <div
+          key={done ? 'after' : 'before'}
+          className={`encouragement-anim${done ? ' is-done' : ''}`}
+        >
+          <button
+            type="button"
+            className={
+              `encouragement-msg${done ? ' is-done' : ''}` +
+              `${canFinish ? ' can-finish' : ''}${holding ? ' holding' : ''}`
+            }
+            onPointerDown={holdStart}
+            onPointerUp={holdEnd}
+            onPointerLeave={holdEnd}
+            onPointerCancel={holdEnd}
+            onContextMenu={e => e.preventDefault()}
+            aria-label={done ? 'Hold to undo finishing the day' : 'Hold to finish the day'}
+          >
+            {done && <Check className="encouragement-check" size={13} strokeWidth={2.5} />}
+            <span className="encouragement-text">{phrase.text}</span>
+            {phrase.author && <span className="encouragement-author">— {phrase.author}</span>}
+          </button>
         </div>
+      </div>
+
+      {/* Portalled to body: the message sits below the sheets, and the burst has
+          to cover everything including them. */}
+      {bits.length > 0 && createPortal(
+        <div className="confetti" aria-hidden="true">
+          {bits.map(b => (
+            <span key={b.id} className="confetti-bit" style={b.style}>
+              <i className="confetti-paper" style={b.paper} />
+            </span>
+          ))}
+        </div>,
+        document.body,
       )}
-
-      <button
-        key={done ? 'after' : 'before'}
-        type="button"
-        className={
-          `encouragement-msg${done ? ' is-done' : ''}` +
-          `${canFinish ? ' can-finish' : ''}${holding ? ' holding' : ''}`
-        }
-        onPointerDown={holdStart}
-        onPointerUp={holdEnd}
-        onPointerLeave={holdEnd}
-        onPointerCancel={holdEnd}
-        onContextMenu={e => e.preventDefault()}
-        aria-label={done ? 'Hold to undo finishing the day' : 'Hold to finish the day'}
-      >
-        {done && <Check className="encouragement-check" size={13} strokeWidth={2.5} />}
-        <span className="encouragement-text">{phrase.text}</span>
-        {phrase.author && <span className="encouragement-author">— {phrase.author}</span>}
-      </button>
-
-      {showHint && <span className="encouragement-hint">hold to finish the day</span>}
-    </div>
+    </>
   )
 }

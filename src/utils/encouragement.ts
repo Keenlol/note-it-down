@@ -88,23 +88,3 @@ export function setDayDone(date: string, done: boolean) {
     /* ignore quota / disabled storage */
   }
 }
-
-// The hold gesture has no visible affordance of its own, so a one-line hint
-// rides along until the first day is finished — then it never appears again.
-const HINT_KEY = 'encouragement_finishHintSeen'
-
-export function isFinishHintSeen(): boolean {
-  try {
-    return localStorage.getItem(HINT_KEY) === '1'
-  } catch {
-    return true
-  }
-}
-
-export function markFinishHintSeen() {
-  try {
-    localStorage.setItem(HINT_KEY, '1')
-  } catch {
-    /* ignore */
-  }
-}

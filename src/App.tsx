@@ -1022,11 +1022,11 @@ export function App() {
           )}
         </div>
       </div>
-      <div className="bottom-bar">
-        {/* Above the icons rather than under the date: it is the last thing on
-            the screen, and the thing you reach for when the session is over. */}
-        {!isViewingPast && <Encouragement canFinish={todayText.trim() !== ''} />}
+      {/* Above the icons but a sibling of the bar, not a child: it has to sit
+          below the sheets in the stack, and the bar sits above them. */}
+      {!isViewingPast && <Encouragement canFinish={todayText.trim() !== ''} />}
 
+      <div className="bottom-bar">
         <div className="bottom-bar-row">
           <div className="bottom-bar-main">
             <button
