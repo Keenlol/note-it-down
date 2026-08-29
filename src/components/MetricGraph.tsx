@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
 
@@ -36,6 +37,9 @@ export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0 }: {
    */
   minRange?: number
 }) {
+  // useId's colons are legal in an id but need escaping inside url(), so
+  // strip them rather than rely on that round-tripping.
+  const gradId = `mg-area-${useId().replace(/:/g, '')}`
   const start = windowStart()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -86,11 +90,25 @@ export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0 }: {
   return (
     <div className="bw-graph">
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="bw-graph-svg">
+        {/* userSpaceOnUse, not the default bounding box: every segment has to
+            fade against the same baseline, or a short one would run the whole
+            ramp inside its own few pixels of height. */}
+        <defs>
+          <linearGradient
+            id={gradId}
+            gradientUnits="userSpaceOnUse"
+            x1="0" y1={PAD_T}
+            x2="0" y2={VB_H - PAD_B}
+          >
+            <stop offset="0%" stopColor={accentHex} stopOpacity={0.26} />
+            <stop offset="100%" stopColor={accentHex} stopOpacity={0} />
+          </linearGradient>
+        </defs>
         {segments.map((seg, i) => seg.length > 1 && (
           <polygon
             key={`a${i}`}
             points={`${seg[0].x.toFixed(1)},${VB_H - PAD_B} ${pathOf(seg)} ${seg[seg.length - 1].x.toFixed(1)},${VB_H - PAD_B}`}
-            fill="var(--accent-tint)"
+            fill={`url(#${gradId})`}
           />
         ))}
         {segments.map((seg, i) => seg.length > 1 && (

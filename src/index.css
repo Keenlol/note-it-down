@@ -1728,9 +1728,12 @@ strong, b {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 16px;
-  padding: 0 5px;
+  /* Tight to the digits: the pills sit shoulder to shoulder on a busy series,
+     so every spare pixel of padding is one more overlap. Radius stays above
+     half the height, which keeps the ends fully round. */
+  min-width: 16px;
+  height: 13px;
+  padding: 0 3.5px;
   border-radius: 8px;
   font-size: 0.6rem;
   font-weight: var(--w-display);
