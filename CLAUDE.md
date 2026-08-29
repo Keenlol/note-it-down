@@ -48,29 +48,24 @@ Use CSS variables exclusively — never hardcode these values in new rules.
 
 The one exception to solid borders: `#2e2e2e` is used for input/circle borders that need slight visibility against a `--surface-1` background.
 
-### Typefaces
+### Typeface
 
-Two families, self-hosted in `src/fonts/` from a Fontshare kit (61 KB total):
+One family, self-hosted in `src/fonts/` (38 KB): `GeneralSans-Variable.woff2`,
+a single file covering weights 200–700. `LICENSE-GeneralSans.txt` must stay.
+Vite fingerprints the woff2 into `dist/assets` and the `sw-generator` plugin
+precaches it, so the app keeps its typography fully offline. **Never load a
+font from a CDN here** — it would break the offline install.
 
-| File | Role |
-|------|------|
-| `GeneralSans-Variable.woff2` | display + all UI chrome; one file, weights 200–700 |
-| `Gambetta-Regular.woff2` | the note text only |
+| Variable         | Used by |
+|------------------|---------|
+| `--font-display` | `.title`, `.sheet-title`, `.data-stat-size-value` |
+| `--font`         | everything else |
+| `--editor-font`  | `.editor-overlay`, `.editor-textarea`, `.ghost-block`, `.trend-abs` |
 
-Both licence files (`LICENSE-GeneralSans.txt`, `LICENSE-Gambetta.txt`) must
-stay. Vite fingerprints the woff2 files into `dist/assets` and the
-`sw-generator` plugin precaches them, so the app keeps its typography fully
-offline. **Never load a font from a CDN here** — it would break the offline
-install.
-
-| Variable         | Family | Used by |
-|------------------|--------|---------|
-| `--font-display` | General Sans | `.title`, `.sheet-title`, `.data-stat-size-value` |
-| `--font`         | General Sans | everything else |
-| `--editor-font`  | Gambetta | `.editor-overlay` + `.editor-textarea` |
-
-The split is prose vs. interface: Gambetta carries the one surface that
-reads as writing, General Sans carries everything that behaves as a control.
+All three resolve to General Sans — `--editor-font` is `var(--font)`. Keep the
+token anyway: the overlay, the textarea, the preset ghost block and the trend
+badges have to be set in *exactly* the same font, or the orange highlights
+drift off their digits. One name to change means they cannot fall out of step.
 
 ### Weight
 
@@ -85,7 +80,7 @@ exist for exactly two jobs, listed below — anything else gets `--w-ui`.
 | `--w-display` | `600` | titles and headline stats — larger, not heavier |
 | `--w-note`    | `400` | small descriptive text (job 1) |
 | `--w-medium`  | `500` | the load figure in a history row (job 2) |
-| `--w-editor`  | `400` | Gambetta Regular |
+| `--w-editor`  | `600` | the note text — the app's voice, not a lighter prose cut |
 
 **Job 1 — small descriptive text.** Text that comments on something rather
 than being the thing: hints, timestamps, captions, empty states, supporting
@@ -115,13 +110,16 @@ Consequences to keep in mind:
 - The `font-style: italic` rules still render as **synthetic oblique**: only
   the upright variable file is shipped. `GeneralSans-VariableItalic.woff2`
   from the same kit would fix that at +40 KB.
+- `--w-editor` is `600`: the note is set in the app's own voice rather than as
+  a lighter prose surface. Drop it to `400` if the editor should read quieter
+  than the chrome around it — it is the one token that decides.
 
 ### Sizing and tracking
 
-- `--editor-size: 1.25rem`. Gambetta's x-height is `0.452` of its em against
-  General Sans's `0.534`, so it needs a larger size to read at the same
-  optical scale. At 1.25rem the line is also marginally narrower than the
-  previous 1.125rem setting, so nothing wraps sooner.
+- `--editor-size: 1.0625rem`, which is 17px. Sized to hold the note at the
+  optical scale it had in Gambetta, whose x-height was `0.452` of its em
+  against General Sans's `0.534`: 1.25rem there is 1.0625rem here. It also
+  stays ≥16px, below which iOS zooms the page on focus.
 - Tracking tightens as size grows: `-0.03em` at 2.5rem and 1.7rem,
   `-0.02em` on `.title.past`, `-0.015em` at 0.92rem, `normal` in the editor.
   Uppercase micro-labels go positive (`0.04–0.05em`).

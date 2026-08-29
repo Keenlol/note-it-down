@@ -1,25 +1,16 @@
-/* ── Typefaces ──
-   General Sans for display + UI chrome, Gambetta Regular for the note itself.
-   Both self-hosted; Vite fingerprints them and the sw-generator plugin
-   precaches them, so the app keeps its typography offline. Never load a font
-   from a CDN here.
+/* ── Typeface ──
+   One family, General Sans, self-hosted: Vite fingerprints it and the
+   sw-generator plugin precaches it, so the app keeps its typography offline.
+   Never load a font from a CDN here.
 
-   General Sans is the variable cut: one 38 KB file covering 200–700, which is
-   why weight can carry hierarchy again. Every size below picks a step from the
-   scale in :root rather than a raw number. Italics are still synthetic — the
-   upright file is all we ship. */
+   It is the variable cut — one 38 KB file covering 200–700, which is why
+   weight can carry hierarchy. Every size below picks a step from the scale in
+   :root rather than a raw number. Italics are synthetic; only the upright file
+   is shipped. */
 @font-face {
   font-family: 'General Sans';
   src: url('./fonts/GeneralSans-Variable.woff2') format('woff2');
   font-weight: 200 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Gambetta';
-  src: url('./fonts/Gambetta-Regular.woff2') format('woff2');
-  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
@@ -56,12 +47,13 @@
   --bg-dim: #000000;   /* the whole gap to --bg is only 13 steps — take all of it */
 
   --cell-empty: var(--surface-1);
-  /* Three type roles. General Sans carries the display and the UI chrome;
-     Gambetta carries the note text, which is the one surface that reads as
-     prose rather than as interface. */
+  /* One family in three roles. --editor-font is no longer a different face,
+     but the token stays: the editor overlay, the ghost text, the preset block
+     and the trend badges all have to be set in exactly the same font as the
+     textarea or the highlights drift off their digits. One name to change. */
   --font-display: 'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font:         'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --editor-font:  'Gambetta', Georgia, 'Times New Roman', serif;
+  --editor-font:  var(--font);
 
   /* Semibold is the app's voice: chrome, names, labels and controls all sit at
      --w-ui, which is also what the page inherits. The lighter steps are not a
@@ -71,9 +63,12 @@
   --w-display: 600;   /* titles and headline stats; larger, not heavier */
   --w-note:    400;   /* small descriptive text: hints, timestamps, captions */
   --w-medium:  500;   /* the load figure in an exercise history row */
-  --w-editor:  400;   /* Gambetta Regular */
+  --w-editor:  600;   /* the note is set in the app's own voice */
 
-  --editor-size: 1.25rem;
+  /* Sized to hold the note at the same optical scale it had in Gambetta:
+     that face's x-height was 0.452 of its em against General Sans's 0.534, so
+     1.25rem there is 1.0625rem here. Also ≥16px, so iOS won't zoom on focus. */
+  --editor-size: 1.0625rem;
   --editor-lh: 1.65;
   --pad: 24px;
 
