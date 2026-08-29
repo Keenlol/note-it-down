@@ -80,7 +80,7 @@ exist for exactly two jobs, listed below — anything else gets `--w-ui`.
 | `--w-display` | `600` | titles and headline stats — larger, not heavier |
 | `--w-note`    | `400` | small descriptive text (job 1) |
 | `--w-medium`  | `500` | the load figure in a history row (job 2) |
-| `--w-editor`  | `600` | the note text — the app's voice, not a lighter prose cut |
+| `--w-editor`  | `400` | the note text and everything overlaying it |
 
 **Job 1 — small descriptive text.** Text that comments on something rather
 than being the thing: hints, timestamps, captions, empty states, supporting
@@ -110,9 +110,10 @@ Consequences to keep in mind:
 - The `font-style: italic` rules still render as **synthetic oblique**: only
   the upright variable file is shipped. `GeneralSans-VariableItalic.woff2`
   from the same kit would fix that at +40 KB.
-- `--w-editor` is `600`: the note is set in the app's own voice rather than as
-  a lighter prose surface. Drop it to `400` if the editor should read quieter
-  than the chrome around it — it is the one token that decides.
+- `--w-editor` is `400`: the note reads as writing, deliberately lighter than
+  the semibold chrome around it. Everything drawn over the note carries it too
+  — the ghost block, the trend badges, the new-exercise label — so a decoration
+  never comes out heavier than the line it annotates.
 
 ### Sizing and tracking
 

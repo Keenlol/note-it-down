@@ -63,7 +63,7 @@
   --w-display: 600;   /* titles and headline stats; larger, not heavier */
   --w-note:    400;   /* small descriptive text: hints, timestamps, captions */
   --w-medium:  500;   /* the load figure in an exercise history row */
-  --w-editor:  600;   /* the note is set in the app's own voice */
+  --w-editor:  400;   /* the note reads as writing, lighter than the chrome */
 
   /* Sized to hold the note at the same optical scale it had in Gambetta:
      that face's x-height was 0.452 of its em against General Sans's 0.534, so
@@ -664,6 +664,7 @@ strong, b {
   user-select: none;
   font-family: var(--editor-font);
   font-size: var(--editor-size);
+  font-weight: var(--w-editor);
   line-height: var(--editor-lh);
   white-space: pre-wrap;
   word-break: break-word;
@@ -694,6 +695,7 @@ strong, b {
   align-items: center;
   font-family: var(--editor-font);
   font-size: var(--editor-size);
+  font-weight: var(--w-editor);
   animation: trend-fade-in 0.12s ease 0.06s both;
 }
 
@@ -733,6 +735,7 @@ strong, b {
   align-items: center;
   font-family: var(--editor-font);
   font-size: var(--editor-size);
+  font-weight: var(--w-editor);
   pointer-events: none;
   user-select: none;
 }
