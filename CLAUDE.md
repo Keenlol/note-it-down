@@ -112,10 +112,10 @@ weight range and real italics; the tokens above are the only edit needed.
   `.editor-textarea` have to be pixel-identical or the orange number
   highlights drift off their digits. Any font property there goes on the
   shared rule so both elements get it.
-- **`.title.past` is clamped**, not fixed: it renders
-  `"Wednesday, September 24"` beside the Today button, which in General Sans
-  at 1.375rem is 272px against 262px of room at 375px wide.
-  `clamp(1.2rem, 5.4vw, 1.375rem)` shrinks it on narrow screens only.
+- **`.title.past` is clamped**, not fixed: `"Wednesday, September 24"` is
+  272px in General Sans at 1.375rem. It now has the full content width
+  (327px at 375px wide) since the Today button moved to the right edge, so
+  `clamp(1.2rem, 5.4vw, 1.375rem)` only catches narrower screens.
 
 ### Card / list row pattern
 Every list row uses a two-level nested box:
@@ -156,6 +156,16 @@ background: linear-gradient(to top, var(--bg) 55%, transparent);
 color: var(--text-dim);   /* inline ghost suffix */
 ```
 Preset ghost blocks float absolutely below the triggering line using `top: calc(N * var(--editor-lh) * 1em)`.
+
+### Sheet header
+Every sheet titles itself with its own bottom-bar glyph, then the name:
+```tsx
+<span className="sheet-title">
+  <Dumbbell className="sheet-title-icon" size={17} strokeWidth={1.8} />Exercises
+</span>
+```
+Icon is `--text-2` so it marks the panel without competing with the title.
+Use the same lucide icon the bottom bar uses for that sheet.
 
 ### Typography scale (inside sheets)
 ```

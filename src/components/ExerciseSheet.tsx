@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronRight, GitMerge, MoreVertical, Search, Tag, Trash2, X } from 'lucide-react'
+import { Check, ChevronRight, Dumbbell, GitMerge, MoreVertical, Search, Tag, Trash2, X } from 'lucide-react'
 import {
   buildCatalog, mergeExercises, addNickname, deleteExercise,
   relativeTime, getExerciseHistory,
@@ -226,7 +226,7 @@ export function ExerciseSheet({
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title">Exercises</span>
+          <span className="sheet-title"><Dumbbell className="sheet-title-icon" size={17} strokeWidth={1.8} />Exercises</span>
         </div>
 
         {/* Search bar — hidden during merge mode */}

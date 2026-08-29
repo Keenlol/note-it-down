@@ -1,7 +1,7 @@
 import { useRef, useState, useMemo, useEffect } from 'react'
 import {
   Check, Download, Upload, Trash2, AlertTriangle, ExternalLink,
-  ClipboardCopy, FileDown,
+  ClipboardCopy, FileDown, Settings as SettingsIcon,
 } from 'lucide-react'
 import {
   ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent,
@@ -163,7 +163,7 @@ export function SettingsSheet({
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title">Settings</span>
+          <span className="sheet-title"><SettingsIcon className="sheet-title-icon" size={17} strokeWidth={1.8} />Settings</span>
         </div>
       </div>
 

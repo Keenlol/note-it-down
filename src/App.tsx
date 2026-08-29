@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ArrowRight, Eye, Dumbbell, Hash, Settings, Scale } from 'lucide-react'
+import { Check, Eye, Dumbbell, Hash, Settings, Scale } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { WEEKS, weekOffsetForDate, historySetCount } from './utils/heatmapWindow'
 import { HeatmapHistory } from './components/HeatmapHistory'
@@ -960,16 +960,27 @@ export function App() {
       >
         <div className="title-row" style={titleStyle}>
           <h1 className={`title${isViewingPast ? ' past' : ''}`}>{titleText}</h1>
-          {isViewingPast ? (
-            <button className="jump-today" onPointerDown={tap} onClick={() => { setViewDate(null); setCursorPos(0) }}>
-              Today <ArrowRight size={13} strokeWidth={2} style={{ verticalAlign: 'middle', marginLeft: 2 }} />
-            </button>
-          ) : (
+          {!isViewingPast && (
             <span className={`save-icon${saveStatus === 'saved' && hasExercises ? ' visible' : ''}`}>
               <Check size={18} strokeWidth={2.5} />
             </span>
           )}
         </div>
+
+        {/* Back-to-today edge tab. Deliberately a sibling of .title-row, not a
+            child: the title is transformed and faded on every day-to-day swipe,
+            and riding along would make the tab flicker on each step. Kept
+            mounted at all times so it only ever cross-fades between past mode
+            and today. Still inside .content so touches on it bubble to the
+            swipe handlers. */}
+        <button
+          className={`jump-today${isViewingPast ? ' visible' : ''}`}
+          onPointerDown={tap}
+          onClick={() => { setViewDate(null); setCursorPos(0) }}
+          aria-label="Back to today"
+          aria-hidden={!isViewingPast}
+          tabIndex={isViewingPast ? 0 : -1}
+        />
 
         {!isViewingPast && <Encouragement phase={hasExercises ? 'after' : 'before'} />}
 
