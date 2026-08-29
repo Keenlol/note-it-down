@@ -51,6 +51,10 @@
   --accent-tint: rgba(249, 115, 22, 0.12); /* subtle accent bg */
   --delete:  rgba(220, 80, 80, 0.85);
 
+  /* The page steps back to this while a panel is up. The sheets keep painting
+     --bg, so the gap between the two is what separates them. */
+  --bg-dim: #000000;   /* the whole gap to --bg is only 13 steps — take all of it */
+
   --cell-empty: var(--surface-1);
   /* Three type roles. General Sans carries the display and the UI chrome;
      Gambetta carries the note text, which is the one surface that reads as
@@ -114,11 +118,22 @@ html, body {
 
 /* ── App shell ── */
 
+/* --bg-back is the page's own ground, which everything painted *behind* a
+   sheet follows (the app itself, the message strip's gradient). Anything that
+   sits above a sheet — the bottom bar — stays on --bg so it keeps matching the
+   sheet it overlaps. Timed to the sheet's own slide. */
 .app {
+  --bg-back: var(--bg);
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
   padding-top: env(safe-area-inset-top);
+  background: var(--bg-back);
+  transition: background 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.app.sheet-open {
+  --bg-back: var(--bg-dim);
 }
 
 .content {
@@ -357,7 +372,7 @@ strong, b {
   display: flex;
   justify-content: center;
   padding: 10px var(--pad) 8px;
-  background: linear-gradient(to top, var(--bg) 62%, transparent);
+  background: linear-gradient(to top, var(--bg-back) 62%, transparent);
   pointer-events: none;
 }
 

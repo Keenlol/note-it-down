@@ -29,6 +29,7 @@ Use CSS variables exclusively — never hardcode these values in new rules.
 | Variable        | Value                        | Usage |
 |-----------------|------------------------------|-------|
 | `--bg`          | `#0d0d0d`                    | Page background |
+| `--bg-dim`      | `#000000`                    | Page background while a sheet is open |
 | `--surface-1`   | `#1e1e1e`                    | Outer cards, borders, dividers, sort chips, sheet handle |
 | `--surface-2`   | `#131313`                    | Inner card boxes (history, preset exercise lists) |
 | `--surface-3`   | `#242424`                    | Elevated surfaces (dropdown menus) |
@@ -187,6 +188,12 @@ Keep row padding in this range — don't add extra vertical space.
 border-radius: 16px 16px 0 0;
 z-index: 20;
 ```
+A sheet paints `--bg`, the same colour as the page, so while one is open the
+page steps back to `--bg-dim` and the gap between them is what separates the
+two. `.app` carries `--bg-back` (`--bg`, or `--bg-dim` under `.sheet-open`);
+anything painted *behind* a sheet follows it — the app itself, the message
+strip's gradient. Anything above a sheet, i.e. the bottom bar, stays on `--bg`
+so it keeps matching the sheet it overlaps. The fade is timed to the slide.
 Sheets slide up from the bottom. Multiple sheets are mutually exclusive (opening one closes others). Sheet height is measured from `heatmapRef.bottom` to `visualViewport.height` so it fits between the heatmap and the bottom of the screen.
 
 ### Bottom bar buttons
