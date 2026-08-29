@@ -81,6 +81,17 @@
   --heat-round: 24;
   --heat-cell: 12px;    /* fallback only — each grid overwrites it on layout */
   --heat-ring: 2.5px;   /* 1px clear of the cell + a 1.5px ring */
+
+  /* Corner rounding. --r-card is the app's one radius for anything that reads
+     as a surface: cards, buttons, panels, inputs, list rows. --r-inner is what
+     a box nested inside a card gets — the outer radius minus the card's 5px
+     side padding, so the two curves stay parallel. --r-chip is for the small
+     things that live inside a card and would look like lozenges at card size.
+     Circles, the 4px slider track and the sheet's own 16px top are outside
+     this scale on purpose. */
+  --r-card:  12px;
+  --r-inner: 7px;   /* = --r-card − 5px card padding */
+  --r-chip:  6px;
 }
 
 html, body {
@@ -372,7 +383,7 @@ strong, b {
   gap: 4px 7px;
   background: none;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--r-card);
   padding: 6px 12px;
   font-family: var(--font);
   text-align: center;
@@ -420,18 +431,15 @@ strong, b {
   100% { transform: scale(0.89)  translate(5.4px, -2.3px) rotate(2.5deg); }
 }
 
-.encouragement-text {
+/* The attribution is set as the quote, not as a credit line: same size, same
+   colour, same weight — it just happens to be the last few words. */
+.encouragement-text,
+.encouragement-author {
   font-size: 0.86rem;
   line-height: 1.35;
   color: var(--text);
   font-weight: var(--w-ui);
   letter-spacing: -0.01em;
-}
-
-.encouragement-author {
-  font-size: 0.72rem;
-  color: var(--accent-dim);
-  white-space: nowrap;
 }
 
 .encouragement-check {
@@ -692,7 +700,7 @@ strong, b {
   align-items: center;
   gap: 2px;
   padding: 0.2em 0.45em;
-  border-radius: 4px;
+  border-radius: var(--r-chip);
 }
 
 .trend-item svg {
@@ -725,7 +733,7 @@ strong, b {
   color: var(--text-muted);
   background: var(--surface-1);
   padding: 0.2em 0.45em;
-  border-radius: 4px;
+  border-radius: var(--r-chip);
   pointer-events: none;
   user-select: none;
 }
@@ -922,7 +930,7 @@ strong, b {
 .seg-control {
   display: inline-flex;
   background: var(--surface-1);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 3px;
   position: relative;
 }
@@ -934,7 +942,7 @@ strong, b {
   bottom: 3px;
   left: 3px;
   width: calc((100% - 6px) / var(--seg-n));
-  border-radius: 6px;
+  border-radius: calc(var(--r-card) - 3px);   /* − the control's 3px padding */
   background: var(--text);
   transform: translateX(calc(100% * var(--seg-i)));
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
@@ -950,7 +958,7 @@ strong, b {
   font-size: 0.8rem;
   font-weight: var(--w-ui);
   padding: 5px 0;
-  border-radius: 6px;
+  border-radius: calc(var(--r-card) - 3px);
   cursor: pointer;
   position: relative;
   z-index: 1;            /* sit above the indicator */
@@ -1095,7 +1103,6 @@ strong, b {
 .data-stat-count,
 .preset-ex-sets,
 .dd-confirm-label,
-.encouragement-author,
 .about-val {
   font-weight: var(--w-note);
 }
@@ -1111,7 +1118,7 @@ strong, b {
 
 .about-card {
   background: var(--surface-1);
-  border-radius: 8px;
+  border-radius: var(--r-card);
 }
 
 .about-row {
@@ -1149,7 +1156,7 @@ strong, b {
 
 .data-stat-card {
   background: var(--surface-1);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -1212,7 +1219,7 @@ strong, b {
   font-size: 0.75rem;
   font-weight: var(--w-ui);
   padding: 6px 11px;
-  border-radius: 8px;
+  border-radius: var(--r-card);
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.12s, color 0.12s;
@@ -1252,7 +1259,7 @@ strong, b {
   flex-direction: column;
   gap: 10px;
   background: var(--surface-1);
-  border-radius: 10px;
+  border-radius: var(--r-card);
   padding: 12px 14px;
 }
 
@@ -1323,7 +1330,7 @@ strong, b {
   gap: 7px;
   background: var(--surface-2);
   border: 1px solid #2e2e2e;
-  border-radius: 7px;
+  border-radius: var(--r-card);
   padding: 7px 10px;
   margin-bottom: 10px;
 }
@@ -1393,14 +1400,14 @@ strong, b {
 }
 
 /* Exercise list rows
-   Outer card: border-radius 8px, horizontal padding 5px.
-   Inner content box: border-radius 3px (= 8 − 5), all gaps 5px.
+   Outer card: --r-card, horizontal padding 5px.
+   Inner content box: --r-inner (= --r-card − 5), all gaps 5px.
    overflow:hidden prevents inner margin-bottom from collapsing through
    the outer card (which would erase the bottom gap). */
 
 .exercise-item-wrap {
   background: var(--surface-1);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 0 5px;
   margin-bottom: 5px;
   overflow: hidden;
@@ -1549,7 +1556,7 @@ strong, b {
 
 .history-list {
   background: var(--surface-2);
-  border-radius: 3px; /* = outer(8) − padding(5) */
+  border-radius: var(--r-inner);
   padding: 12px 18px; /* left/right indent aligns with name text */
   margin-bottom: 5px; /* contained by overflow:hidden → becomes bottom gap inside outer */
   display: flex;
@@ -1562,7 +1569,7 @@ strong, b {
 
 .history-empty {
   background: var(--surface-2);
-  border-radius: 3px;
+  border-radius: var(--r-inner);
   padding: 6px 6px 8px 18px;
   margin-bottom: 5px;
   font-size: 0.75rem;
@@ -1580,7 +1587,7 @@ strong, b {
   cursor: pointer;
   margin: 0 -6px;
   padding: 0 6px;
-  border-radius: 4px;
+  border-radius: var(--r-chip);
   transition: background 0.12s;
 }
 
@@ -1663,7 +1670,7 @@ strong, b {
 /* Graph + history share one surface-2 field that grows with its content. */
 .bw-block {
   background: var(--surface-2);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   overflow: hidden;
 }
 
@@ -1766,7 +1773,7 @@ strong, b {
   z-index: 100;
   background: var(--surface-1);
   border: 2px solid var(--bg);
-  border-radius: 12px;
+  border-radius: var(--r-card);
   padding: 5px;
   min-width: 190px;
   display: flex;
@@ -1784,7 +1791,7 @@ strong, b {
 .ex-dropdown .data-btn {
   width: 100%;
   justify-content: flex-start;
-  border-radius: 7px;
+  border-radius: var(--r-inner);
   background: transparent;
   color: var(--text-2);
 }
@@ -1851,7 +1858,7 @@ strong, b {
   min-width: 0;
   background: var(--surface-2);
   border: 1px solid #2e2e2e;
-  border-radius: 5px;
+  border-radius: var(--r-inner);
   color: var(--text);
   font-family: var(--font);
   font-size: 0.75rem;
@@ -1993,7 +2000,7 @@ strong, b {
 /* Graph + history share one surface-2 field that grows with its content. */
 .preset-block {
   background: var(--surface-2);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   overflow: hidden;
 }
 

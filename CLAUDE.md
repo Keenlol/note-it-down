@@ -149,17 +149,31 @@ the fallback cell size for every grid. The selection ring is a `::after`, not
 an `outline`, so its radius can be set to `--heat-radius + --heat-ring` — the
 value that keeps it concentric at every rounding.
 
+### Corner rounding
+One scale, taken from the daily-message pill. Never write a raw radius.
+
+| Variable    | Value  | Used by |
+|-------------|--------|---------|
+| `--r-card`  | `12px` | anything that reads as a surface: cards, buttons, panels, inputs, search, list rows, dropdowns, graph blocks |
+| `--r-inner` | `7px`  | a box nested inside a card — see the formula below |
+| `--r-chip`  | `6px`  | small things inside a card that would look like lozenges at card size: trend badges, history rows, "new" labels |
+
+Outside the scale on purpose: circles (`50%`), the 4px slider track and 2px
+sheet handle (too thin to take a corner), the heatmap cell (user-set, see
+above), and the sheet's own `16px 16px 0 0` — it is the container everything
+else sits in, so it carries the one larger radius.
+
 ### Card / list row pattern
 Every list row uses a two-level nested box:
 
 | Layer        | `background`      | `border-radius` | notes                          |
 |--------------|-------------------|-----------------|--------------------------------|
-| Outer card   | `var(--surface-1)`| `8px`           | `padding: 0 5px`, `margin-bottom: 5px`, `overflow: hidden` |
-| Inner box    | `var(--surface-2)`| `3px`           | = outer(8) − padding(5); `margin-bottom: 5px` (creates bottom gap, contained by `overflow:hidden`) |
+| Outer card   | `var(--surface-1)`| `--r-card`      | `padding: 0 5px`, `margin-bottom: 5px`, `overflow: hidden` |
+| Inner box    | `var(--surface-2)`| `--r-inner`     | = `--r-card` − padding(5); `margin-bottom: 5px` (creates bottom gap, contained by `overflow:hidden`) |
 
 - Gap between outer edge and inner box: **5px on all four sides**
 - `overflow: hidden` on the outer card is mandatory — it prevents `margin-bottom` on the inner box from collapsing through the outer, and clips inner corners cleanly.
-- Inner `border-radius` formula: **outer_radius − side_padding** = 8 − 5 = 3px. Always derive it this way.
+- Inner `border-radius` formula: **outer_radius − side_padding** = 12 − 5 = 7px, which is `--r-inner`. Always derive it this way — the segmented control does the same against its own 3px padding.
 - Rows separated by `margin-bottom: 5px` (space, not a line/border).
 
 ### Row height
@@ -347,7 +361,7 @@ const [confirm, setConfirm] = useState<ConfirmState>({ kind: 'none' })
   </div>
 )}
 ```
-- Confirmation card: `background: --surface-1`, `border-radius: 10px`, `padding: 12px 14px`
+- Confirmation card: `background: --surface-1`, `border-radius: --r-card`, `padding: 12px 14px`
 - Title: `0.82rem weight-600`, `--text`
 - Hint: `0.72rem`, `--text-dim`, `line-height: 1.5`
 - Always offer a Cancel alongside the destructive confirm
