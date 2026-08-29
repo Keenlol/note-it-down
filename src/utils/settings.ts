@@ -52,11 +52,11 @@ export function saveShowDownTrend(show: boolean) {
 // ── Preset graph metric ───────────────────────────────────────────────────────
 
 /** Which figure the per-exercise graphs in the preset panel plot. */
-export type PresetMetric = 'load' | 'weight' | 'reps'
+export type PresetMetric = 'load' | 'weight' | 'reps' | 'sets'
 
 const PRESET_METRIC_KEY = 'settings_presetMetric'
 
-const PRESET_METRICS: PresetMetric[] = ['load', 'weight', 'reps']
+const PRESET_METRICS: PresetMetric[] = ['load', 'weight', 'reps', 'sets']
 
 export function getSavedPresetMetric(): PresetMetric {
   const v = localStorage.getItem(PRESET_METRIC_KEY) as PresetMetric | null

@@ -173,6 +173,7 @@ export interface PresetExercisePoint {
   load: number    // Σ weightKg × reps × sets across the day's lines
   weight: number  // heaviest weightKg logged that day (top set)
   reps: number    // most reps logged in a single line that day (top set)
+  sets: number    // Σ sets across the day's lines — how much of it was done
 }
 
 export interface PresetExerciseSeries {
@@ -203,7 +204,7 @@ export function getPresetExerciseSeries(
   interface Acc {
     displayName: string
     order: number
-    byDate: Map<string, { load: number; weight: number; reps: number }>
+    byDate: Map<string, { load: number; weight: number; reps: number; sets: number }>
     entries: HistoryEntry[]
   }
   const byExercise = new Map<string, Acc>()
@@ -237,13 +238,15 @@ export function getPresetExerciseSeries(
         acc.entries.push({ date, exercise: ex })
         // The graph plots one point per session, so a movement logged twice in
         // a day collapses — while the history below still lists both lines.
-        // Load sums (total work done), but weight and reps take the top set:
-        // averaging them would drag a heavy top set down toward the warm-ups,
-        // which reads as a regression when the session was actually stronger.
-        const day = acc.byDate.get(date) ?? { load: 0, weight: 0, reps: 0 }
+        // Load and sets sum (how much was done), but weight and reps take the
+        // top set: averaging them would drag a heavy top set down toward the
+        // warm-ups, which reads as a regression when the session was actually
+        // stronger.
+        const day = acc.byDate.get(date) ?? { load: 0, weight: 0, reps: 0, sets: 0 }
         day.load  += ex.weightKg * ex.volume
         day.weight = Math.max(day.weight, ex.weightKg)
         day.reps   = Math.max(day.reps, ex.reps)
+        day.sets  += ex.sets
         acc.byDate.set(date, day)
       }
     }

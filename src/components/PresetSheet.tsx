@@ -65,6 +65,7 @@ const METRIC_OPTIONS: { value: PresetMetric; label: string }[] = [
   { value: 'load',   label: 'Volume' },
   { value: 'weight', label: 'Weight' },
   { value: 'reps',   label: 'Reps' },
+  { value: 'sets',   label: 'Sets' },
 ]
 
 type DeleteMode = 'label-only' | 'with-exercises'
@@ -165,6 +166,15 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
           value: (p: PresetExercisePoint) => p.reps,
           label: (p: PresetExercisePoint) => `${p.reps}`,
           minRange: 4,
+        }
+      case 'sets':
+        return {
+          value: (p: PresetExercisePoint) => p.sets,
+          label: (p: PresetExercisePoint) => `${p.sets}`,
+          // Sets move in whole numbers and rarely by more than one, so without
+          // a floor a 3 → 4 week would draw the same full-height climb as a
+          // real jump.
+          minRange: 3,
         }
       default:
         return {
@@ -324,7 +334,6 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
             {series.map(ex => {
               const chrono = [...ex.points].reverse()
               const done = new Set(chrono.map(e => e.date))
-              const latestSets = ex.entries[0]?.exercise.sets
               return (
                 <div key={ex.norm} className="preset-block">
                   {/* The whole graph field is the expand hitbox; the name/latest
@@ -336,11 +345,6 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                   >
                     <span className="preset-ex-head">
                       <span className="preset-ex-name">{ex.displayName}</span>
-                      {/* Sets rarely move, so they don't earn a graph of their
-                          own — the latest count rides along in the header. */}
-                      {latestSets !== undefined && (
-                        <span className="preset-ex-sets">{latestSets} set{latestSets !== 1 ? 's' : ''}</span>
-                      )}
                       <ChevronRight
                         size={14}
                         strokeWidth={2}

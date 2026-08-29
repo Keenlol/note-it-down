@@ -1121,7 +1121,6 @@ strong, b {
 .exercise-empty,
 .history-empty,
 .data-stat-count,
-.preset-ex-sets,
 .dd-confirm-label,
 .about-val {
   font-weight: var(--w-note);
@@ -1956,13 +1955,6 @@ strong, b {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.preset-ex-sets {
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 
 .preset-ex-chevron {
