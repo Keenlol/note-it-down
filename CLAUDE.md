@@ -49,11 +49,11 @@ The one exception to solid borders: `#2e2e2e` is used for input/circle borders t
 
 ### Typefaces
 
-Two families, self-hosted in `src/fonts/` from a Fontshare kit (47 KB total):
+Two families, self-hosted in `src/fonts/` from a Fontshare kit (61 KB total):
 
 | File | Role |
 |------|------|
-| `GeneralSans-Semibold.woff2` | display + all UI chrome |
+| `GeneralSans-Variable.woff2` | display + all UI chrome; one file, weights 200–700 |
 | `Gambetta-Regular.woff2` | the note text only |
 
 Both licence files (`LICENSE-GeneralSans.txt`, `LICENSE-Gambetta.txt`) must
@@ -73,31 +73,39 @@ reads as writing, General Sans carries everything that behaves as a control.
 
 ### Weight
 
-**This kit ships exactly one style per family.** There is no second weight
-and no italic. Hierarchy therefore rests on size, tracking and colour — not
-weight. Use these tokens; do not write raw weight numbers.
+General Sans is variable (200–700), so weight is a real axis again. **Three
+steps, and only three.** Use the tokens; never write a raw weight number, and
+do not add a fourth step — a screen with four weights reads as uniformly bold,
+which is exactly the state this scale replaced.
 
-| Variable      | Value | Meaning |
-|---------------|-------|---------|
-| `--w-ui`      | `600` | General Sans Semibold — the only sans weight available |
-| `--w-display` | `600` | same face; display reads larger, not heavier |
+| Variable      | Value | Role |
+|---------------|-------|------|
+| `--w-body`    | `400` | the page default: metadata, list numbers, anything unmarked |
+| `--w-medium`  | `500` | the one thing worth scanning in a row — names, controls, micro-labels |
+| `--w-display` | `600` | page and sheet titles, headline stats, `<strong>` |
 | `--w-editor`  | `400` | Gambetta Regular |
+
+How to pick: **one** element per row or card earns `--w-medium` or above.
+Everything supporting it stays at `--w-body` and separates by colour instead
+(`--text-2` → `--text-dim` → `--text-muted`). If two neighbours both want to be
+heavy, one of them is in the wrong place, not the wrong weight.
 
 Consequences to keep in mind:
 
-- `html, body` sets `font-synthesis-weight: none` so the browser never fakes
-  a heavier cut. A bare `<strong>` (default 700) would otherwise smear.
-- **`<strong>` means brighter, not bolder.** A global `strong, b` rule keeps
-  `font-weight: inherit` and lifts the colour to `--text` instead.
-- `font-variant-numeric: tabular-nums` is a **no-op** — neither family has a
-  `tnum` feature and both have proportional digits. The rules using it
+- `html, body` is `--w-body`, so **every rule that wants emphasis must ask for
+  it.** Adding a control without a weight gets regular, which is correct.
+- **`<strong>` is bold and brighter**: the global `strong, b` rule sets
+  `--w-display` and lifts the colour to `--text`.
+- `html, body` keeps `font-synthesis-weight: none`. Real cuts exist for every
+  step now, so synthesis should never trigger — leaving it off means a bad
+  declaration fails visibly instead of being smeared over.
+- `font-variant-numeric: tabular-nums` is a **no-op** — the family has no
+  `tnum` feature and proportional digits. The rules using it
   (`.history-values`, `.ex-count`, `.about-val`, `.data-stat-size-value`,
-  `.bw-node`) are harmless but no longer align columns.
-- The five `font-style: italic` rules render as **synthetic oblique**, since
-  neither family ships an italic.
-
-Downloading the complete variable families from Fontshare would restore the
-weight range and real italics; the tokens above are the only edit needed.
+  `.bw-node`) are harmless but do not align columns.
+- The `font-style: italic` rules still render as **synthetic oblique**: only
+  the upright variable file is shipped. `GeneralSans-VariableItalic.woff2`
+  from the same kit would fix that at +40 KB.
 
 ### Sizing and tracking
 
@@ -185,13 +193,18 @@ Use the same lucide icon the bottom bar uses for that sheet.
 
 ### Typography scale (inside sheets)
 ```
-title:        1.1rem  weight 600
-row name:     0.92rem weight 500
-meta (date):  0.72rem color var(--text-dim)
-count:        0.72rem color var(--accent)
-inner text:   0.78rem color var(--text-dim)
-dropdown:     0.82rem
+sheet title:  1.15rem --w-display  --text
+row name:     0.92rem --w-medium   --text
+meta (date):  0.72rem --w-body     --text-dim
+count:        0.72rem --w-body     --accent
+history load: 0.78rem --w-medium   --accent
+history reps: 0.78rem --w-body     --accent-dim
+chips/buttons 0.75rem --w-medium   --text-2
+dropdown:     0.82rem --w-body
 ```
+The history row is the pattern in miniature: same hue throughout, ranked by
+weight and brightness, so the load reads first and reps × sets read as its
+context rather than as three equal numbers.
 
 ## Architecture
 

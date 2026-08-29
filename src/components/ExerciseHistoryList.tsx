@@ -66,7 +66,7 @@ export function ExerciseHistoryList({
           >
             <span className="history-date">{shortDate(entry.date)}</span>
             <span className="history-values">
-              <span className="num">{formatWeightDisplay(entry.exercise.weightKg, unit)}</span>
+              <span className="num history-weight">{formatWeightDisplay(entry.exercise.weightKg, unit)}</span>
               <span className="history-sep"> × </span>
               <span className="num">{entry.exercise.reps}</span>
               <span className="history-sep"> × </span>
