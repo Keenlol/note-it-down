@@ -73,29 +73,37 @@ reads as writing, General Sans carries everything that behaves as a control.
 
 ### Weight
 
-General Sans is variable (200–700), so weight is a real axis again. **Three
-steps, and only three.** Use the tokens; never write a raw weight number, and
-do not add a fourth step — a screen with four weights reads as uniformly bold,
-which is exactly the state this scale replaced.
+General Sans is variable (200–700), but **the app is deliberately semibold**:
+chrome, names, labels and controls all sit at `--w-ui`, which is also what the
+page inherits. Weight is not a general-purpose scale here. The lighter steps
+exist for exactly two jobs, listed below — anything else gets `--w-ui`.
 
 | Variable      | Value | Role |
 |---------------|-------|------|
-| `--w-body`    | `400` | the page default: metadata, list numbers, anything unmarked |
-| `--w-medium`  | `500` | the one thing worth scanning in a row — names, controls, micro-labels |
-| `--w-display` | `600` | page and sheet titles, headline stats, `<strong>` |
+| `--w-ui`      | `600` | the default: every control, name and label |
+| `--w-display` | `600` | titles and headline stats — larger, not heavier |
+| `--w-note`    | `400` | small descriptive text (job 1) |
+| `--w-medium`  | `500` | the load figure in a history row (job 2) |
 | `--w-editor`  | `400` | Gambetta Regular |
 
-How to pick: **one** element per row or card earns `--w-medium` or above.
-Everything supporting it stays at `--w-body` and separates by colour instead
-(`--text-2` → `--text-dim` → `--text-muted`). If two neighbours both want to be
-heavy, one of them is in the wrong place, not the wrong weight.
+**Job 1 — small descriptive text.** Text that comments on something rather
+than being the thing: hints, timestamps, captions, empty states, supporting
+counts. One shared selector list above `.settings-section-hint` in index.css
+carries `--w-note`; add to that list rather than writing the token into a rule
+of its own, so the layer stays visible in one place.
+
+**Job 2 — the history row.** `.history-values` ranks one figure against its
+context: load at `--w-medium` and full `--accent`, reps × sets at `--w-note`
+and `--accent-dim`. Same hue; the step is weight and brightness.
 
 Consequences to keep in mind:
 
-- `html, body` is `--w-body`, so **every rule that wants emphasis must ask for
-  it.** Adding a control without a weight gets regular, which is correct.
-- **`<strong>` is bold and brighter**: the global `strong, b` rule sets
-  `--w-display` and lifts the colour to `--text`.
+- `html, body` is `--w-ui`, so a new rule that declares no weight comes out
+  semibold — which is usually what you want.
+- **`<strong>` means brighter, not bolder.** Its surroundings are already
+  semibold, so the global `strong, b` rule keeps `font-weight: inherit` and
+  lifts the colour to `--text`. (`.data-stat-count strong` is the exception:
+  its label is `--w-note`, so the number restates `--w-ui`.)
 - `html, body` keeps `font-synthesis-weight: none`. Real cuts exist for every
   step now, so synthesis should never trigger — leaving it off means a bad
   declaration fails visibly instead of being smeared over.
@@ -194,17 +202,14 @@ Use the same lucide icon the bottom bar uses for that sheet.
 ### Typography scale (inside sheets)
 ```
 sheet title:  1.15rem --w-display  --text
-row name:     0.92rem --w-medium   --text
-meta (date):  0.72rem --w-body     --text-dim
-count:        0.72rem --w-body     --accent
+row name:     0.92rem --w-ui       --text
+meta (date):  0.72rem --w-note     --text-dim
+count:        0.72rem --w-ui       --accent
 history load: 0.78rem --w-medium   --accent
-history reps: 0.78rem --w-body     --accent-dim
-chips/buttons 0.75rem --w-medium   --text-2
-dropdown:     0.82rem --w-body
+history reps: 0.78rem --w-note     --accent-dim
+chips/buttons 0.75rem --w-ui       --text-2
+dropdown:     0.82rem --w-ui
 ```
-The history row is the pattern in miniature: same hue throughout, ranked by
-weight and brightness, so the load reads first and reps × sets read as its
-context rather than as three equal numbers.
 
 ## Architecture
 

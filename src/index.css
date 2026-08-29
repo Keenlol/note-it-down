@@ -59,13 +59,14 @@
   --font:         'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --editor-font:  'Gambetta', Georgia, 'Times New Roman', serif;
 
-  /* Three steps, and only three. Body is the default the page inherits;
-     medium marks the one thing worth scanning in a row; display is reserved
-     for titles and headline figures. Adding a fourth step is how a screen
-     starts looking uniformly bold again. */
-  --w-body:    400;   /* metadata, list numbers, everything unmarked */
-  --w-medium:  500;   /* row names, controls, micro-labels */
-  --w-display: 600;   /* page + sheet titles, headline stats */
+  /* Semibold is the app's voice: chrome, names, labels and controls all sit at
+     --w-ui, which is also what the page inherits. The lighter steps are not a
+     general-purpose scale — they mark the two places that read as commentary
+     rather than interface. Reach for --w-ui unless a rule is one of those. */
+  --w-ui:      600;   /* the default — every control, name and label */
+  --w-display: 600;   /* titles and headline stats; larger, not heavier */
+  --w-note:    400;   /* small descriptive text: hints, timestamps, captions */
+  --w-medium:  500;   /* the load figure in an exercise history row */
   --w-editor:  400;   /* Gambetta Regular */
 
   --editor-size: 1.25rem;
@@ -86,7 +87,7 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-weight: var(--w-body);
+  font-weight: var(--w-ui);
   /* Real weights exist now, so synthesis should never kick in — keep it off so
      a stray declaration can't smear a face instead of failing loudly. */
   font-synthesis-weight: none;
@@ -293,10 +294,10 @@ html, body {
 
 /* ── Title row ── */
 
-/* Real bold is available again, so <strong> is both heavier and brighter
-   rather than colour alone standing in for weight. */
+/* Everything around it is already semibold, so <strong> earns its emphasis
+   the way it always did here — by brightening, not by getting heavier. */
 strong, b {
-  font-weight: var(--w-display);
+  font-weight: inherit;
   color: var(--text);
 }
 
@@ -322,7 +323,7 @@ strong, b {
    375px wide), so the clamp now only catches screens narrower than that. */
 .title.past {
   font-size: clamp(1.2rem, 5.4vw, 1.375rem);
-  font-weight: var(--w-medium);
+  font-weight: var(--w-ui);
   letter-spacing: -0.02em;
   color: var(--text-2);
 }
@@ -544,7 +545,6 @@ strong, b {
   gap: 2px;
   padding: 0.2em 0.45em;
   border-radius: 4px;
-  font-weight: var(--w-medium);
 }
 
 .trend-item svg {
@@ -751,7 +751,7 @@ strong, b {
 
 .settings-section-label {
   font-size: 0.7rem;
-  font-weight: var(--w-medium);
+  font-weight: var(--w-ui);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -788,7 +788,7 @@ strong, b {
   color: var(--text-dim);
   font-family: var(--font);
   font-size: 0.8rem;
-  font-weight: var(--w-medium);
+  font-weight: var(--w-ui);
   padding: 5px 0;
   border-radius: 6px;
   cursor: pointer;
@@ -919,6 +919,28 @@ strong, b {
   color: var(--text-2);
 }
 
+/* ── Small descriptive text ──
+   The one layer that keeps a regular weight: text that comments on something
+   else rather than being the thing itself — hints, timestamps, captions,
+   empty states, supporting counts. Everything here is already small and
+   dimmed; at semibold it competed with the names it was describing. Add a
+   selector here rather than writing --w-note into a rule of its own. */
+.settings-section-hint,
+.slider-legend,
+.slider-default,
+.ex-last,
+.history-date,
+.exercise-empty,
+.history-empty,
+.data-stat-count,
+.preset-ex-sets,
+.dd-confirm-label,
+.encouragement-text,
+.encouragement-author,
+.about-val {
+  font-weight: var(--w-note);
+}
+
 .settings-section-hint {
   font-size: 0.7rem;
   color: var(--text-muted);
@@ -992,7 +1014,7 @@ strong, b {
 
 .data-stat-size-label {
   font-size: 0.66rem;
-  font-weight: var(--w-medium);
+  font-weight: var(--w-ui);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1011,7 +1033,7 @@ strong, b {
 
 .data-stat-count strong {
   color: var(--text-2);
-  font-weight: var(--w-display);
+  font-weight: var(--w-ui);
 }
 
 .data-actions {
@@ -1029,7 +1051,7 @@ strong, b {
   color: var(--text-2);
   font-family: var(--font);
   font-size: 0.75rem;
-  font-weight: var(--w-medium);
+  font-weight: var(--w-ui);
   padding: 6px 11px;
   border-radius: 8px;
   cursor: pointer;
@@ -1093,7 +1115,7 @@ strong, b {
 
 .data-confirm-title {
   font-size: 0.82rem;
-  font-weight: var(--w-display);
+  font-weight: var(--w-ui);
   color: var(--text);
 }
 
@@ -1310,7 +1332,7 @@ strong, b {
 
 .ex-name {
   font-size: 0.92rem;
-  font-weight: var(--w-medium);
+  font-weight: var(--w-ui);
   letter-spacing: -0.015em;
 }
 
@@ -1425,7 +1447,7 @@ strong, b {
    accent family throughout — the step is weight and brightness, not hue. */
 .history-values {
   font-size: 0.78rem;
-  font-weight: var(--w-body);
+  font-weight: var(--w-note);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
@@ -1737,7 +1759,7 @@ strong, b {
 
 .preset-ex-name {
   font-size: 0.92rem;
-  font-weight: var(--w-body);
+  font-weight: var(--w-ui);
   letter-spacing: -0.015em;
   color: var(--text);
   overflow: hidden;
