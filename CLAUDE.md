@@ -187,6 +187,15 @@ Keep row padding in this range — don't add extra vertical space.
 border-radius: 16px 16px 0 0;
 z-index: 20;
 ```
+**Scrolling bodies.** `.sheet-header` has no bottom padding; each scrolling
+body (`.exercise-list`, `.preset-body`, `.settings-body`, `.bw-body`) carries
+that 12px as `padding-top` instead. `.exercise-list` and `.preset-body` then
+mask their top edge with `linear-gradient(to bottom, transparent, #000
+var(--sheet-fade))`, so rows dissolve into the header rather than being cut at
+its edge. The mask is on the element's own box, so it holds still while the
+content scrolls under it — and the 12px of padding is what it sits over at
+rest, which is why that padding has to stay in the body and not the header.
+
 A sheet paints `--bg`, the same colour as the page, so while one is open the
 page steps back to `--bg-dim` and the gap between them is what separates the
 two. `.app` carries `--bg-back` (`--bg`, or `--bg-dim` under `.sheet-open`);

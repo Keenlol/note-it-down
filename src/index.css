@@ -91,6 +91,11 @@
   --r-card:  12px;
   --r-inner: 7px;   /* = --r-card − 5px card padding */
   --r-chip:  6px;
+
+  /* How far rows fade out as they scroll under a sheet header. The header's
+     own bottom padding moved into the scrollers as padding-top, so at rest the
+     fade sits over that empty strip and only grazes the first row. */
+  --sheet-fade: 16px;
 }
 
 html, body {
@@ -870,8 +875,10 @@ strong, b {
   border-radius: 2px;
 }
 
+/* No bottom padding: each scrolling body carries that 12px as padding-top
+   instead, which is what gives the scroll fade an empty strip to sit over. */
 .sheet-header {
-  padding: 4px var(--pad) 12px;
+  padding: 4px var(--pad) 0;
   flex-shrink: 0;
 }
 
@@ -918,7 +925,7 @@ strong, b {
 .settings-body {
   overflow-y: auto;
   flex: 1;
-  padding: 0 var(--pad) calc(var(--pad) + 56px);
+  padding: 12px var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -1400,8 +1407,13 @@ strong, b {
 .exercise-list {
   overflow-y: auto;
   flex: 1;
-  padding: 0 var(--pad) calc(var(--pad) + 56px);
+  padding: 12px var(--pad) calc(var(--pad) + 56px);
   -webkit-overflow-scrolling: touch;
+  /* Rows dissolve into the header instead of being cut off at its edge. The
+     mask is on the element's own box, so it stays put while content scrolls
+     under it. */
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
 }
 
 .exercise-empty {
@@ -1668,7 +1680,7 @@ strong, b {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 0 var(--pad) calc(var(--pad) + 56px);
+  padding: 12px var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -1998,10 +2010,17 @@ strong, b {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 0 var(--pad) calc(var(--pad) + 56px);
+  padding: 12px var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  /* Matches the gap between the preset tabs and the metric switch, so the
+     whole panel reads on one rhythm. */
+  gap: 8px;
+  /* Rows dissolve into the header instead of being cut off at its edge. The
+     mask is on the element's own box, so it stays put while content scrolls
+     under it. */
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
 }
 
 /* Keep children at natural height so the body overflows (and scrolls) when the
