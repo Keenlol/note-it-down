@@ -63,3 +63,48 @@ export function getEncouragement(today: string, phase: Phase): Phrase | null {
   writeCursor(phase, { idx, date: today, started: true })
   return pool[idx]
 }
+
+// ── "Done for the day" flag ───────────────────────────────────────────────────
+//
+// Finishing is a deliberate act, not something inferred from the note: a preset
+// drops five exercises in at once, which says the session was planned, not that
+// it was trained. The flag is per-day, so it clears itself at midnight.
+
+const doneKey = (date: string) => `done_${date}`
+
+export function isDayDone(date: string): boolean {
+  try {
+    return localStorage.getItem(doneKey(date)) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setDayDone(date: string, done: boolean) {
+  try {
+    if (done) localStorage.setItem(doneKey(date), '1')
+    else localStorage.removeItem(doneKey(date))
+  } catch {
+    /* ignore quota / disabled storage */
+  }
+}
+
+// The hold gesture has no visible affordance of its own, so a one-line hint
+// rides along until the first day is finished — then it never appears again.
+const HINT_KEY = 'encouragement_finishHintSeen'
+
+export function isFinishHintSeen(): boolean {
+  try {
+    return localStorage.getItem(HINT_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+
+export function markFinishHintSeen() {
+  try {
+    localStorage.setItem(HINT_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}

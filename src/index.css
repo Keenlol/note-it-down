@@ -111,7 +111,7 @@ html, body {
 }
 
 .content {
-  padding: 0 var(--pad) calc(64px + env(safe-area-inset-bottom));
+  padding: 0 var(--pad) calc(104px + env(safe-area-inset-bottom));
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -328,36 +328,141 @@ strong, b {
   color: var(--text-2);
 }
 
+/* ── Daily message ──
+   Sits above the icons in the bottom bar. Holding it closes the day out: the
+   phrase swaps to the reward pool, the pill pops and throws confetti. It is a
+   deliberate gesture on purpose — a preset drops five exercises in at once,
+   which is not the same as having trained them. */
+
 .encouragement {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  max-width: min(440px, calc(100% - var(--pad) * 2));
+  pointer-events: auto;
+}
+
+.encouragement-msg {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   align-items: baseline;
-  gap: 6px;
-  margin-top: -12px;
-  margin-bottom: 18px;
+  gap: 4px 7px;
+  background: none;
+  border: none;
+  border-radius: 12px;
+  padding: 6px 12px;
+  font-family: var(--font);
+  text-align: center;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  transition: transform 0.16s ease, background 0.25s ease;
   animation: encouragement-in 0.45s ease both;
 }
 
+/* A day with something written in it is a day that can be finished — the pill
+   is the only hint that the message is now holdable. */
+.encouragement-msg.can-finish {
+  background: var(--surface-1);
+  cursor: pointer;
+}
+
+.encouragement-msg.is-done {
+  background: var(--accent-tint);
+  /* Replaces the entry fade — the button is re-keyed on finish, so this plays
+     exactly when the phrase swaps. */
+  animation: encouragement-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* The slow squeeze is the hold's progress bar: it runs for the hold duration,
+   and snaps back on release via the shorter transition above. */
+.encouragement-msg.holding {
+  transform: scale(0.94);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
 .encouragement-text {
-  font-size: 0.82rem;
-  line-height: 1.4;
-  color: var(--text-dim);
-  font-style: italic;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: var(--text);
+  font-weight: var(--w-ui);
+  letter-spacing: -0.01em;
 }
 
 .encouragement-author {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--accent-dim);
   white-space: nowrap;
 }
 
+.encouragement-check {
+  align-self: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.encouragement-hint {
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 @keyframes encouragement-in {
-  from { opacity: 0; transform: translateY(-4px); }
+  from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes encouragement-pop {
+  0%   { transform: scale(0.94); }
+  45%  { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+
+/* ── Confetti ──
+   Bursts from the centre of the message. Each bit carries its own vector,
+   spin and delay as custom properties; one keyframe flies them all. */
+
+.confetti {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.confetti-bit {
+  position: absolute;
+  border-radius: 1px;
+  background: var(--c);
+  animation: confetti-fly 1s cubic-bezier(0.15, 0.6, 0.35, 1) var(--delay) both;
+}
+
+@keyframes confetti-fly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+  }
+  12% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform:
+      translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+      scale(1)
+      rotate(var(--rot));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .encouragement { animation: none; }
+  .encouragement-msg { animation: none; }
+  .encouragement-msg.holding { transform: none; }
 }
 
 .save-icon {
@@ -594,6 +699,12 @@ strong, b {
 
 /* ── Bottom bar ── */
 
+/* Two stacked rows: the day's message, then the icons. The icon row is the
+   last child of a bottom-anchored flex column, so it never moves — a longer
+   phrase grows the bar upward instead of pushing the buttons down.
+
+   The bar itself is click-through; only its rows take pointer events, so the
+   taller gradient can't swallow taps meant for the note underneath. */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -601,10 +712,22 @@ strong, b {
   right: 0;
   z-index: 30;
   display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 62%, transparent);
+  pointer-events: none;
+}
+
+.bottom-bar-row {
+  position: relative;
+  width: 100%;
+  display: flex;
   justify-content: center;
   align-items: center;
-  padding: 10px 0 calc(12px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, var(--bg) 55%, transparent);
+  pointer-events: auto;
 }
 
 /* Main icon group — truly centered in the full bar */
@@ -935,7 +1058,6 @@ strong, b {
 .data-stat-count,
 .preset-ex-sets,
 .dd-confirm-label,
-.encouragement-text,
 .encouragement-author,
 .about-val {
   font-weight: var(--w-note);

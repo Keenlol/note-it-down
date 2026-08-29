@@ -983,8 +983,6 @@ export function App() {
           tabIndex={isViewingPast ? 0 : -1}
         />
 
-        {!isViewingPast && <Encouragement phase={hasExercises ? 'after' : 'before'} />}
-
         <div style={{ opacity: noteOpacity, transition: 'opacity 0.08s ease', flex: 1, display: 'flex', flexDirection: 'column' }}>
           {isViewingPast ? (
             <Editor
@@ -1025,49 +1023,55 @@ export function App() {
         </div>
       </div>
       <div className="bottom-bar">
-        <div className="bottom-bar-main">
+        {/* Above the icons rather than under the date: it is the last thing on
+            the screen, and the thing you reach for when the session is over. */}
+        {!isViewingPast && <Encouragement canFinish={todayText.trim() !== ''} />}
+
+        <div className="bottom-bar-row">
+          <div className="bottom-bar-main">
+            <button
+              onPointerDown={tap}
+              className={`bottom-btn${bwSheetOpen ? ' active' : ''}`}
+              onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) }}
+              aria-label="Bodyweight"
+            >
+              <Scale size={23} strokeWidth={1.6} />
+            </button>
+            <button
+              onPointerDown={tap}
+              className={`bottom-btn${sheetOpen ? ' active' : ''}`}
+              onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
+              aria-label="Exercises"
+            >
+              <Dumbbell size={23} strokeWidth={1.6} />
+            </button>
+            <button
+              onPointerDown={tap}
+              className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
+              onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
+              aria-label="Presets"
+            >
+              <Hash size={23} strokeWidth={1.6} />
+            </button>
+            <button
+              className={`bottom-btn${reveal ? ' active' : ''}`}
+              onPointerDown={e => { tap(e); e.preventDefault(); setReveal(true) }}
+              onPointerUp={() => setReveal(false)}
+              onPointerLeave={() => setReveal(false)}
+              aria-label="Reveal exercise details"
+            >
+              <Eye size={23} strokeWidth={1.6} />
+            </button>
+          </div>
           <button
             onPointerDown={tap}
-            className={`bottom-btn${bwSheetOpen ? ' active' : ''}`}
-            onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) }}
-            aria-label="Bodyweight"
+            className={`bottom-btn bottom-btn-settings${settingsOpen ? ' active' : ''}`}
+            onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) }}
+            aria-label="Settings"
           >
-            <Scale size={23} strokeWidth={1.6} />
-          </button>
-          <button
-            onPointerDown={tap}
-            className={`bottom-btn${sheetOpen ? ' active' : ''}`}
-            onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
-            aria-label="Exercises"
-          >
-            <Dumbbell size={23} strokeWidth={1.6} />
-          </button>
-          <button
-            onPointerDown={tap}
-            className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
-            onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
-            aria-label="Presets"
-          >
-            <Hash size={23} strokeWidth={1.6} />
-          </button>
-          <button
-            className={`bottom-btn${reveal ? ' active' : ''}`}
-            onPointerDown={e => { tap(e); e.preventDefault(); setReveal(true) }}
-            onPointerUp={() => setReveal(false)}
-            onPointerLeave={() => setReveal(false)}
-            aria-label="Reveal exercise details"
-          >
-            <Eye size={23} strokeWidth={1.6} />
+            <Settings size={21} strokeWidth={1.6} />
           </button>
         </div>
-        <button
-          onPointerDown={tap}
-          className={`bottom-btn bottom-btn-settings${settingsOpen ? ' active' : ''}`}
-          onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) }}
-          aria-label="Settings"
-        >
-          <Settings size={21} strokeWidth={1.6} />
-        </button>
       </div>
 
       {historyMounted && (

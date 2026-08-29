@@ -183,6 +183,19 @@ color: var(--text);        /* hover / active / sheet open */
 background: linear-gradient(to top, var(--bg) 55%, transparent);
 ```
 
+### Daily message
+The encouragement line lives in the bottom bar, above the icons. `.bottom-bar`
+is a bottom-anchored flex column and is `pointer-events: none`; its rows
+(`.bottom-bar-row`, `.encouragement`) re-enable them. A longer phrase grows the
+bar upward — the icon row never moves — and the taller gradient cannot swallow
+taps meant for the note underneath. `.content` reserves `104px` for it.
+
+The phrase does **not** flip on logged exercises: a preset drops a whole
+session in at once, which says it was planned, not trained. Finishing is a
+600 ms hold on the message (`done_YYYY-MM-DD` in localStorage, so it clears
+itself at midnight); holding again undoes it. The hold is inert on a day with
+no note text at all.
+
 ### Ghost / suggestion text
 ```css
 color: var(--text-dim);   /* inline ghost suffix */
