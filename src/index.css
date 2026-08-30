@@ -820,6 +820,22 @@ strong, b {
   transition: color 0.1s;
 }
 
+/* Emoji ignore `color`, so the bottom bar's lit state is carried by saturation
+   instead: grey and held back when idle, full colour when the button is on.
+   The family is spelled out so the emoji never lands in General Sans's own
+   fallback chain, which would render some of these as flat glyphs. */
+.bottom-emoji {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-size: 21px;
+  line-height: 1;
+  filter: grayscale(1) opacity(0.5);
+  transition: filter 0.15s ease;
+}
+
+.bottom-btn.active .bottom-emoji {
+  filter: none;
+}
+
 /* Lit state is driven exclusively by the .active class so each button follows
    its own logic: exercise / preset light up while their sheet is toggled open,
    the eye lights up only while held. No shared :hover/:active so taps on one

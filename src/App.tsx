@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Eye, Dumbbell, Hash, Settings, Scale } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { WEEKS, weekOffsetForDate, historySetCount } from './utils/heatmapWindow'
 import { HeatmapHistory } from './components/HeatmapHistory'
@@ -1040,7 +1040,7 @@ export function App() {
               onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) }}
               aria-label="Bodyweight"
             >
-              <Scale size={23} strokeWidth={1.6} />
+              <span className="bottom-emoji">⚖️</span>
             </button>
             <button
               onPointerDown={tap}
@@ -1048,7 +1048,7 @@ export function App() {
               onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
               aria-label="Exercises"
             >
-              <Dumbbell size={23} strokeWidth={1.6} />
+              <span className="bottom-emoji">🏋️</span>
             </button>
             <button
               onPointerDown={tap}
@@ -1056,7 +1056,7 @@ export function App() {
               onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
               aria-label="Presets"
             >
-              <Hash size={23} strokeWidth={1.6} />
+              <span className="bottom-emoji">🏷️</span>
             </button>
             <button
               className={`bottom-btn${reveal ? ' active' : ''}`}
@@ -1065,7 +1065,7 @@ export function App() {
               onPointerLeave={() => setReveal(false)}
               aria-label="Reveal exercise details"
             >
-              <Eye size={23} strokeWidth={1.6} />
+              <span className="bottom-emoji">👀</span>
             </button>
           </div>
           <button
@@ -1074,7 +1074,7 @@ export function App() {
             onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) }}
             aria-label="Settings"
           >
-            <Settings size={21} strokeWidth={1.6} />
+            <span className="bottom-emoji">⚙️</span>
           </button>
         </div>
       </div>
