@@ -16,7 +16,7 @@ import { exerciseVolumePerDay } from './utils/exercises'
 import { presetVolumePerDay, presetBlocks } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { tap } from './utils/tap'
-import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
+import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedShowQuote, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
@@ -256,6 +256,7 @@ export function App() {
   })
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
   const [showDownTrend, setShowDownTrend] = useState<boolean>(() => getSavedShowDownTrend())
+  const [showQuote, setShowQuote] = useState<boolean>(() => getSavedShowQuote())
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [focusedPreset, setFocusedPreset] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
@@ -1028,7 +1029,7 @@ export function App() {
       </div>
       {/* Above the icons but a sibling of the bar, not a child: it has to sit
           below the sheets in the stack, and the bar sits above them. */}
-      {!isViewingPast && <Encouragement canFinish={todayText.trim() !== ''} />}
+      {!isViewingPast && showQuote && <Encouragement canFinish={todayText.trim() !== ''} />}
 
       <div className="bottom-bar">
         <div className="bottom-bar-row">
@@ -1148,6 +1149,7 @@ export function App() {
           setAccentHex(def.hex)
         }}
         onShowDownTrendChange={setShowDownTrend}
+        onShowQuoteChange={setShowQuote}
         onWeightUnitChange={(unit: WeightUnit) => {
           setDefaultWeightUnit(unit)
           setWeightUnit(unit)

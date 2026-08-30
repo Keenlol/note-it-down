@@ -49,6 +49,19 @@ export function saveShowDownTrend(show: boolean) {
   localStorage.setItem(SHOW_DOWN_TREND_KEY, show ? 'on' : 'off')
 }
 
+// ── Daily message ─────────────────────────────────────────────────────────────
+
+const SHOW_QUOTE_KEY = 'settings_showQuote'
+
+/** Whether the daily message (and its hold-to-finish) is shown. Defaults to on. */
+export function getSavedShowQuote(): boolean {
+  return localStorage.getItem(SHOW_QUOTE_KEY) !== 'off'
+}
+
+export function saveShowQuote(show: boolean) {
+  localStorage.setItem(SHOW_QUOTE_KEY, show ? 'on' : 'off')
+}
+
 // ── Preset graph metric ───────────────────────────────────────────────────────
 
 /** Which figure the per-exercise graphs in the preset panel plot. */

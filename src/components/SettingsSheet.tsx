@@ -7,6 +7,7 @@ import {
   ACCENT_COLORS, type AccentKey, getSavedAccent, saveAndApplyAccent,
   type WeightUnit, getSavedWeightUnit, saveWeightUnit,
   getSavedShowDownTrend, saveShowDownTrend,
+  getSavedShowQuote, saveShowQuote,
   type AiRange, getSavedAiRange, saveAiRange,
   HEAT_ROUND_MIN, HEAT_ROUND_MAX, HEAT_ROUND_DEFAULT,
   getSavedHeatRound, saveAndApplyHeatRound,
@@ -28,9 +29,9 @@ const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
   { value: 'lbs', label: 'lbs' },
 ]
 
-type DownTrend = 'show' | 'hide'
+type Toggle = 'show' | 'hide'
 
-const DOWN_TREND_OPTIONS: { value: DownTrend; label: string }[] = [
+const SHOW_HIDE_OPTIONS: { value: Toggle; label: string }[] = [
   { value: 'show', label: 'Show' },
   { value: 'hide', label: 'Hide' },
 ]
@@ -59,16 +60,18 @@ interface Props {
   onAccentChange?: (key: AccentKey) => void
   onWeightUnitChange?: (unit: WeightUnit) => void
   onShowDownTrendChange?: (show: boolean) => void
+  onShowQuoteChange?: (show: boolean) => void
 }
 
 export function SettingsSheet({
   open, onClose, height, onResize, onResizeEnd, dataVersion, onDataChange,
-  onAccentChange, onWeightUnitChange, onShowDownTrendChange,
+  onAccentChange, onWeightUnitChange, onShowDownTrendChange, onShowQuoteChange,
 }: Props) {
   const [accent, setAccent]         = useState<AccentKey>(() => getSavedAccent())
   const [heatRound, setHeatRound]   = useState<number>(() => getSavedHeatRound())
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
-  const [downTrend, setDownTrend]   = useState<DownTrend>(() => getSavedShowDownTrend() ? 'show' : 'hide')
+  const [downTrend, setDownTrend]   = useState<Toggle>(() => getSavedShowDownTrend() ? 'show' : 'hide')
+  const [quote, setQuote]           = useState<Toggle>(() => getSavedShowQuote() ? 'show' : 'hide')
   const [confirm, setConfirm]       = useState<ConfirmState>({ kind: 'none' })
   const [aiRange, setAiRange]       = useState<AiRange>(() => getSavedAiRange())
   const [copyState, setCopyState]   = useState<'idle' | 'ok' | 'fail'>('idle')
@@ -112,10 +115,16 @@ export function SettingsSheet({
     onWeightUnitChange?.(unit)
   }
 
-  function handleDownTrend(v: DownTrend) {
+  function handleDownTrend(v: Toggle) {
     saveShowDownTrend(v === 'show')
     setDownTrend(v)
     onShowDownTrendChange?.(v === 'show')
+  }
+
+  function handleQuote(v: Toggle) {
+    saveShowQuote(v === 'show')
+    setQuote(v)
+    onShowQuoteChange?.(v === 'show')
   }
 
   function handleExport() {
@@ -239,9 +248,23 @@ export function SettingsSheet({
             you want to log something you didn't lift — a deload is training, not a setback.
           </p>
           <SegmentedControl
-            options={DOWN_TREND_OPTIONS}
+            options={SHOW_HIDE_OPTIONS}
             value={downTrend}
             onChange={handleDownTrend}
+          />
+        </div>
+
+        {/* ── Daily message ───────────────────────────────────── */}
+        <div className="settings-section">
+          <span className="settings-section-label">Daily message</span>
+          <p className="settings-section-hint">
+            The line above the icons, and the hold that closes the day out. Hiding it
+            hides both — days already marked done stay marked.
+          </p>
+          <SegmentedControl
+            options={SHOW_HIDE_OPTIONS}
+            value={quote}
+            onChange={handleQuote}
           />
         </div>
 
