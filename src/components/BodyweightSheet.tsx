@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { Scale } from 'lucide-react'
 import { loadBwHistory, type BwEntry } from '../utils/bodyweight'
 import { formatWeightDisplay, formatWeightDiff, type WeightUnit } from '../utils/settings'
 import { TrendItem } from './TrendItem'
@@ -118,7 +117,7 @@ export function BodyweightSheet({ open, onClose, onSelectDate, dataVersion, bwVe
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title"><Scale className="sheet-title-icon" size={17} strokeWidth={1.8} />Bodyweight</span>
+          <span className="sheet-title"><span className="sheet-title-emoji">⚖️</span>Bodyweight</span>
         </div>
       </div>
 

@@ -54,6 +54,9 @@
   --font-display: 'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font:         'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --editor-font:  var(--font);
+  /* Spelled out rather than left to General Sans's fallback chain, which would
+     render the text-presentation emoji (⚖️ 🏷️ ⚙️) as flat monochrome glyphs. */
+  --font-emoji:   'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 
   /* Semibold is the app's voice: chrome, names, labels and controls all sit at
      --w-ui, which is also what the page inherits. The lighter steps are not a
@@ -821,12 +824,10 @@ strong, b {
 }
 
 /* Emoji ignore `color`, so the bottom bar's lit state is carried by saturation
-   instead: grey and held back when idle, full colour when the button is on.
-   The family is spelled out so the emoji never lands in General Sans's own
-   fallback chain, which would render some of these as flat glyphs. */
+   instead: grey and held back when idle, full colour when the button is on. */
 .bottom-emoji {
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
-  font-size: 21px;
+  font-family: var(--font-emoji);
+  font-size: 26px;
   line-height: 1;
   filter: grayscale(1) opacity(0.5);
   transition: filter 0.15s ease;
@@ -834,6 +835,29 @@ strong, b {
 
 .bottom-btn.active .bottom-emoji {
   filter: none;
+}
+
+/* The shared tap squish is too flat for these — the bar is the playful part of
+   the app now. The button itself stops animating and the emoji takes over with
+   a squash-and-overshoot on the same spring the daily message pops on. */
+.bottom-btn.tapping {
+  animation: none;
+}
+
+.bottom-btn.tapping .bottom-emoji {
+  animation: emoji-pop 0.4s cubic-bezier(0.34, 1.45, 0.5, 1) both;
+}
+
+@keyframes emoji-pop {
+  0%   { transform: scale(1)    rotate(0deg); }
+  22%  { transform: scale(0.76) rotate(-7deg); }
+  52%  { transform: scale(1.2)  rotate(6deg); }
+  76%  { transform: scale(0.95) rotate(-2deg); }
+  100% { transform: scale(1)    rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-btn.tapping .bottom-emoji { animation: none; }
 }
 
 /* Lit state is driven exclusively by the .active class so each button follows
@@ -915,11 +939,14 @@ strong, b {
   letter-spacing: -0.025em;
 }
 
-/* Each sheet repeats its bottom-bar glyph here, kept a step back from the
-   title so it reads as a marker rather than a second headline. */
-.sheet-title-icon {
+/* Each sheet repeats its bottom-bar emoji here, at full colour — the same
+   state the button wears while its panel is open, so the two read as one
+   thing. */
+.sheet-title-emoji {
+  font-family: var(--font-emoji);
+  font-size: 17px;
+  line-height: 1;
   flex-shrink: 0;
-  color: var(--text-2);
 }
 
 /* Keep both header states in DOM; whichever is active is in normal flow,

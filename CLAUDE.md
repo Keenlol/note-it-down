@@ -206,12 +206,18 @@ so it keeps matching the sheet it overlaps. The fade is timed to the slide.
 Sheets slide up from the bottom. Multiple sheets are mutually exclusive (opening one closes others). Sheet height is measured from `heatmapRef.bottom` to `visualViewport.height` so it fits between the heatmap and the bottom of the screen.
 
 ### Bottom bar buttons
+Emoji at 26px, not icons. Emoji ignore `color`, so the lit state runs on
+saturation instead:
 ```css
-color: #5c5c5c;            /* idle — solid, avoids SVG path-overlap artifact with rgba */
-color: var(--text);        /* hover / active / sheet open */
+.bottom-emoji        { filter: grayscale(1) opacity(0.5); }  /* idle */
+.active .bottom-emoji{ filter: none; }                       /* sheet open */
 /* gradient background for separation from content below */
-background: linear-gradient(to top, var(--bg) 55%, transparent);
+background: linear-gradient(to top, var(--bg) 62%, transparent);
 ```
+They also opt out of the shared `.tapping` squish: `.bottom-btn.tapping` sets
+`animation: none` and the emoji runs `emoji-pop` instead — squash to 0.76 and
+overshoot to 1.2 with a twist, on the same spring the daily message pops on.
+Two nested scale animations would fight, hence the opt-out.
 
 ### Daily message
 `.encouragement-bar` is its own fixed strip above the icon row, and a **sibling**
@@ -249,14 +255,16 @@ color: var(--text-dim);   /* inline ghost suffix */
 Preset ghost blocks float absolutely below the triggering line using `top: calc(N * var(--editor-lh) * 1em)`.
 
 ### Sheet header
-Every sheet titles itself with its own bottom-bar glyph, then the name:
+Every sheet titles itself with its own bottom-bar emoji, then the name:
 ```tsx
 <span className="sheet-title">
-  <Dumbbell className="sheet-title-icon" size={17} strokeWidth={1.8} />Exercises
+  <span className="sheet-title-emoji">🏋️</span>Exercises
 </span>
 ```
-Icon is `--text-2` so it marks the panel without competing with the title.
-Use the same lucide icon the bottom bar uses for that sheet.
+⚖️ bodyweight · 🏋️ exercises · 🏷️ presets · ⚙️ settings — the same emoji the
+bottom-bar button uses, at full colour, which is the state that button wears
+while its panel is open. Both spell out `--font-emoji`: left to General Sans's
+fallback chain, the text-presentation ones (⚖️ 🏷️ ⚙️) render as flat glyphs.
 
 ### Typography scale (inside sheets)
 ```

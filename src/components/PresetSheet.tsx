@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronRight, Hash, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Check, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
@@ -272,7 +272,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title"><Hash className="sheet-title-icon" size={17} strokeWidth={1.8} />Presets</span>
+          <span className="sheet-title"><span className="sheet-title-emoji">🏷️</span>Presets</span>
         </div>
         {catalog.length > 0 && (
           <div className="sort-chips preset-tabs">
