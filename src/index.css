@@ -922,6 +922,18 @@ strong, b {
   flex-shrink: 0;
 }
 
+/* Every scroller under a header fades its top edge, so content dissolves into
+   the header rather than being cut off at it. The mask sits on the element's
+   own box, so it holds still while the content scrolls under it — and at rest
+   it covers that 12px of padding, not the first row. */
+.exercise-list,
+.preset-body,
+.settings-body,
+.bw-body {
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
+}
+
 .sheet-title-row {
   display: flex;
   align-items: center;
@@ -1451,11 +1463,6 @@ strong, b {
   flex: 1;
   padding: 12px var(--pad) calc(var(--pad) + 56px);
   -webkit-overflow-scrolling: touch;
-  /* Rows dissolve into the header instead of being cut off at its edge. The
-     mask is on the element's own box, so it stays put while content scrolls
-     under it. */
-  mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
 }
 
 .exercise-empty {
@@ -2064,11 +2071,6 @@ strong, b {
   /* Matches the gap between the preset tabs and the metric switch, so the
      whole panel reads on one rhythm. */
   gap: 8px;
-  /* Rows dissolve into the header instead of being cut off at its edge. The
-     mask is on the element's own box, so it stays put while content scrolls
-     under it. */
-  mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sheet-fade));
 }
 
 /* Keep children at natural height so the body overflows (and scrolls) when the
