@@ -344,7 +344,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                     onClick={() => setExpandedEx(cur => cur === ex.norm ? null : ex.norm)}
                   >
                     <span className="preset-ex-head">
-                      <span className="preset-ex-name">{ex.displayName}</span>
+                      <span className={`preset-ex-name${expandedEx === ex.norm ? ' is-open' : ''}`}>{ex.displayName}</span>
                       <ChevronRight
                         size={14}
                         strokeWidth={2}

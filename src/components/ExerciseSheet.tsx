@@ -324,7 +324,7 @@ export function ExerciseSheet({
 
                 <div className="ex-row-left">
                   {!mergeMode && <ChevronRight size={13} strokeWidth={2.5} className={`ex-chevron${isExpanded ? ' ex-chevron-open' : ''}`} />}
-                  <span className="ex-name">{entry.displayName}</span>
+                  <span className={`ex-name${isExpanded ? ' is-open' : ''}`}>{entry.displayName}</span>
                   {entry.nicknames.map(n => (
                     <span key={n} className="ex-nickname">&nbsp;/ {n}</span>
                   ))}

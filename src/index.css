@@ -1520,10 +1520,19 @@ strong, b {
   flex-shrink: 0;
 }
 
+/* A list of names is read by scanning, not by reading each one, so they sit a
+   step back until one is opened — then that one comes forward and the rest
+   stay put as context. */
 .ex-name {
   font-size: 0.92rem;
   font-weight: var(--w-ui);
   letter-spacing: -0.015em;
+  color: var(--text-2);
+  transition: color 0.15s ease;
+}
+
+.ex-name.is-open {
+  color: var(--text);
 }
 
 .ex-nickname {
@@ -1950,10 +1959,15 @@ strong, b {
   font-size: 0.92rem;
   font-weight: var(--w-ui);
   letter-spacing: -0.015em;
-  color: var(--text);
+  color: var(--text-2);
+  transition: color 0.15s ease;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.preset-ex-name.is-open {
+  color: var(--text);
 }
 
 .preset-ex-chevron {
