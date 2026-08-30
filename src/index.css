@@ -1632,9 +1632,10 @@ strong, b {
   flex-shrink: 0;
 }
 
-/* Three numbers of equal loudness read as one blob, so the row is ranked: the
-   load is what changes session to session, reps and sets are its context. Same
-   accent family throughout — the step is weight and brightness, not hue. */
+/* The row is ranked by weight alone: every figure keeps full accent, and the
+   load — the thing that actually moves session to session — is the only one
+   set bold against the regular reps and sets beside it. Dimming the others
+   was the alternative, and it just made them look switched off. */
 .history-values {
   font-size: 0.78rem;
   font-weight: var(--w-note);
@@ -1642,13 +1643,8 @@ strong, b {
   flex-shrink: 0;
 }
 
-.history-values .num {
-  color: var(--accent-dim);
-}
-
 .history-values .history-weight {
-  font-weight: var(--w-medium);
-  color: var(--accent);
+  font-weight: var(--w-ui);
 }
 
 .history-sep {

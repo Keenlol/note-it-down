@@ -89,8 +89,9 @@ carries `--w-note`; add to that list rather than writing the token into a rule
 of its own, so the layer stays visible in one place.
 
 **Job 2 — the history row.** `.history-values` ranks one figure against its
-context: load at `--w-medium` and full `--accent`, reps × sets at `--w-note`
-and `--accent-dim`. Same hue; the step is weight and brightness.
+context: the load at `--w-ui`, reps × sets at `--w-note`. Every figure keeps
+full `--accent` — weight is the only step. Dimming the supporting numbers was
+tried and reads as switched off rather than subordinate.
 
 Consequences to keep in mind:
 
@@ -263,8 +264,8 @@ sheet title:  1.15rem --w-display  --text
 row name:     0.92rem --w-ui       --text
 meta (date):  0.72rem --w-note     --text-dim
 count:        0.72rem --w-ui       --accent
-history load: 0.78rem --w-medium   --accent
-history reps: 0.78rem --w-note     --accent-dim
+history load: 0.78rem --w-ui       --accent
+history reps: 0.78rem --w-note     --accent
 chips/buttons 0.75rem --w-ui       --text-2
 dropdown:     0.82rem --w-ui
 ```
