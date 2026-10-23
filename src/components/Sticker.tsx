@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 
-export type StickerName = 'scale' | 'dumbbell' | 'tag' | 'blocks' | 'gear'
+export type StickerName = 'scale' | 'dumbbell' | 'tag' | 'eyes' | 'gear'
 
 /**
  * Hand-drawn sticker icons. Each one is drawn once and rendered twice:
@@ -42,7 +42,6 @@ function gearPath(cx: number, cy: number, teeth: number, outer: number, root: nu
 // Drawn level, then tilted — and sized up, since a bar reads smaller than a block.
 const DUMBBELL = 'rotate(-32 16 16) translate(16 16) scale(1.12) translate(-16 -16)'
 const SCALE_TILT = 'rotate(-6 16 16)'
-const BLOCKS_TILT = 'rotate(-7 16 16)'
 
 const PIECES: Record<StickerName, Piece[]> = {
   // Bathroom scale, dial window up top, set down a touch crooked.
@@ -69,11 +68,14 @@ const PIECES: Record<StickerName, Piece[]> = {
     { el: <path d="M16.8 13.6h6.4M16.8 18.4h4.2" transform="rotate(38 16.5 16)" />, fill: 'none' },
   ],
 
-  // Three boxed rows, stacked a little askew — Proper mode's one box per line.
-  blocks: [
-    { el: <rect x="5.6" y="5.8" width="20.8" height="6" rx="2.2" transform={BLOCKS_TILT} />, fill: 'paper' },
-    { el: <rect x="5.6" y="13" width="17.4" height="6" rx="2.2" transform={BLOCKS_TILT} />, fill: 'spot' },
-    { el: <rect x="5.6" y="20.2" width="19.2" height="6" rx="2.2" transform={BLOCKS_TILT} />, fill: 'paper' },
+  // Two eyes, glancing to the side.
+  eyes: [
+    { el: <ellipse cx="10.8" cy="16.3" rx="5.4" ry="7.6" />, fill: 'paper' },
+    { el: <ellipse cx="21.6" cy="15.7" rx="5.4" ry="7.6" />, fill: 'paper' },
+    { el: <circle cx="12.6" cy="17.4" r="3" />, fill: 'spot', line: false },
+    { el: <circle cx="23.4" cy="16.8" r="3" />, fill: 'spot', line: false },
+    { el: <circle cx="13.2" cy="17.6" r="1.7" />, fill: 'ink', line: false },
+    { el: <circle cx="24" cy="17" r="1.7" />, fill: 'ink', line: false },
   ],
 
   // Gear, eight teeth, a fat hub.

@@ -36,21 +36,6 @@ export function formatWeightDiff(absKgDiff: number, unit: WeightUnit): string {
   return `${display}${unit}`
 }
 
-// ── Editor mode ───────────────────────────────────────────────────────────────
-
-/** Note: the free-typed text. Proper: one box per line, edited with taps and drags. */
-export type EditorMode = 'note' | 'proper'
-
-const EDITOR_MODE_KEY = 'settings_editorMode'
-
-export function getSavedEditorMode(): EditorMode {
-  return localStorage.getItem(EDITOR_MODE_KEY) === 'proper' ? 'proper' : 'note'
-}
-
-export function saveEditorMode(mode: EditorMode) {
-  localStorage.setItem(EDITOR_MODE_KEY, mode)
-}
-
 // ── Trend badges ──────────────────────────────────────────────────────────────
 
 const SHOW_DOWN_TREND_KEY = 'settings_showDownTrend'
