@@ -339,7 +339,7 @@ step aside.
 - **Press a value and drag** up or down to change it — no hold, the values
   are handles in this view. A value is its number and its unit together
   (`.reveal-value` wraps both), and its `::before` stretches the target to
-  the line's full height. 14 px per step; weight 2.5 kg / 5 lb (on the step
+  the line's full height. 42 px per step; weight 2.5 kg / 5 lb (on the step
   grid, so 61.3 → 62.5), a `bw+n` offset the same, a `bw×n` factor 0.1, reps
   and sets 1. A bubble above the finger (`.adjust-bubble`) shows the value;
   the value being dragged lights up.

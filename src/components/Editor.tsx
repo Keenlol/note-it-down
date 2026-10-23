@@ -339,7 +339,7 @@ const DRAG_SLOP = 4
 /** Travel before a press on a revealed value starts adjusting it. */
 const ADJUST_SLOP = 4
 /** Finger travel per step while adjusting. */
-const STEP_PX = 14
+const STEP_PX = 42
 
 interface Press {
   line: number
