@@ -942,9 +942,10 @@ strong, b {
 /* ── Reveal: drag a value to change it ──
    While the eye is on the note is read-only: the textarea stops taking the
    pointer, so a press lands on the formatted overlay beneath it, and only the
-   values the line actually writes take one. The browser pans nothing that
-   starts on a value — up and down is the value's, sideways the day swipe's —
-   so the page scrolls from anywhere else. */
+   values the line actually writes take one. A value is its number and its
+   unit together, and its target reaches a little past both. Nothing that
+   starts on one pans the page or swipes the day — the page scrolls from
+   anywhere else. */
 .editor-wrap.revealed .editor-textarea {
   pointer-events: none;
   caret-color: transparent;
@@ -959,10 +960,21 @@ strong, b {
 
 /* Padded out without moving a glyph, so the lit value reads as a chip. */
 .reveal-value {
+  position: relative;
   padding: 0.1em 0.2em;
   margin: 0 -0.2em;
   border-radius: var(--r-chip);
   transition: background 0.12s ease;
+}
+
+/* The touch target: the chip, stretched up and down to fill the line's own
+   height (the chip is ~1.43em of the 1.65em line, so 0.1em each way — any
+   more and it reaches over the line above or below). Not sideways — the
+   chip's padding already reaches into the gap before the next value. */
+.reveal-value::before {
+  content: '';
+  position: absolute;
+  inset: -0.1em 0;
 }
 
 .reveal-value.adjusting {

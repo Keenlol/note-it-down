@@ -105,22 +105,26 @@ function renderRevealOverlay(
     } else if (parsed.exercise) {
       const ex = parsed.exercise
       // Separate the numeric value from its unit label so the label
-      // gets reveal-unit styling (dimmed) matching "reps x" and "sets".
-      const value = (field: ValueField, content: React.ReactNode) => {
-        const written = parsed.values?.[field] !== undefined
+      // gets reveal-unit styling (dimmed) matching "reps x" and "sets". The
+      // number and its unit are one handle, so either can be grabbed.
+      const value = (field: ValueField, n: React.ReactNode, label: string) => {
+        const content = <><span className="num">{n}</span><span className="reveal-unit">{label}</span></>
+        if (parsed.values?.[field] === undefined) return content
         const on = active?.line === i && active.field === field
-        return written
-          ? <span className={`num reveal-value${on ? ' adjusting' : ''}`} data-line={i} data-field={field}>{content}</span>
-          : <span className="num">{content}</span>
+        return (
+          <span className={`reveal-value${on ? ' adjusting' : ''}`} data-line={i} data-field={field}>
+            {content}
+          </span>
+        )
       }
       nodes.push(
         <span key={i}>
           {ex.name}
           {'  '}
-          {value('weight', weightNumber(ex, unit))}<span className="reveal-unit">{unit}</span>
+          {value('weight', weightNumber(ex, unit), unit)}
           {'  '}
-          {value('reps', ex.reps)}<span className="reveal-unit">reps x </span>
-          {value('sets', ex.sets)}<span className="reveal-unit">sets</span>
+          {value('reps', ex.reps, 'reps')}<span className="reveal-unit"> x </span>
+          {value('sets', ex.sets, 'sets')}
         </span>
       )
     } else {
@@ -332,7 +336,7 @@ function pickSlot(
 /** Below this, a press on the grip is a tap, not a drag. */
 const DRAG_SLOP = 4
 
-/** Travel that decides a press on a revealed value: up or down adjusts it, sideways is the day swipe. */
+/** Travel before a press on a revealed value starts adjusting it. */
 const ADJUST_SLOP = 4
 /** Finger travel per step while adjusting. */
 const STEP_PX = 14
@@ -384,11 +388,10 @@ export function Editor({
   const [adjust, setAdjust] = useState<Adjust | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const press = useRef<Press | null>(null)
-  // Once a hold lands the page must not scroll under the drag, and the day
-  // swipe must not see it.
-  const holding = useRef(false)
   const valueRef = useRef(value)
   valueRef.current = value
+  const revealRef = useRef(reveal)
+  revealRef.current = reveal
 
   const lines = value.split('\n')
   // The grip sits on the hovered line (mouse), else the caret's line while the
@@ -498,34 +501,42 @@ export function Editor({
   }
 
   // ── Adjusting a revealed value ──
-  // React's touch listeners are passive, so the one that stops the scroll
-  // goes on by hand.
+  // A touch that starts on a value is the value's from start to finish: the
+  // day swipe never sees any of it, so a drag that wanders sideways can't
+  // turn the page. A touch's events all target the element it started on,
+  // so its start decides. React's touch listeners are passive and can't stop
+  // the scroll, so these go on by hand.
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const onMove = (e: TouchEvent) => { if (holding.current) { e.preventDefault(); e.stopPropagation() } }
-    const onEnd = (e: TouchEvent) => { if (holding.current) e.stopPropagation() }
-    el.addEventListener('touchmove', onMove, { passive: false })
-    el.addEventListener('touchend', onEnd)
-    return () => { el.removeEventListener('touchmove', onMove); el.removeEventListener('touchend', onEnd) }
+    const onValue = (e: TouchEvent) =>
+      revealRef.current && (e.target as Element | null)?.closest?.('.reveal-value') != null
+    const keep = (e: TouchEvent) => { if (onValue(e)) e.stopPropagation() }
+    const keepMove = (e: TouchEvent) => { if (onValue(e)) { e.preventDefault(); e.stopPropagation() } }
+    el.addEventListener('touchstart', keep)
+    el.addEventListener('touchmove', keepMove, { passive: false })
+    el.addEventListener('touchend', keep)
+    el.addEventListener('touchcancel', keep)
+    return () => {
+      el.removeEventListener('touchstart', keep)
+      el.removeEventListener('touchmove', keepMove)
+      el.removeEventListener('touchend', keep)
+      el.removeEventListener('touchcancel', keep)
+    }
   }, [])
 
   // Turning the eye off mid-press drops it.
   useEffect(() => {
     if (reveal) return
     press.current = null
-    holding.current = false
     setAdjust(null)
   }, [reveal])
 
-  const endPress = () => {
-    press.current = null
-    holding.current = false
-  }
+  const endPress = () => { press.current = null }
 
-  // In the eye's view the values are handles: no hold, a press that sets off
-  // up or down adjusts straight away. The pointer is caught on the press, so
-  // a quick drag that outruns the number still reaches it.
+  // In the eye's view the values are handles: no hold, a press that moves
+  // adjusts straight away, by its vertical travel. The pointer is caught on
+  // the press, so a quick drag that outruns the number still reaches it.
   const handleValueDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (readOnly || e.button !== 0 || press.current) return
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-field]')
@@ -548,13 +559,6 @@ export function Editor({
       const dx = e.clientX - p.x
       const dy = e.clientY - p.y
       if (Math.hypot(dx, dy) < ADJUST_SLOP || !wrapRef.current) return
-      if (Math.abs(dx) > Math.abs(dy)) {
-        // Sideways: the day swipe's, which reads touch events and still has them.
-        try { p.el.releasePointerCapture(p.pointerId) } catch { /* already released */ }
-        endPress()
-        return
-      }
-      holding.current = true
       navigator.vibrate?.(8)
       const r = p.el.getBoundingClientRect()
       const base = wrapRef.current.getBoundingClientRect()
