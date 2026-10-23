@@ -29,12 +29,25 @@ export interface Range {
   end: number
 }
 
+/**
+ * Where one of an exercise's values is written: the digits to rewrite, and
+ * the whole token they sit in ("8" of "8x3", "10" of "bw+10"). A plain "bw"
+ * has no digits, so its span is the token itself.
+ */
+export interface ValueSpan extends Range {
+  token: Range
+}
+
+export type ValueField = 'weight' | 'reps' | 'sets'
+
 export interface ParsedLine {
   raw: string
   exercise: Exercise | null
   bodyweightEntry?: number   // set when line is "bodyweight 82" / "bw 82"
   highlights: Range[]        // numeric token ranges (orange)
   nameRanges: Range[]        // word token ranges (for unknown-name underline)
+  /** Where each value is written — absent for one that was assumed (an unwritten bodyweight). */
+  values?: Partial<Record<ValueField, ValueSpan>>
 }
 
 type Tok =
@@ -46,7 +59,7 @@ type Tok =
   | { kind: 'weight'; start: number; end: number; kg: number }
   | { kind: 'reps';   start: number; end: number; n: number }
   | { kind: 'sets';   start: number; end: number; n: number }
-  | { kind: 'pair';   start: number; end: number; reps: number; sets: number }
+  | { kind: 'pair';   start: number; end: number; reps: number; sets: number; repsFirst: boolean }
   | { kind: 'bare';   start: number; end: number; n: number }
 
 const PATTERNS: Array<{ re: RegExp; build: (m: RegExpExecArray, i: number) => Tok }> = [
@@ -81,7 +94,8 @@ const PATTERNS: Array<{ re: RegExp; build: (m: RegExpExecArray, i: number) => To
       else if (/^(sets?|s)$/.test(suffix)) { sets = b; reps = a }
       else if (a < b) { sets = a; reps = b }
       else { sets = b; reps = a }
-      return { kind: 'pair', start: i, end: i + m[0].length, reps, sets }
+      const repsFirst = /^(sets?|s)$/.test(suffix) || (!/^(reps?|r)$/.test(suffix) && a >= b)
+      return { kind: 'pair', start: i, end: i + m[0].length, reps, sets, repsFirst }
     },
   },
   { re: /^(\d+(?:\.\d+)?)\s*kg\b/i, build: (m, i) => ({ kind: 'weight', start: i, end: i + m[0].length, kg: parseFloat(m[1]) }) },
@@ -91,6 +105,24 @@ const PATTERNS: Array<{ re: RegExp; build: (m: RegExpExecArray, i: number) => To
   { re: /^\d+(?:\.\d+)?/, build: (m, i) => ({ kind: 'bare', start: i, end: i + m[0].length, n: parseFloat(m[0]) }) },
   { re: /^[^\s\d]+/, build: (m, i) => ({ kind: 'word', start: i, end: i + m[0].length }) },
 ]
+
+/** Every number written inside a token, in order. */
+function numbersIn(line: string, t: Tok): Range[] {
+  const out: Range[] = []
+  const re = /\d+(?:\.\d+)?/g
+  const text = line.slice(t.start, t.end)
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    out.push({ start: t.start + m.index, end: t.start + m.index + m[0].length })
+  }
+  return out
+}
+
+function spanOf(line: string, t: Tok, nth = 0): ValueSpan {
+  const token = { start: t.start, end: t.end }
+  // A plain or offset "bw" is rewritten whole; everything else just its digits.
+  if (t.kind === 'bw' || t.kind === 'bwadd') return { ...token, token }
+  return { ...(numbersIn(line, t)[nth] ?? token), token }
+}
 
 function tokenize(line: string): Tok[] {
   const toks: Tok[] = []
@@ -151,6 +183,7 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
   let bwExpr: BwExpr | undefined
   const used: Tok[] = []
   const wordRanges: Range[] = []
+  const values: Partial<Record<ValueField, ValueSpan>> = {}
 
   // Pass 1: words + labeled tokens (take precedence over positional fill)
   for (const t of toks) {
@@ -159,30 +192,30 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
     } else if (t.kind === 'bw') {
       bodyweight = true
       bwExpr = { op: 'plain' }
-      if (weightKg === undefined) weightKg = bodyweightKg
+      if (weightKg === undefined) { weightKg = bodyweightKg; values.weight = spanOf(line, t) }
       used.push(t)
     } else if (t.kind === 'bwadd') {
       bodyweight = true
       bwExpr = { op: 'add', offset: t.offset }
-      if (weightKg === undefined) weightKg = bodyweightKg + t.offset * _unitMul
+      if (weightKg === undefined) { weightKg = bodyweightKg + t.offset * _unitMul; values.weight = spanOf(line, t) }
       used.push(t)
     } else if (t.kind === 'bwmul') {
       bodyweight = true
       bwExpr = { op: 'mul', factor: t.factor }
-      if (weightKg === undefined) weightKg = bodyweightKg * t.factor
+      if (weightKg === undefined) { weightKg = bodyweightKg * t.factor; values.weight = spanOf(line, t) }
       used.push(t)
     } else if (t.kind === 'weight') {
-      if (weightKg === undefined) weightKg = t.kg
+      if (weightKg === undefined) { weightKg = t.kg; values.weight = spanOf(line, t) }
       used.push(t)
     } else if (t.kind === 'reps') {
-      if (reps === undefined) reps = t.n
+      if (reps === undefined) { reps = t.n; values.reps = spanOf(line, t) }
       used.push(t)
     } else if (t.kind === 'sets') {
-      if (sets === undefined) sets = t.n
+      if (sets === undefined) { sets = t.n; values.sets = spanOf(line, t) }
       used.push(t)
     } else if (t.kind === 'pair') {
-      if (reps === undefined) reps = t.reps
-      if (sets === undefined) sets = t.sets
+      if (reps === undefined) { reps = t.reps; values.reps = spanOf(line, t, t.repsFirst ? 0 : 1) }
+      if (sets === undefined) { sets = t.sets; values.sets = spanOf(line, t, t.repsFirst ? 1 : 0) }
       used.push(t)
     }
   }
@@ -195,9 +228,11 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
       bodyweight = true
       bwExpr = { op: 'plain' }
       weightKg = bodyweightKg
-      const sorted = bares.map(t => t.n).sort((a, b) => a - b)
-      sets = sorted[0]
-      reps = sorted[1]
+      const [few, many] = bares[0].n <= bares[1].n ? [bares[0], bares[1]] : [bares[1], bares[0]]
+      sets = few.n
+      reps = many.n
+      values.sets = spanOf(line, few)
+      values.reps = spanOf(line, many)
       used.push(bares[0], bares[1])
     }
   }
@@ -205,9 +240,9 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
   // Pass 2: bare numbers fill remaining slots in order (weight → reps → sets)
   for (const t of toks) {
     if (t.kind !== 'bare') continue
-    if (weightKg === undefined) { weightKg = t.n * _unitMul; used.push(t) }
-    else if (reps === undefined) { reps = t.n; used.push(t) }
-    else if (sets === undefined) { sets = t.n; used.push(t) }
+    if (weightKg === undefined) { weightKg = t.n * _unitMul; values.weight = spanOf(line, t); used.push(t) }
+    else if (reps === undefined) { reps = t.n; values.reps = spanOf(line, t); used.push(t) }
+    else if (sets === undefined) { sets = t.n; values.sets = spanOf(line, t); used.push(t) }
   }
 
   if (reps === undefined || sets === undefined) {
@@ -231,6 +266,7 @@ export function parseLine(line: string, bodyweightKg: number = ASSUMED_BW_KG): P
     exercise: { name, weightKg, reps, sets, bodyweight, bwExpr, volume: reps * sets },
     highlights: used.map(t => ({ start: t.start, end: t.end })),
     nameRanges: wordRanges,
+    values,
   }
 }
 

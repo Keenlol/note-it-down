@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowLeftRight, CornerDownLeft, GripVertical } from 'lucide-react'
-import { parseLine, isKnownName, normalizeName, bwExtraLoadKg, type ParsedLine, type Exercise } from '../utils/parser'
+import { parseLine, isKnownName, normalizeName, bwExtraLoadKg, type ParsedLine, type Exercise, type ValueField } from '../utils/parser'
+import { stepLine } from '../utils/adjust'
 import { type WeightUnit, formatWeightDiff } from '../utils/settings'
 import { TrendItem } from './TrendItem'
 import { tap } from '../utils/tap'
@@ -24,7 +25,7 @@ interface Props {
   previousExercises: Map<string, Exercise>
   bodyweightKg?: number   // actual bodyweight for this date; defaults to 60
   bwIsSet?: boolean       // false → show "set bodyweight" hint on bw lines
-  reveal?: boolean
+  reveal?: boolean        // the formatted view — read-only, its numbers held and dragged to change
   readOnly?: boolean
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   weightUnit?: WeightUnit
@@ -59,9 +60,33 @@ function buildTrend(current: Exercise, prev: Exercise, unit: WeightUnit, showDow
   ))}</>
 }
 
+const KG_PER_LB = 0.453592
+
+function weightNumber(ex: Exercise, unit: WeightUnit): string {
+  const v = unit === 'lbs' ? ex.weightKg / KG_PER_LB : ex.weightKg
+  return v % 1 === 0 ? `${Math.round(v)}` : `${Math.round(v * 10) / 10}`
+}
+
+/** What the bubble over a value being dragged reads. */
+function adjustLabel(line: string, field: ValueField, bodyweightKg: number, unit: WeightUnit): string {
+  const ex = parseLine(line, bodyweightKg).exercise
+  if (!ex) return ''
+  if (field === 'reps') return `${ex.reps} rep${ex.reps === 1 ? '' : 's'}`
+  if (field === 'sets') return `${ex.sets} set${ex.sets === 1 ? '' : 's'}`
+  const bw = ex.bodyweight ? ex.bwExpr : undefined
+  if (bw?.op === 'plain') return 'bodyweight'
+  if (bw?.op === 'mul') return `bw × ${bw.factor}`
+  if (bw?.op === 'add') return `bw ${bw.offset > 0 ? '+' : '−'} ${Math.abs(bw.offset)}${unit}`
+  return `${weightNumber(ex, unit)} ${unit}`
+}
+
 // Reveal overlay: exercise lines show formatted values (all orange), non-exercise lines render normally.
-// This is a second overlay that crossfades over the normal one on hold.
-function renderRevealOverlay(text: string, bodyweightKg: number, unit: WeightUnit): React.ReactNode[] {
+// It crossfades over the normal one while the eye is on. Each value the line
+// actually writes is tagged with its line and field, so it can be held.
+function renderRevealOverlay(
+  text: string, bodyweightKg: number, unit: WeightUnit,
+  active: { line: number; field: ValueField } | null,
+): React.ReactNode[] {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
 
@@ -81,17 +106,21 @@ function renderRevealOverlay(text: string, bodyweightKg: number, unit: WeightUni
       const ex = parsed.exercise
       // Separate the numeric value from its unit label so the label
       // gets reveal-unit styling (dimmed) matching "reps x" and "sets".
-      const KG_PER_LB = 0.453592
-      const wVal = unit === 'lbs' ? ex.weightKg / KG_PER_LB : ex.weightKg
-      const wNum = wVal % 1 === 0 ? `${Math.round(wVal)}` : `${Math.round(wVal * 10) / 10}`
+      const value = (field: ValueField, content: React.ReactNode) => {
+        const held = parsed.values?.[field] !== undefined
+        const on = active?.line === i && active.field === field
+        return held
+          ? <span className={`num reveal-value${on ? ' adjusting' : ''}`} data-line={i} data-field={field}>{content}</span>
+          : <span className="num">{content}</span>
+      }
       nodes.push(
         <span key={i}>
           {ex.name}
           {'  '}
-          <span className="num">{wNum}</span><span className="reveal-unit">{unit}</span>
+          {value('weight', weightNumber(ex, unit))}<span className="reveal-unit">{unit}</span>
           {'  '}
-          <span className="num">{ex.reps}</span><span className="reveal-unit">reps x </span>
-          <span className="num">{ex.sets}</span><span className="reveal-unit">sets</span>
+          {value('reps', ex.reps)}<span className="reveal-unit">reps x </span>
+          {value('sets', ex.sets)}<span className="reveal-unit">sets</span>
         </span>
       )
     } else {
@@ -303,6 +332,32 @@ function pickSlot(
 /** Below this, a press on the grip is a tap, not a drag. */
 const DRAG_SLOP = 4
 
+/** How long a press on a revealed value rests before it starts adjusting. */
+const HOLD_MS = 260
+/** Travel that gives such a press away as a scroll or a swipe before then. */
+const HOLD_SLOP = 8
+/** Finger travel per step while adjusting. */
+const STEP_PX = 14
+
+interface Press {
+  line: number
+  field: ValueField
+  pointerId: number
+  x: number
+  y: number
+  el: HTMLElement
+  timer: number
+  held: boolean
+}
+
+interface Adjust {
+  line: number
+  field: ValueField
+  base: string                       // the line as it was when the hold landed
+  steps: number
+  at: { left: number; top: number }  // the value's top centre, editor-relative
+}
+
 interface DragState {
   start: number
   count: number
@@ -330,6 +385,14 @@ export function Editor({
   const [layoutTick, setLayoutTick] = useState(0)
   const [markBox, setMarkBox] = useState<LineBox | null>(null)
   const [swapAt, setSwapAt] = useState<{ left: number; top: number } | null>(null)
+  const [adjust, setAdjust] = useState<Adjust | null>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const press = useRef<Press | null>(null)
+  // Once a hold lands the page must not scroll under the drag, and the day
+  // swipe must not see it.
+  const holding = useRef(false)
+  const valueRef = useRef(value)
+  valueRef.current = value
 
   const lines = value.split('\n')
   // The grip sits on the hovered line (mouse), else the caret's line while the
@@ -438,6 +501,98 @@ export function Editor({
     if (drag.slot !== null) dropY = slotY(drag.boxes, drag.slot)
   }
 
+  // ── Adjusting a revealed value ──
+  // React's touch listeners are passive, so the one that stops the scroll
+  // goes on by hand.
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const onMove = (e: TouchEvent) => { if (holding.current) { e.preventDefault(); e.stopPropagation() } }
+    const onEnd = (e: TouchEvent) => { if (holding.current) e.stopPropagation() }
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    return () => { el.removeEventListener('touchmove', onMove); el.removeEventListener('touchend', onEnd) }
+  }, [])
+
+  useEffect(() => () => clearTimeout(press.current?.timer), [])
+
+  // Turning the eye off mid-press drops it.
+  useEffect(() => {
+    if (reveal) return
+    clearTimeout(press.current?.timer)
+    press.current = null
+    holding.current = false
+    setAdjust(null)
+  }, [reveal])
+
+  const endPress = () => {
+    clearTimeout(press.current?.timer)
+    press.current = null
+    holding.current = false
+  }
+
+  const handleValueDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (readOnly || e.button !== 0 || press.current) return
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-field]')
+    if (!el) return
+    const p: Press = {
+      line: Number(el.dataset.line),
+      field: el.dataset.field as ValueField,
+      pointerId: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      el,
+      timer: 0,
+      held: false,
+    }
+    p.timer = window.setTimeout(() => {
+      if (press.current !== p || !wrapRef.current) return
+      p.held = true
+      holding.current = true
+      try { p.el.setPointerCapture(p.pointerId) } catch { /* pointer already gone */ }
+      navigator.vibrate?.(8)
+      const r = p.el.getBoundingClientRect()
+      const base = wrapRef.current.getBoundingClientRect()
+      setAdjust({
+        line: p.line,
+        field: p.field,
+        base: valueRef.current.split('\n')[p.line] ?? '',
+        steps: 0,
+        at: { left: r.left + r.width / 2 - base.left, top: r.top - base.top },
+      })
+    }, HOLD_MS)
+    press.current = p
+  }
+
+  const handleValueMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const p = press.current
+    if (!p || e.pointerId !== p.pointerId) return
+    if (!p.held) {
+      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > HOLD_SLOP) endPress()
+      return
+    }
+    if (!adjust) return
+    const steps = Math.round((p.y - e.clientY) / STEP_PX)
+    if (steps === adjust.steps) return
+    // Stepped from the line as it was at the hold, so a step that can't move
+    // (a rep count at 1) holds still rather than drifting.
+    const next = stepLine(adjust.base, adjust.field, steps, weightUnit)
+    const out = value.split('\n')
+    if (out[adjust.line] !== next) {
+      navigator.vibrate?.(4)
+      out[adjust.line] = next
+      onChange(out.join('\n'))
+    }
+    setAdjust({ ...adjust, steps })
+  }
+
+  const handleValueUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const p = press.current
+    if (!p || e.pointerId !== p.pointerId) return
+    endPress()
+    setAdjust(null)
+  }
+
   // Auto-resize textarea to content
   useEffect(() => {
     const ta = textareaRef.current
@@ -489,7 +644,8 @@ export function Editor({
 
   return (
     <div
-      className="editor-wrap"
+      ref={wrapRef}
+      className={`editor-wrap${reveal ? ' revealed' : ''}`}
       onPointerMove={handleWrapPointerMove}
       onPointerLeave={() => setHoverLine(null)}
     >
@@ -507,15 +663,27 @@ export function Editor({
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
 
-      {/* Reveal overlay: crossfades in on hold, shows formatted values in orange */}
+      {/* Reveal overlay: crossfades in while the eye is on, shows formatted
+          values in orange. Hold one and drag up or down to change it. */}
       <div
-        className="editor-overlay"
+        className="editor-overlay reveal-overlay"
         aria-hidden="true"
         style={{ opacity: reveal ? 1 : 0, transition: 'opacity 0.15s ease' }}
+        onPointerDown={reveal ? handleValueDown : undefined}
+        onPointerMove={reveal ? handleValueMove : undefined}
+        onPointerUp={reveal ? handleValueUp : undefined}
+        onPointerCancel={reveal ? () => { endPress(); setAdjust(null) } : undefined}
+        onContextMenu={reveal ? e => e.preventDefault() : undefined}
       >
-        {renderRevealOverlay(value, bodyweightKg, weightUnit)}
+        {renderRevealOverlay(value, bodyweightKg, weightUnit, adjust)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
+
+      {adjust && (
+        <div className="adjust-bubble" aria-hidden="true" style={{ left: adjust.at.left, top: adjust.at.top }}>
+          {adjustLabel(lines[adjust.line] ?? '', adjust.field, bodyweightKg, weightUnit)}
+        </div>
+      )}
 
       {/* Trend badges: floated to the right edge, one per exercise line */}
       {!reveal && lineTrends.map(({ lineIndex, node }) => (
@@ -633,7 +801,7 @@ export function Editor({
         onKeyUp={reportCursor}
         onMouseUp={reportCursor}
         onSelect={reportCursor}
-        readOnly={readOnly}
+        readOnly={readOnly || reveal}
         spellCheck={false}
         autoCapitalize="off"
         autoComplete="off"

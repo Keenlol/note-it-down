@@ -251,6 +251,8 @@ export function App() {
   const [titleStyle, setTitleStyle] = useState<React.CSSProperties>({})
   const [noteOpacity, setNoteOpacity] = useState(1)
   const [isSwipeAnimating, setIsSwipeAnimating] = useState(false)
+  // The eye: the note's formatted view, where values are held and dragged
+  // instead of typed. Read-only while it's on, so the keyboard goes away.
   const [reveal, setReveal] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [presetSheetOpen, setPresetSheetOpen] = useState(false)
@@ -1264,12 +1266,14 @@ export function App() {
               <Sticker name="tag" className="bottom-icon" />
             </button>
             <button
+              {...pressPop}
               className={`bottom-btn${reveal ? ' active' : ''}`}
-              onPointerDown={e => { press(e); e.preventDefault(); setReveal(true) }}
-              onPointerUp={e => { release(e); setReveal(false) }}
-              onPointerCancel={e => { cancelPress(e); setReveal(false) }}
-              onPointerLeave={e => { cancelPress(e); setReveal(false) }}
+              onClick={() => {
+                if (!reveal) (viewDate ? pastTextareaRef : textareaRef).current?.blur()
+                setReveal(v => !v)
+              }}
               aria-label="Reveal exercise details"
+              aria-pressed={reveal}
             >
               <Sticker name="eyes" className="bottom-icon" />
             </button>

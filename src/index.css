@@ -939,6 +939,51 @@ strong, b {
   color: var(--accent-dim);
 }
 
+/* ── Reveal: hold a value, drag to change it ──
+   While the eye is on the note is read-only: the textarea stops taking the
+   pointer, so a press lands on the formatted overlay beneath it, and only the
+   values the line actually writes take one. They pan vertically like the page
+   until a hold lands; then the drag is theirs. */
+.editor-wrap.revealed .editor-textarea {
+  pointer-events: none;
+  caret-color: transparent;
+}
+
+.editor-wrap.revealed .reveal-value {
+  pointer-events: auto;
+  cursor: ns-resize;
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+}
+
+/* Padded out without moving a glyph, so the lit value reads as a chip. */
+.reveal-value {
+  padding: 0.1em 0.2em;
+  margin: 0 -0.2em;
+  border-radius: var(--r-chip);
+  transition: background 0.12s ease;
+}
+
+.reveal-value.adjusting {
+  background: var(--accent-tint);
+}
+
+/* The finger covers the value being dragged, so it is read off above it. */
+.adjust-bubble {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 10px));
+  padding: 6px 11px;
+  background: var(--surface-3);
+  border-radius: var(--r-card);
+  box-shadow: 0 6px 20px var(--sheet-shadow);
+  color: var(--accent);
+  font-size: 1rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  animation: grip-in 0.12s ease both;
+}
+
 /* ── Bottom bar ── */
 
 /* Click-through except for its row, so the gradient can't swallow taps meant
@@ -1065,7 +1110,7 @@ strong, b {
 
 /* Lit state is driven exclusively by the .active class so each button follows
    its own logic: exercise / preset light up while their sheet is toggled open,
-   the eye lights up only while held. No shared :hover/:active so taps on one
+   the eye while its view is on. No shared :hover/:active so taps on one
    button never light another (and hover can't stick on touch). */
 .bottom-btn.active {
   color: var(--text);

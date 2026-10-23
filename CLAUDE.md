@@ -323,6 +323,27 @@ every logical line from those spans, so a wrapped line is still one block.
   when a line runs long. It steps aside for an inline suggestion on that line,
   during a drag, in reveal and read-only. A tap on the grip does nothing.
 
+### Reveal (the eye)
+The `eyes` button is a toggle, not a hold. While it's on, the note shows its
+formatted overlay (`name 60kg 8reps x 3sets`) and is read-only: the textarea
+takes no pointer and the keyboard goes away, and the grip, swap and ghosts
+step aside.
+
+- **Hold a number (260 ms), then drag** up or down to change it — 14 px per
+  step; weight 2.5 kg / 5 lb (on the step grid, so 61.3 → 62.5), a `bw+n`
+  offset the same, a `bw×n` factor 0.1, reps and sets 1. A bubble above the
+  finger (`.adjust-bubble`) shows the value; the held value lights up.
+- Moving past 8 px before the hold lands gives the press back to the scroll.
+  Once held, a non-passive `touchmove` listener on the editor stops the page
+  scrolling and keeps the touch from the day swipe.
+- **The number is rewritten where it is written** (`stepLine` in
+  `utils/adjust.ts`), so the rest of the line keeps its wording. The parser
+  records where each value sits (`ParsedLine.values`: the digits and their
+  token). A step that would make a larger-number-as-reps pair read the other
+  way is spelled out instead: `10x3` → `2x3s`, `pullups 10 3` → `10x11s`.
+- Only values the line actually writes can be held — a bodyweight that was
+  assumed, not written, has nothing to change.
+
 ### Swap picker
 `SwapSheet.tsx` is the exercise sheet as a one-tap picker. It reuses the sheet
 and row classes, but has no sort, merge, menus or history. A row tap swaps and
