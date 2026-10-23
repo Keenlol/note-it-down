@@ -331,7 +331,8 @@ null, and the grip, swap and the eye's drags all stand down. A `.lock-icon`
 sits beside the past day's title to say why. Today is never locked.
 
 ### Reveal (the eye)
-The `eyes` button is a toggle, not a hold. While it's on, the note shows its
+The `eyes` button is a toggle, not a hold, and switches itself off whenever
+the viewed day changes. While it's on, the note shows its
 formatted overlay (`name 60kg 8reps x 3sets`) and is read-only: the textarea
 takes no pointer and the keyboard goes away, and the grip, swap and ghosts
 step aside.

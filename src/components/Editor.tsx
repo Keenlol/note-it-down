@@ -571,7 +571,8 @@ export function Editor({
       })
       return
     }
-    const steps = Math.round((p.y - e.clientY) / STEP_PX)
+    // Whole steps only: each one takes the full distance, the first included.
+    const steps = Math.trunc((p.y - e.clientY) / STEP_PX)
     if (steps === adjust.steps) return
     // Stepped from the line as it was at the start, so a step that can't move
     // (a rep count at 1) holds still rather than drifting.

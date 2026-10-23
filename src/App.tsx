@@ -806,6 +806,9 @@ export function App() {
   // ── Swap ────────────────────────────────────────────────────────────────
   // A swap belongs to the day it was opened on.
   useEffect(() => { setSwapTarget(null) }, [viewDate])
+  // The eye belongs to the day it was turned on for: moving to another day
+  // turns it off, so a new day always opens as a note to type into.
+  useEffect(() => { setReveal(false) }, [viewDate])
 
   const handleSwapLine = useCallback((line: number) => {
     const lines = (viewDate ? pastText : todayText).split('\n')
