@@ -37,6 +37,9 @@ Use CSS variables exclusively — never hardcode these values in new rules.
 | `--text-2`      | `rgba(232,232,232,0.45)`     | Secondary text (past-day title, open chevron) |
 | `--text-dim`    | `rgba(232,232,232,0.35)`     | Metadata, labels, ghost text |
 | `--text-muted`  | `rgba(232,232,232,0.25)`     | Very subtle text (menu buttons, separators, chevron) |
+| `--grey-2`      | `#707070`                    | Solid twin of `--text-2` on `--bg` — icons, idle sticker paper |
+| `--grey-dim`    | `#5a5a5a`                    | Solid twin of `--text-dim` — line grip, swap icon |
+| `--grey-muted`  | `#444444`                    | Solid twin of `--text-muted` — disabled arrows, ghost ↵ |
 | `--accent`      | `#f97316`                    | Numbers, counts, active states |
 | `--accent-dim`  | `rgba(249,115,22,0.45)`      | Dimmed accent text (bw hint, reveal units) |
 | `--accent-mid`  | `rgba(249,115,22,0.28)`      | Selection/active bg (merge circle) |
@@ -45,6 +48,12 @@ Use CSS variables exclusively — never hardcode these values in new rules.
 | `--cell-empty`  | `var(--surface-1)`           | Heatmap empty cell |
 
 **Rule:** avoid opacity-based rgba() for backgrounds and borders. Use solid surface variables instead. Opacity is acceptable only for accent tints (e.g. `rgba(249,115,22,0.15)`) and the `--text-*` scale.
+
+**Icons are never see-through.** A translucent colour (the `--text-*` scale)
+or an `opacity` composites each path of an icon on its own, so wherever two
+strokes cross the crossing shows brighter. Colour icons with `--grey-*`, the
+solid twins of the text scale, and never fade one with `opacity`. Text glyphs
+don't overlap, so text keeps the `--text-*` scale.
 
 The one exception to solid borders: `#2e2e2e` is used for input/circle borders that need slight visibility against a `--surface-1` background.
 
@@ -225,12 +234,12 @@ Small inline controls (grip, swap, arrows, chevrons) stay lucide line icons:
 at 13–16px a sticker border turns to mush.
 
 ### Bottom bar buttons
-Stickers at 30px. Idle buttons dim the whole sticker with `opacity`, never a
-dimmer paper — opacity flattens the cut and art layers into one, so there is
-no seam where they overlap:
+Stickers at 30px. Idle buttons print the sticker on solid grey paper, never a
+faded one — with opacity the cut layer shows through the art wherever they
+overlap:
 ```css
-.bottom-icon                     { opacity: 0.42; }               /* idle */
-.bottom-btn.active .bottom-icon  { opacity: 1; --sticker-spot: var(--accent); }
+.bottom-icon                     { --sticker-paper: var(--grey-2); }   /* idle */
+.bottom-btn.active .bottom-icon  { --sticker-paper: var(--text); --sticker-spot: var(--accent); }
 /* gradient background for separation from content below */
 background: linear-gradient(to top, var(--bg) 62%, transparent);
 ```
@@ -286,7 +295,7 @@ inputs, so typing, paste and multi-line selection stay native. Each overlay
 line span carries `data-line={i}`, and `measureLines()` reads the real box of
 every logical line from those spans, so a wrapped line is still one block.
 
-- `.line-grip` (GripVertical, `--text-dim`) sits in the page's left padding at
+- `.line-grip` (GripVertical, `--grey-dim`) sits in the page's left padding at
   `left: -22px`, outside the text column, so the note's layout never shifts.
   It shows on the caret's line while the textarea has focus, or on the hovered
   line with a mouse; never on a blank line, in reveal, or read-only.
@@ -302,7 +311,7 @@ every logical line from those spans, so a wrapped line is still one block.
   capture. It stops touch propagation so the day swipe and history pull never
   see a drag, and `preventDefault`s the press so the keyboard stays up.
 - **Swap** needs no summoning: while the note has focus and the caret sits on
-  an exercise line, a bare `ArrowLeftRight` icon (`.line-swap`, `--text-dim`)
+  an exercise line, a bare `ArrowLeftRight` icon (`.line-swap`, `--grey-dim`)
   rides just past the end of that line's text — measured off its last glyph by
   `lineEnd()`, not pinned to the right edge — and is held inside the column
   when a line runs long. It steps aside for an inline suggestion on that line,

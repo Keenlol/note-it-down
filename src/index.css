@@ -34,6 +34,13 @@
   --text-2:     rgba(232, 232, 232, 0.45);  /* secondary / supporting */
   --text-dim:   rgba(232, 232, 232, 0.35);  /* metadata, labels */
   --text-muted: rgba(232, 232, 232, 0.25);  /* very subtle */
+  /* Solid twins of the three above, flattened onto --bg. For icon strokes and
+     fills: a see-through colour composites each path on its own, so wherever
+     an icon's paths cross, the crossing shows brighter. Never fade an icon with
+     opacity either — use these. */
+  --grey-2:     #707070;
+  --grey-dim:   #5a5a5a;
+  --grey-muted: #444444;
 
   /* Semantic */
   --accent:     #f97316;
@@ -425,14 +432,13 @@ strong, b {
   padding: 0;
   border: none;
   background: none;
-  color: var(--text-2);
+  color: var(--grey-2);
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .preset-nav-arrow:disabled {
-  color: var(--text-muted);
-  opacity: 0.5;
+  color: var(--grey-muted);
   cursor: default;
 }
 
@@ -710,7 +716,7 @@ strong, b {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-dim);
+  color: var(--grey-dim);
   z-index: 3;
   cursor: grab;
   touch-action: none;
@@ -789,7 +795,7 @@ strong, b {
   padding: 0;
   border: none;
   background: none;
-  color: var(--text-dim);
+  color: var(--grey-dim);
   cursor: pointer;
   z-index: 3;
   touch-action: manipulation;
@@ -833,7 +839,7 @@ strong, b {
   display: inline;
   vertical-align: middle;
   margin-left: 5px;
-  opacity: 0.7;
+  color: var(--grey-muted);
   position: relative;
   top: -1px;
 }
@@ -856,7 +862,7 @@ strong, b {
 .ghost-preset-hint {
   margin-top: 3px;
   font-size: 0.78em;
-  opacity: 0.6;
+  color: var(--grey-muted);
   display: flex;
   align-items: center;
   gap: 3px;
@@ -1011,26 +1017,25 @@ strong, b {
   overflow: visible;
 }
 
-.sticker .sticker-spot {
-  transition: fill 0.15s ease;
+.sticker * {
+  transition: fill 0.15s ease, stroke 0.15s ease;
 }
 
 .sticker.lit {
   --sticker-spot: var(--accent);
 }
 
-/* Idle buttons hold their sticker back with opacity rather than a dimmer
-   paper: opacity flattens the cut and art layers into one, so where they
-   overlap there is no seam. */
+/* Idle buttons print their sticker on solid grey paper. Not opacity: the cut
+   layer shows through the art wherever their shapes overlap, so a faded
+   sticker shows its own seams. */
 .bottom-icon {
+  --sticker-paper: var(--grey-2);
   width: 30px;
   height: 30px;
-  opacity: 0.42;
-  transition: opacity 0.15s ease;
 }
 
 .bottom-btn.active .bottom-icon {
-  opacity: 1;
+  --sticker-paper: var(--text);
   --sticker-spot: var(--accent);
 }
 
