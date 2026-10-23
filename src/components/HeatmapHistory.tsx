@@ -15,10 +15,10 @@ interface Props {
 
 // Presentational stacked history: one heatmap "set" per 21-week window going back
 // in time, set 0 (most recent) pinned on top over the inline heatmap. The reveal
-// is a finger-driven accordion: each set collapses behind set 0 at --p:0 and fans
-// down to its natural position at --p:1. All gesture state (the --p variable,
-// snap transition) is driven imperatively from App via `rootRef` so dragging the
-// finger never re-renders this heavy cell tree.
+// is finger-driven: every set starts tucked behind set 0 and App unrolls them one
+// after another as the pull grows. All gesture state (each set's transform, the
+// backdrop's --p, the release spring) is driven imperatively from App via
+// `rootRef` so dragging the finger never re-renders this heavy cell tree.
 export function HeatmapHistory({
   rootRef, setCount, selectedDate, dataVersion, accentHex,
   onSelectDate, onTouchStart, onTouchMove, onTouchEnd,
@@ -30,6 +30,7 @@ export function HeatmapHistory({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
     >
       <div className="heatmap-history-inner">
         {Array.from({ length: setCount }, (_, i) => (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { WEEKS, weekOffsetForDate, historySetCount } from './utils/heatmapWindow'
@@ -854,91 +854,178 @@ export function App() {
   )
 
   // ── Stacked-history reveal gesture ──────────────────────────────────────
-  // Finger-driven accordion. Progress 0..1 is written straight to the overlay's
-  // `--p` CSS var (imperatively, so dragging never re-renders the cell tree);
-  // set 0 stays pinned over the inline heatmap and older sets fan down from
-  // behind it. A drag DOWN anywhere opens it; a drag UP from the top of the
-  // open overlay retracts it.
-  const HISTORY_TRAVEL = 150   // px of drag mapped to a full open/close
-  const HISTORY_COMMIT = 0.34  // progress past which release completes the action
+  // Driven by one number, the pull: how far the stack has been drawn down, in
+  // px. Set i starts tucked behind set 0 and travels with the pull until it
+  // reaches its own slot (i × pitch), so the set still moving is always the
+  // stack's bottom edge, and that edge stays under the finger 1:1 — sets unroll
+  // one after another rather than fanning out faster than the hand. Past the
+  // last slot the stack stretches with resistance. On release a spring takes
+  // over, carrying the finger's speed: it opens fully once the pull passed
+  // HISTORY_COMMIT (or on a downward flick), otherwise it tucks back.
+  // Everything is written straight to the sets' styles, so dragging never
+  // re-renders the cell tree. A pull DOWN that starts on the graph opens it;
+  // a drag UP from the top of the open overlay retracts it.
+  const HISTORY_COMMIT = 56     // px of pull past which release completes the action
+  const HISTORY_FLICK = 0.35    // px/ms — a flick this fast decides on its own
+  const HISTORY_STRETCH = 64    // px — the most the stack stretches past fully open
   const historyRef = useRef<HTMLDivElement>(null)
-  const histDrag = useRef({ active: false, mode: 'none' as 'none' | 'open' | 'close', startY: 0, startX: 0, progress: 0 })
+  const histDrag = useRef({
+    mode: 'none' as 'none' | 'open' | 'close',
+    active: false, startX: 0, startY: 0, base: 0,
+    samples: [] as { t: number; y: number }[],
+  })
+  const histPull = useRef(0)
+  const histGeom = useRef({ pitch: 0, total: 0 })   // measured once per mount
+  const histSpring = useRef(0)
   const histSnapTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  const setHistProgress = (p: number) => {
-    histDrag.current.progress = p
-    historyRef.current?.style.setProperty('--p', String(p))
-  }
-
-  // Animate to fully open (1) or closed (0), then settle: unmount on close,
-  // drop the transition class on open so subsequent scrolling is free.
-  const snapHistory = (to: 0 | 1) => {
+  const layoutHistory = (pull: number) => {
+    histPull.current = pull
     const el = historyRef.current
-    el?.classList.add('snapping')
-    setHistProgress(to)
-    clearTimeout(histSnapTimer.current)
-    histSnapTimer.current = setTimeout(() => {
-      el?.classList.remove('snapping')
-      if (to === 0) setHistoryMounted(false)
-    }, 280)
+    const sets = el?.firstElementChild?.children
+    if (!el || !sets || sets.length < 2) return
+    const g = histGeom.current
+    if (!g.pitch) {
+      g.pitch = (sets[1] as HTMLElement).offsetTop - (sets[0] as HTMLElement).offsetTop
+      g.total = g.pitch * (sets.length - 1)
+    }
+    const { pitch, total } = g
+    const over = Math.max(0, pull - total)
+    const stretch = HISTORY_STRETCH * over / (over + 2 * HISTORY_STRETCH)
+    for (let i = 1; i < sets.length; i++) {
+      const slot = i * pitch
+      const travel = Math.min(Math.max(pull, 0), slot) + stretch * i / (sets.length - 1)
+      // how far set i has come out from under set i-1, 0..1
+      const shown = Math.min(Math.max(pull / pitch - (i - 1), 0), 1)
+      const s = sets[i] as HTMLElement
+      s.style.transform = `translateY(${travel - slot}px) scale(${0.95 + 0.05 * shown})`
+      s.style.setProperty('--shown', String(shown))
+    }
+    el.style.setProperty('--p', String(Math.min(Math.max(pull / pitch, 0), 1)))
   }
 
-  // Drag DOWN anywhere on the screen → reveal history. Blocked while a sheet is
-  // open (their own drag handle owns vertical drags) or once already revealed.
+  // The overlay mounts mid-drag; lay it out at the pull the finger has reached.
+  useLayoutEffect(() => {
+    if (!historyMounted) return
+    histGeom.current = { pitch: 0, total: 0 }
+    layoutHistory(histPull.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyMounted])
+
+  useEffect(() => () => cancelAnimationFrame(histSpring.current), [])
+
+  // Spring to fully open or tucked away. Slightly underdamped on the way open,
+  // so the stack lands with a small stretch and settles; critically damped on
+  // the way back, so nothing pokes out above set 0.
+  const springHistory = (to: 'open' | 'closed', velocity: number) => {
+    cancelAnimationFrame(histSpring.current)
+    const target = to === 'open' ? histGeom.current.total : 0
+    const settle = () => {
+      layoutHistory(target)
+      if (to === 'closed') setHistoryMounted(false)
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { settle(); return }
+    const K = 380, C = to === 'open' ? 24 : 39
+    let x = histPull.current, v = velocity * 1000, last = performance.now()
+    const step = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 1 / 30)
+      last = now
+      v += (-K * (x - target) - C * v) * dt
+      x += v * dt
+      if ((to === 'closed' && x <= 0.5) || (Math.abs(x - target) < 0.5 && Math.abs(v) < 12)) { settle(); return }
+      layoutHistory(x)
+      histSpring.current = requestAnimationFrame(step)
+    }
+    histSpring.current = requestAnimationFrame(step)
+  }
+
+  // Finger speed in px/ms over the last ~100 ms of the drag (positive = down).
+  const trackHist = (y: number) => {
+    const s = histDrag.current.samples
+    const t = performance.now()
+    s.push({ t, y })
+    while (s.length > 2 && t - s[0].t > 100) s.shift()
+  }
+  const histVelocity = () => {
+    const s = histDrag.current.samples
+    if (s.length < 2) return 0
+    const a = s[0], b = s[s.length - 1]
+    return performance.now() - b.t > 80 ? 0 : (b.y - a.y) / Math.max(b.t - a.t, 1)
+  }
+
+  // Pull DOWN on the graph → reveal history. Only the graph starts it, so a
+  // drag anywhere in the note (a line grip, a scroll) can never set it off.
   const handleRevealTouchStart = (e: React.TouchEvent) => {
     if (historyMounted || historySets <= 1) return       // nothing older to reveal
-    if (sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen || swapOpen) return
-    histDrag.current = { active: false, mode: 'open', startY: e.touches[0].clientY, startX: e.touches[0].clientX, progress: 0 }
+    if (window.scrollY > 0) return                       // the page scrolls first
+    const t = e.touches[0]
+    histDrag.current = { mode: 'open', active: false, startX: t.clientX, startY: t.clientY, base: 0, samples: [] }
   }
   const handleRevealTouchMove = (e: React.TouchEvent) => {
     const d = histDrag.current
     if (d.mode !== 'open') return
-    const dy = e.touches[0].clientY - d.startY
-    const dx = e.touches[0].clientX - d.startX
+    const { clientX: x, clientY: y } = e.touches[0]
     if (!d.active) {
+      const dy = y - d.startY, dx = x - d.startX
       if (dy > 6 && dy > Math.abs(dx) * 1.2) {
         d.active = true
+        d.startY = y              // measure from here, so the stack starts under the finger
         closeAllSheets()
+        histPull.current = 0
         setHistoryMounted(true)
       } else if (dy < -6 || Math.abs(dx) > 8) {
         d.mode = 'none'  // resolved as an up/side gesture — not our reveal
         return
       } else return
     }
-    setHistProgress(Math.max(0, Math.min(dy / HISTORY_TRAVEL, 1)))
+    trackHist(y)
+    layoutHistory(Math.max(0, y - d.startY))
   }
   const handleRevealTouchEnd = () => {
     const d = histDrag.current
     if (d.mode !== 'open' || !d.active) { d.mode = 'none'; return }
-    const open = d.progress > HISTORY_COMMIT
+    const v = histVelocity()
     d.active = false; d.mode = 'none'
-    snapHistory(open ? 1 : 0)
+    const open = v > HISTORY_FLICK || (histPull.current > HISTORY_COMMIT && v > -HISTORY_FLICK)
+    springHistory(open ? 'open' : 'closed', v)
   }
 
   // Drag UP from the top of the open overlay → retract history.
   const handleHistoryTouchStart = (e: React.TouchEvent) => {
-    histDrag.current = { active: false, mode: 'close', startY: e.touches[0].clientY, startX: e.touches[0].clientX, progress: 1 }
+    const t = e.touches[0]
+    histDrag.current = { mode: 'close', active: false, startX: t.clientX, startY: t.clientY, base: 0, samples: [] }
   }
   const handleHistoryTouchMove = (e: React.TouchEvent) => {
     const d = histDrag.current
     if (d.mode !== 'close') return
-    const dy = e.touches[0].clientY - d.startY
-    const dx = e.touches[0].clientX - d.startX
-    const atTop = (historyRef.current?.scrollTop ?? 0) <= 0
+    const { clientX: x, clientY: y } = e.touches[0]
     if (!d.active) {
-      if (atTop && dy < -8 && Math.abs(dy) > Math.abs(dx) * 1.2) {
-        d.active = true
-        historyRef.current?.classList.remove('snapping')  // follow the finger live
-      } else return
+      const dy = y - d.startY, dx = x - d.startX
+      const el = historyRef.current
+      const atTop = (el?.scrollTop ?? 0) <= 0
+      if (!(atTop && dy < -8 && Math.abs(dy) > Math.abs(dx) * 1.2)) return
+      d.active = true
+      d.startY = y
+      cancelAnimationFrame(histSpring.current)
+      // Retract from the lowest set on screen, not the bottom of a stack that
+      // runs off it — sets below the fold tuck in out of sight, so the first
+      // thing to move under the finger is something you can see.
+      const { pitch, total } = histGeom.current
+      const set0 = el?.firstElementChild?.firstElementChild as HTMLElement | null | undefined
+      const r = set0?.getBoundingClientRect()
+      const onScreen = r && pitch ? Math.ceil((window.innerHeight - r.bottom) / pitch) * pitch : total
+      d.base = Math.min(histPull.current, total, Math.max(onScreen, pitch))
     }
-    setHistProgress(Math.max(0, Math.min(1 - (-dy) / HISTORY_TRAVEL, 1)))
+    trackHist(y)
+    layoutHistory(Math.max(0, d.base + y - d.startY))
   }
   const handleHistoryTouchEnd = () => {
     const d = histDrag.current
     if (d.mode !== 'close' || !d.active) { d.mode = 'none'; return }
-    const close = d.progress < 1 - HISTORY_COMMIT
+    const v = histVelocity()
     d.active = false; d.mode = 'none'
-    snapHistory(close ? 0 : 1)
+    const close = v < -HISTORY_FLICK || (d.base - histPull.current > HISTORY_COMMIT && v < HISTORY_FLICK)
+    springHistory(close ? 'closed' : 'open', v)
   }
 
   // Tap a date in history → jump the editor there, then slide the tapped set up
@@ -950,6 +1037,7 @@ export function App() {
     goToDate(date)
     const el = historyRef.current
     const inner = el?.firstElementChild as HTMLElement | null
+    cancelAnimationFrame(histSpring.current)
     if (!el || !inner) { setHistoryMounted(false); return }
 
     const setIndex = weekOffsetForDate(date) / WEEKS
@@ -960,7 +1048,6 @@ export function App() {
       ? targetGrid.getBoundingClientRect().top - inlineGrid.getBoundingClientRect().top
       : 0
 
-    el.classList.remove('snapping')
     inner.style.transition = 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)'
     inner.style.transform = `translateY(${-delta}px)`
     el.style.transition = 'opacity 0.34s ease'
@@ -1056,13 +1143,14 @@ export function App() {
   const showDayNav = presetNav !== null || isViewingPast
 
   return (
-    <div
-      className={`app${sheetSnapping ? ' sheet-snapping' : ''}`}
-      onTouchStart={handleRevealTouchStart}
-      onTouchMove={handleRevealTouchMove}
-      onTouchEnd={handleRevealTouchEnd}
-    >
-      <div ref={heatmapRef}>
+    <div className={`app${sheetSnapping ? ' sheet-snapping' : ''}`}>
+      <div
+        ref={heatmapRef}
+        onTouchStart={handleRevealTouchStart}
+        onTouchMove={handleRevealTouchMove}
+        onTouchEnd={handleRevealTouchEnd}
+        onTouchCancel={handleRevealTouchEnd}
+      >
         <Heatmap
           onDayClick={handleDayClick}
           selectedDate={viewDate}
