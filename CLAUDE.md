@@ -29,7 +29,7 @@ Use CSS variables exclusively — never hardcode these values in new rules.
 | Variable        | Value                        | Usage |
 |-----------------|------------------------------|-------|
 | `--bg`          | `#0d0d0d`                    | Page background |
-| `--bg-dim`      | `#000000`                    | Page background while a sheet is open |
+| `--sheet-shadow`| `#000000`                    | Shadow an open sheet casts up onto the page |
 | `--surface-1`   | `#1e1e1e`                    | Outer cards, borders, dividers, sort chips, sheet handle |
 | `--surface-2`   | `#131313`                    | Inner card boxes (history, preset exercise lists) |
 | `--surface-3`   | `#242424`                    | Elevated surfaces (dropdown menus) |
@@ -206,12 +206,13 @@ its edge. The mask is on the element's own box, so it holds still while the
 content scrolls under it — and the 12px of padding is what it sits over at
 rest, which is why that padding has to stay in the body and not the header.
 
-A sheet paints `--bg`, the same colour as the page, so while one is open the
-page steps back to `--bg-dim` and the gap between them is what separates the
-two. `.app` carries `--bg-back` (`--bg`, or `--bg-dim` under `.sheet-open`);
-anything painted *behind* a sheet follows it — the app itself, the message
-strip's gradient. Anything above a sheet, i.e. the bottom bar, stays on `--bg`
-so it keeps matching the sheet it overlaps. The fade is timed to the slide.
+A sheet paints `--bg`, the same colour as the page, so an open sheet casts a
+shadow straight up onto it (`box-shadow: 0 -12px 40px 0 var(--sheet-shadow)`)
+and that is what sets the two apart — the page itself never changes colour.
+A box-shadow rather than a gradient strip, so it follows the rounded top
+corners. It is transparent while closed (a parked sheet sits just below the
+screen, and its shadow would show as a band along the bottom) and fades in
+with the slide; `.app.sheet-snapping` repeats it in its transition list.
 Sheets slide up from the bottom. Multiple sheets are mutually exclusive (opening one closes others). Sheet height is measured from `heatmapRef.bottom` to `visualViewport.height` so it fits between the heatmap and the bottom of the screen.
 
 ### Stickers

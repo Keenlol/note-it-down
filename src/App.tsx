@@ -1050,10 +1050,6 @@ export function App() {
     }
   }
 
-  // Any panel up dims the page behind it — the sheets are the same colour as
-  // the page, so without this they have only a 1px border to separate them.
-  const anySheetOpen = sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen || swapOpen
-
   const isViewingPast = viewDate !== null
   const titleText = isViewingPast ? formatDisplayDate(viewDate!) : 'Today'
   const showMessage = !isViewingPast && showQuote
@@ -1061,7 +1057,7 @@ export function App() {
 
   return (
     <div
-      className={`app${sheetSnapping ? ' sheet-snapping' : ''}${anySheetOpen ? ' sheet-open' : ''}`}
+      className={`app${sheetSnapping ? ' sheet-snapping' : ''}`}
       onTouchStart={handleRevealTouchStart}
       onTouchMove={handleRevealTouchMove}
       onTouchEnd={handleRevealTouchEnd}

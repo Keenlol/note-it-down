@@ -49,9 +49,9 @@
   --accent-tint: rgba(249, 115, 22, 0.12); /* subtle accent bg */
   --delete:  rgba(220, 80, 80, 0.85);
 
-  /* The page steps back to this while a panel is up. The sheets keep painting
-     --bg, so the gap between the two is what separates them. */
-  --bg-dim: #000000;   /* the whole gap to --bg is only 13 steps — take all of it */
+  /* Cast up from an open sheet onto the page. A sheet paints --bg, the same
+     colour as the page, so this shadow is what sets the two apart. */
+  --sheet-shadow: #000000;
 
   --cell-empty: var(--surface-1);
   /* One family in three roles. --editor-font is no longer a different face,
@@ -125,22 +125,11 @@ html, body {
 
 /* ── App shell ── */
 
-/* --bg-back is the page's own ground, which everything painted *behind* a
-   sheet follows (the app itself, the message strip's gradient). Anything that
-   sits above a sheet — the bottom bar — stays on --bg so it keeps matching the
-   sheet it overlaps. Timed to the sheet's own slide. */
 .app {
-  --bg-back: var(--bg);
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
   padding-top: env(safe-area-inset-top);
-  background: var(--bg-back);
-  transition: background 0.32s cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-.app.sheet-open {
-  --bg-back: var(--bg-dim);
 }
 
 .content {
@@ -383,7 +372,7 @@ strong, b {
   align-items: center;
   gap: 6px;
   padding: 10px var(--pad) 8px;
-  background: linear-gradient(to top, var(--bg-back) 62%, transparent);
+  background: linear-gradient(to top, var(--bg) 62%, transparent);
   pointer-events: none;
 }
 
@@ -1082,15 +1071,23 @@ strong, b {
   border-top: 1px solid var(--surface-1);
   border-radius: 16px 16px 0 0;
   transform: translateY(100%);
-  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 -12px 40px 0 transparent;
+  transition:
+    transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.32s cubic-bezier(0.32, 0.72, 0, 1);
   display: flex;
   flex-direction: column;
   z-index: 20;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* A shadow cast straight up onto the page, timed to the slide. A box-shadow
+   rather than a gradient strip, so it follows the rounded top corners. It is
+   off while closed: the parked sheet sits just below the screen, and a shadow
+   cast from there would show as a band along the bottom edge. */
 .exercise-sheet.open {
   transform: translateY(0);
+  box-shadow: 0 -12px 40px 0 var(--sheet-shadow);
 }
 
 /* While snapping to a point on release, animate the height too (not just during
@@ -1098,6 +1095,7 @@ strong, b {
 .app.sheet-snapping .exercise-sheet {
   transition:
     transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.32s cubic-bezier(0.32, 0.72, 0, 1),
     height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
