@@ -10,6 +10,7 @@ import { type WeightUnit } from '../utils/settings'
 import { ExerciseHistoryList } from './ExerciseHistoryList'
 import { tap } from '../utils/tap'
 import { SheetHandle } from './SheetHandle'
+import { Sticker } from './Sticker'
 
 interface Props {
   open: boolean
@@ -226,7 +227,7 @@ export function ExerciseSheet({
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title"><span className="sheet-title-emoji">🏋️</span>Exercises</span>
+          <span className="sheet-title"><Sticker name="dumbbell" className="sheet-title-icon lit" />Exercises</span>
         </div>
 
         {/* Search bar — hidden during merge mode */}

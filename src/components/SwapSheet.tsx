@@ -5,6 +5,7 @@ import { presetExerciseNames } from '../utils/presets'
 import { parseLine } from '../utils/parser'
 import { tap } from '../utils/tap'
 import { SheetHandle } from './SheetHandle'
+import { Sticker } from './Sticker'
 
 export interface SwapTarget {
   line: number               // line index in the viewed day's note
@@ -95,7 +96,7 @@ export function SwapSheet({
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title"><span className="sheet-title-emoji">🏋️</span>Swap</span>
+          <span className="sheet-title"><Sticker name="dumbbell" className="sheet-title-icon lit" />Swap</span>
           {shown && <span className="swap-from">for {shown.name}</span>}
         </div>
 

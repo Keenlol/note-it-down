@@ -11,6 +11,7 @@ import { SettingsSheet } from './components/SettingsSheet'
 import { Encouragement } from './components/Encouragement'
 import { DayNav, type PresetNav } from './components/DayNav'
 import { SwapSheet, type SwapTarget } from './components/SwapSheet'
+import { Sticker } from './components/Sticker'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
@@ -1156,7 +1157,7 @@ export function App() {
               onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Bodyweight"
             >
-              <span className="bottom-emoji">⚖️</span>
+              <Sticker name="scale" className="bottom-icon" />
             </button>
             <button
               onPointerDown={tap}
@@ -1164,7 +1165,7 @@ export function App() {
               onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Exercises"
             >
-              <span className="bottom-emoji">🏋️</span>
+              <Sticker name="dumbbell" className="bottom-icon" />
             </button>
             <button
               onPointerDown={tap}
@@ -1172,7 +1173,7 @@ export function App() {
               onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Presets"
             >
-              <span className="bottom-emoji">🏷️</span>
+              <Sticker name="tag" className="bottom-icon" />
             </button>
             <button
               className={`bottom-btn${reveal ? ' active' : ''}`}
@@ -1181,7 +1182,7 @@ export function App() {
               onPointerLeave={() => setReveal(false)}
               aria-label="Reveal exercise details"
             >
-              <span className="bottom-emoji">👀</span>
+              <Sticker name="eyes" className="bottom-icon" />
             </button>
           </div>
           <button
@@ -1190,7 +1191,7 @@ export function App() {
             onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) ; setSwapTarget(null) }}
             aria-label="Settings"
           >
-            <span className="bottom-emoji">⚙️</span>
+            <Sticker name="gear" className="bottom-icon" />
           </button>
         </div>
       </div>

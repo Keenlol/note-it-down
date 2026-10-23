@@ -54,9 +54,6 @@
   --font-display: 'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font:         'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --editor-font:  var(--font);
-  /* Spelled out rather than left to General Sans's fallback chain, which would
-     render the text-presentation emoji (⚖️ 🏷️ ⚙️) as flat monochrome glyphs. */
-  --font-emoji:   'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 
   /* Semibold is the app's voice: chrome, names, labels and controls all sit at
      --w-ui, which is also what the page inherits. The lighter steps are not a
@@ -998,32 +995,54 @@ strong, b {
   transition: color 0.1s;
 }
 
-/* Emoji ignore `color`, so the bottom bar's lit state is carried by saturation
-   instead: grey and held back when idle, full colour when the button is on. */
-.bottom-emoji {
-  font-family: var(--font-emoji);
-  font-size: 26px;
-  line-height: 1;
-  filter: grayscale(1) opacity(0.5);
-  transition: filter 0.15s ease;
+/* ── Stickers ──
+   Hand-drawn SVG icons (Sticker.tsx): paper die-cut, ink line art, one spot
+   of accent. Ink is the page colour, so the lines read as cut through. The
+   spot rests at paper — invisible — and turns accent when the sticker is lit. */
+.sticker {
+  --sticker-paper: var(--text);
+  --sticker-ink: var(--bg);
+  --sticker-spot: var(--sticker-paper);
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
 }
 
-.bottom-btn.active .bottom-emoji {
-  filter: none;
+.sticker .sticker-spot {
+  transition: fill 0.15s ease;
+}
+
+.sticker.lit {
+  --sticker-spot: var(--accent);
+}
+
+/* Idle buttons hold their sticker back with opacity rather than a dimmer
+   paper: opacity flattens the cut and art layers into one, so where they
+   overlap there is no seam. */
+.bottom-icon {
+  width: 30px;
+  height: 30px;
+  opacity: 0.42;
+  transition: opacity 0.15s ease;
+}
+
+.bottom-btn.active .bottom-icon {
+  opacity: 1;
+  --sticker-spot: var(--accent);
 }
 
 /* The shared tap squish is too flat for these — the bar is the playful part of
-   the app now. The button itself stops animating and the emoji takes over with
+   the app now. The button itself stops animating and the sticker takes over with
    a squash-and-overshoot on the same spring the daily message pops on. */
 .bottom-btn.tapping {
   animation: none;
 }
 
-.bottom-btn.tapping .bottom-emoji {
-  animation: emoji-pop 0.4s cubic-bezier(0.34, 1.45, 0.5, 1) both;
+.bottom-btn.tapping .bottom-icon {
+  animation: sticker-pop 0.4s cubic-bezier(0.34, 1.45, 0.5, 1) both;
 }
 
-@keyframes emoji-pop {
+@keyframes sticker-pop {
   0%   { transform: scale(1)    rotate(0deg); }
   22%  { transform: scale(0.76) rotate(-7deg); }
   52%  { transform: scale(1.2)  rotate(6deg); }
@@ -1032,7 +1051,7 @@ strong, b {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bottom-btn.tapping .bottom-emoji { animation: none; }
+  .bottom-btn.tapping .bottom-icon { animation: none; }
 }
 
 /* Lit state is driven exclusively by the .active class so each button follows
@@ -1126,14 +1145,11 @@ strong, b {
   letter-spacing: -0.025em;
 }
 
-/* Each sheet repeats its bottom-bar emoji here, at full colour — the same
-   state the button wears while its panel is open, so the two read as one
-   thing. */
-.sheet-title-emoji {
-  font-family: var(--font-emoji);
-  font-size: 17px;
-  line-height: 1;
-  flex-shrink: 0;
+/* Each sheet repeats its bottom-bar sticker here, lit — the same state the
+   button wears while its panel is open, so the two read as one thing. */
+.sheet-title-icon {
+  width: 24px;
+  height: 24px;
 }
 
 /* Keep both header states in DOM; whichever is active is in normal flow,

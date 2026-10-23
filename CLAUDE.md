@@ -205,19 +205,39 @@ strip's gradient. Anything above a sheet, i.e. the bottom bar, stays on `--bg`
 so it keeps matching the sheet it overlaps. The fade is timed to the slide.
 Sheets slide up from the bottom. Multiple sheets are mutually exclusive (opening one closes others). Sheet height is measured from `heatmapRef.bottom` to `visualViewport.height` so it fits between the heatmap and the bottom of the screen.
 
+### Stickers
+The bar and the sheet headers use hand-drawn sticker icons (`Sticker.tsx`):
+`scale`, `dumbbell`, `tag`, `eyes`, `gear`. Each is drawn once as a list of
+pieces and rendered twice: a **cut** layer strokes every piece fat in the
+paper colour (the die-cut border, so it always hugs the drawing), then the
+**art** layer draws the pieces at their real fills with an ink outline.
+
+| Variable          | Default                 | Role |
+|-------------------|-------------------------|------|
+| `--sticker-paper` | `--text`                | the sticker and its border |
+| `--sticker-ink`   | `--bg`                  | line art — reads as cut through |
+| `--sticker-spot`  | paper; `--accent` when lit | the one accent detail |
+
+`.sticker.lit` turns the spot on. A new icon is a new entry in `PIECES`: draw
+in the 32-unit box, keep about 4 units clear of the edge for the border, give
+exactly one piece `fill: 'spot'`, and tilt it a little if it reads stiff.
+Small inline controls (grip, swap, arrows, chevrons) stay lucide line icons:
+at 13–16px a sticker border turns to mush.
+
 ### Bottom bar buttons
-Emoji at 26px, not icons. Emoji ignore `color`, so the lit state runs on
-saturation instead:
+Stickers at 30px. Idle buttons dim the whole sticker with `opacity`, never a
+dimmer paper — opacity flattens the cut and art layers into one, so there is
+no seam where they overlap:
 ```css
-.bottom-emoji        { filter: grayscale(1) opacity(0.5); }  /* idle */
-.active .bottom-emoji{ filter: none; }                       /* sheet open */
+.bottom-icon                     { opacity: 0.42; }               /* idle */
+.bottom-btn.active .bottom-icon  { opacity: 1; --sticker-spot: var(--accent); }
 /* gradient background for separation from content below */
 background: linear-gradient(to top, var(--bg) 62%, transparent);
 ```
 They also opt out of the shared `.tapping` squish: `.bottom-btn.tapping` sets
-`animation: none` and the emoji runs `emoji-pop` instead — squash to 0.76 and
-overshoot to 1.2 with a twist, on the same spring the daily message pops on.
-Two nested scale animations would fight, hence the opt-out.
+`animation: none` and the sticker runs `sticker-pop` instead — squash to 0.76
+and overshoot to 1.2 with a twist, on the same spring the daily message pops
+on. Two nested scale animations would fight, hence the opt-out.
 
 ### Bottom strip
 `.bottom-strip` is its own fixed strip above the icon row, and a **sibling**
@@ -310,16 +330,15 @@ color: var(--text-dim);   /* inline ghost suffix */
 Preset ghost blocks float absolutely below the triggering line using `top: calc(N * var(--editor-lh) * 1em)`.
 
 ### Sheet header
-Every sheet titles itself with its own bottom-bar emoji, then the name:
+Every sheet titles itself with its own bottom-bar sticker, then the name:
 ```tsx
 <span className="sheet-title">
-  <span className="sheet-title-emoji">🏋️</span>Exercises
+  <Sticker name="dumbbell" className="sheet-title-icon lit" />Exercises
 </span>
 ```
-⚖️ bodyweight · 🏋️ exercises · 🏷️ presets · ⚙️ settings — the same emoji the
-bottom-bar button uses, at full colour, which is the state that button wears
-while its panel is open. Both spell out `--font-emoji`: left to General Sans's
-fallback chain, the text-presentation ones (⚖️ 🏷️ ⚙️) render as flat glyphs.
+`scale` bodyweight · `dumbbell` exercises and swap · `tag` presets · `gear`
+settings — the same sticker the bottom-bar button uses, lit, which is the
+state that button wears while its panel is open.
 
 ### Typography scale (inside sheets)
 ```

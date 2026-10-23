@@ -7,6 +7,7 @@ import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
 import { MetricGraph } from './MetricGraph'
 import { SheetHandle } from './SheetHandle'
+import { Sticker } from './Sticker'
 
 interface Props {
   open: boolean
@@ -117,7 +118,7 @@ export function BodyweightSheet({ open, onClose, onSelectDate, dataVersion, bwVe
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title"><span className="sheet-title-emoji">⚖️</span>Bodyweight</span>
+          <span className="sheet-title"><Sticker name="scale" className="sheet-title-icon lit" />Bodyweight</span>
         </div>
       </div>
 

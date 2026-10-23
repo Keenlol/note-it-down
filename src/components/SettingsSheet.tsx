@@ -22,6 +22,7 @@ import {
 import { SegmentedControl } from './SegmentedControl'
 import { Slider } from './Slider'
 import { SheetHandle } from './SheetHandle'
+import { Sticker } from './Sticker'
 import { tap } from '../utils/tap'
 
 const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
@@ -181,7 +182,7 @@ export function SettingsSheet({
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title"><span className="sheet-title-emoji">⚙️</span>Settings</span>
+          <span className="sheet-title"><Sticker name="gear" className="sheet-title-icon lit" />Settings</span>
         </div>
       </div>
 

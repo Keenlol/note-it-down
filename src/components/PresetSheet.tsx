@@ -18,6 +18,7 @@ import { MetricGraph } from './MetricGraph'
 import { ExerciseHistoryList } from './ExerciseHistoryList'
 import { SegmentedControl } from './SegmentedControl'
 import { SheetHandle } from './SheetHandle'
+import { Sticker } from './Sticker'
 
 interface Props {
   open: boolean
@@ -272,7 +273,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title"><span className="sheet-title-emoji">🏷️</span>Presets</span>
+          <span className="sheet-title"><Sticker name="tag" className="sheet-title-icon lit" />Presets</span>
         </div>
         {catalog.length > 0 && (
           <div className="sort-chips preset-tabs">
