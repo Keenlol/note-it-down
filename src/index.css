@@ -147,6 +147,11 @@ html, body {
   overflow-x: hidden; /* clip title slide animation */
 }
 
+/* The day nav and the message stacked: one more row of the strip to clear. */
+.content.strip-tall {
+  padding-bottom: calc(144px + env(safe-area-inset-bottom));
+}
+
 /* ── Heatmap ── */
 
 .heatmap-wrap {
@@ -357,26 +362,118 @@ strong, b {
   color: var(--text-2);
 }
 
-/* ── Daily message ──
-   Its own fixed strip directly above the icon row. Deliberately a sibling of
-   the bar rather than a child: at z-index 10 it passes *under* an open sheet,
-   while the bar stays above at 30. A child could never do that — the bar's own
-   z-index would carry it along. Holding the message closes the day out.
+/* ── Bottom strip ──
+   Its own fixed strip directly above the icon row, holding the day nav and the
+   daily message. Deliberately a sibling of the bar rather than a child: at
+   z-index 10 it passes *under* an open sheet, while the bar stays above at 30.
+   A child could never do that — the bar's own z-index would carry it along. */
 
-   --hold-ms must stay in step with HOLD_MS in Encouragement.tsx. */
-
-.encouragement-bar {
-  --hold-ms: 700ms;
+.bottom-strip {
   position: fixed;
   left: 0;
   right: 0;
   bottom: calc(56px + env(safe-area-inset-bottom));   /* clears the icon row */
   z-index: 10;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   padding: 10px var(--pad) 8px;
   background: linear-gradient(to top, var(--bg-back) 62%, transparent);
   pointer-events: none;
+}
+
+.bottom-strip:empty {
+  display: none;
+}
+
+/* ── Day nav ──
+   ‹ preset › and Today →, centred as one group. Boxed like the message pill so
+   the strip reads as one family; Today alone takes the accent, being the one
+   way out of a past day. */
+
+.day-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  pointer-events: auto;
+  animation: encouragement-in 0.3s ease both;
+}
+
+.preset-nav,
+.today-btn {
+  height: 34px;
+  border-radius: var(--r-card);
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: var(--w-ui);
+}
+
+.preset-nav {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  background: var(--surface-1);
+  color: var(--text);
+}
+
+.preset-nav-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.preset-nav-arrow:disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.preset-nav-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-nav-hash {
+  color: var(--text-dim);
+  margin-right: 1px;
+}
+
+.today-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 0 13px;
+  border: none;
+  background: var(--accent-tint);
+  color: var(--accent);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* ── Daily message ──
+   Holding the message closes the day out.
+
+   --hold-ms must stay in step with HOLD_MS in Encouragement.tsx. */
+
+.encouragement-bar {
+  --hold-ms: 700ms;
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
 }
 
 /* Carries the entry / pop only. Keeping those off the button means removing
@@ -541,47 +638,6 @@ strong, b {
   opacity: 0;
   transition: opacity 0.3s;
   user-select: none;
-}
-
-/* ── Back-to-today edge tab ──
-   A slim accent bar pinned to the right edge, shown only while browsing a past
-   day. It is never unmounted and never re-keyed, so stepping day to day leaves
-   it untouched — only entering or leaving past mode cross-fades it.
-
-   Positioned with top/margin-top rather than translateY: `transform` belongs to
-   the shared .tapping bounce, and a translate here would be overwritten by it. */
-.jump-today {
-  position: fixed;
-  right: 0;
-  top: 50%;
-  height: 28vh;
-  margin-top: -14vh;   /* half the height — keeps transform free for .tapping */
-  width: 5px;
-  padding: 0;
-  border: none;
-  border-radius: 3px 0 0 3px;
-  background: var(--accent);
-  cursor: pointer;
-  z-index: 15;         /* under the sheets (20) and the bottom bar (30) */
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s ease, right 0.18s ease;
-}
-
-/* 5px is a bar, not a target — extend the hit area without widening the bar. */
-.jump-today::before {
-  content: '';
-  position: absolute;
-  inset: -10px -8px -10px -16px;
-}
-
-.jump-today.visible {
-  opacity: 0.85;
-  pointer-events: auto;
-}
-
-.jump-today:not(.visible) {
-  right: -6px;         /* slides out to the edge rather than blinking off */
 }
 
 .save-icon.visible {

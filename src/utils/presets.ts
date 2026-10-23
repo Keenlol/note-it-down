@@ -45,6 +45,27 @@ export function presetBlocks(parsed: ParsedLine[]): PresetBlock[] {
   return blocks
 }
 
+/**
+ * Every preset key → the dates it was trained on, ascending. A day counts only
+ * when its block holds at least one exercise, matching the catalog. Drives the
+ * ‹ preset › stepper, which walks this list one neighbour at a time.
+ */
+export function presetDayIndex(): Map<string, string[]> {
+  const index = new Map<string, string[]>()
+  for (const date of getAllDayKeys()) { // ascending, so each list comes out sorted
+    const day = loadDay(date)
+    if (!day) continue
+    const parsed = day.rawText.split('\n').map(l => parseLine(l))
+    for (const block of presetBlocks(parsed)) {
+      if (block.exerciseIndices.length === 0) continue
+      const dates = index.get(block.norm) ?? []
+      if (dates[dates.length - 1] !== date) dates.push(date)
+      index.set(block.norm, dates)
+    }
+  }
+  return index
+}
+
 export interface PresetEntry {
   norm: string        // normalized key: lowercase content after "#"
   displayName: string // rawContent or overridden nickname

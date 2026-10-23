@@ -9,11 +9,12 @@ import { PresetSheet } from './components/PresetSheet'
 import { BodyweightSheet } from './components/BodyweightSheet'
 import { SettingsSheet } from './components/SettingsSheet'
 import { Encouragement } from './components/Encouragement'
+import { DayNav, type PresetNav } from './components/DayNav'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
-import { presetVolumePerDay, presetBlocks } from './utils/presets'
+import { presetVolumePerDay, presetBlocks, presetDayIndex } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { tap } from './utils/tap'
 import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedShowQuote, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
@@ -259,6 +260,9 @@ export function App() {
   const [showQuote, setShowQuote] = useState<boolean>(() => getSavedShowQuote())
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [focusedPreset, setFocusedPreset] = useState<string | null>(null)
+  // Preset the ‹ › stepper is following. Pinned on a step so it survives a
+  // landing day that holds several presets; any cursor move hands it back.
+  const [navPreset, setNavPreset] = useState<string | null>(null)
   const [aliases, setAliases] = useState<Record<string, string>>(() => loadAliases())
   const [bwVersion, setBwVersion] = useState(0)
   const [sheetHeight, setSheetHeight] = useState<number | undefined>(() => getSavedSheetHeight())
@@ -724,6 +728,63 @@ export function App() {
     setPastCursorPos(0)
   }, [])
 
+  // ── Preset stepper ──────────────────────────────────────────────────────
+  // The viewed day's preset is the block the cursor sits in (the first one
+  // when the cursor is above every header), unless a step pinned one.
+  const presetDays = useMemo(() => presetDayIndex(), [dataVersion])
+
+  const viewedPreset = useMemo(() => {
+    const text = viewDate ? pastText : todayText
+    const blocks = presetBlocks(text.split('\n').map(l => parseLine(l)))
+      .filter(b => b.exerciseIndices.length > 0)
+    if (blocks.length === 0) return null
+    const pinned = blocks.find(b => b.norm === navPreset)
+    if (pinned) return pinned
+    const cursor = viewDate ? pastCursorPos : cursorPos
+    const cursorLine = text.slice(0, cursor).split('\n').length - 1
+    return blocks.findLast(b => b.headerIndex <= cursorLine) ?? blocks[0]
+  }, [viewDate, pastText, todayText, pastCursorPos, cursorPos, navPreset])
+
+  const todayPresets = useMemo(
+    () => new Set(presetBlocks(todayText.split('\n').map(l => parseLine(l)))
+      .filter(b => b.exerciseIndices.length > 0)
+      .map(b => b.norm)),
+    [todayText],
+  )
+
+  // Hidden until there is somewhere to step to — a preset trained only on the
+  // viewed day has no neighbours, and neither does a header still being typed.
+  const presetNav = useMemo((): PresetNav | null => {
+    if (!viewedPreset) return null
+    const today = todayKey()
+    const current = viewDate ?? today
+    // Stored copies of today and the viewed day can lag the live text by the
+    // save debounce, so those two are decided from what is on screen.
+    const dates = new Set(presetDays.get(viewedPreset.norm) ?? [])
+    dates.delete(today)
+    if (todayPresets.has(viewedPreset.norm)) dates.add(today)
+    dates.add(current)
+    if (dates.size < 2) return null
+    const sorted = [...dates].sort()
+    const i = sorted.indexOf(current)
+    return { name: viewedPreset.rawContent, prev: sorted[i - 1] ?? null, next: sorted[i + 1] ?? null }
+  }, [viewedPreset, presetDays, todayPresets, viewDate])
+
+  const stepPreset = useCallback((date: string) => {
+    if (viewedPreset) setNavPreset(viewedPreset.norm)
+    goToDate(date)
+  }, [viewedPreset, goToDate])
+
+  const handleCursorChange = useCallback((pos: number) => {
+    setCursorPos(pos)
+    setNavPreset(null)
+  }, [])
+
+  const handlePastCursorChange = useCallback((pos: number) => {
+    setPastCursorPos(pos)
+    setNavPreset(null)
+  }, [])
+
   // Inline heatmap pages back a whole 21-week "set" once the viewed day falls
   // outside the today-anchored window; returns to set 0 for recent days / today.
   const heatmapWeekOffset = useMemo(() => weekOffsetForDate(viewDate), [viewDate])
@@ -938,6 +999,8 @@ export function App() {
 
   const isViewingPast = viewDate !== null
   const titleText = isViewingPast ? formatDisplayDate(viewDate!) : 'Today'
+  const showMessage = !isViewingPast && showQuote
+  const showDayNav = presetNav !== null || isViewingPast
 
   return (
     <div
@@ -959,7 +1022,7 @@ export function App() {
       </div>
 
       <div
-        className="content"
+        className={`content${showDayNav && showMessage ? ' strip-tall' : ''}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -973,28 +1036,13 @@ export function App() {
           )}
         </div>
 
-        {/* Back-to-today edge tab. Deliberately a sibling of .title-row, not a
-            child: the title is transformed and faded on every day-to-day swipe,
-            and riding along would make the tab flicker on each step. Kept
-            mounted at all times so it only ever cross-fades between past mode
-            and today. Still inside .content so touches on it bubble to the
-            swipe handlers. */}
-        <button
-          className={`jump-today${isViewingPast ? ' visible' : ''}`}
-          onPointerDown={tap}
-          onClick={() => { setViewDate(null); setCursorPos(0) }}
-          aria-label="Back to today"
-          aria-hidden={!isViewingPast}
-          tabIndex={isViewingPast ? 0 : -1}
-        />
-
         <div style={{ opacity: noteOpacity, transition: 'opacity 0.08s ease', flex: 1, display: 'flex', flexDirection: 'column' }}>
           {isViewingPast ? (
             <Editor
               key={viewDate}
               value={pastText}
               onChange={handlePastChange}
-              onCursorChange={setPastCursorPos}
+              onCursorChange={handlePastCursorChange}
               onTabConfirm={handlePastTabConfirm}
               suggestion={pastSuggestion}
               knownPast={knownPast}
@@ -1011,7 +1059,7 @@ export function App() {
             <Editor
               value={todayText}
               onChange={handleChange}
-              onCursorChange={setCursorPos}
+              onCursorChange={handleCursorChange}
               onTabConfirm={handleTabConfirm}
               suggestion={suggestion}
               knownPast={knownPast}
@@ -1029,7 +1077,15 @@ export function App() {
       </div>
       {/* Above the icons but a sibling of the bar, not a child: it has to sit
           below the sheets in the stack, and the bar sits above them. */}
-      {!isViewingPast && showQuote && <Encouragement canFinish={todayText.trim() !== ''} />}
+      <div className="bottom-strip">
+        <DayNav
+          preset={presetNav}
+          showToday={isViewingPast}
+          onPresetStep={stepPreset}
+          onToday={() => { setViewDate(null); setCursorPos(0) }}
+        />
+        {showMessage && <Encouragement canFinish={todayText.trim() !== ''} />}
+      </div>
 
       <div className="bottom-bar">
         <div className="bottom-bar-row">

@@ -219,13 +219,25 @@ They also opt out of the shared `.tapping` squish: `.bottom-btn.tapping` sets
 overshoot to 1.2 with a twist, on the same spring the daily message pops on.
 Two nested scale animations would fight, hence the opt-out.
 
-### Daily message
-`.encouragement-bar` is its own fixed strip above the icon row, and a **sibling**
+### Bottom strip
+`.bottom-strip` is its own fixed strip above the icon row, and a **sibling**
 of `.bottom-bar`, not a child: at `z-index: 10` it passes under an open sheet
 (20) while the bar stays above at 30. A child could never do that — the bar's
 own z-index would carry it along. Both strips are `pointer-events: none` with
 only their contents re-enabling, so their gradients can't swallow taps meant
-for the note. `.content` reserves `104px` for the pair.
+for the note. `.content` reserves `104px` for the pair, and `144px`
+(`.strip-tall`) when the day nav and the message are both up.
+
+It stacks two rows: the **day nav** (`DayNav.tsx`) over the **daily message**.
+The nav centres `‹ #preset ›` and `Today →` as one group. `Today →` shows on
+past days only, in `--accent-tint` — it replaced the old right-edge tab. The
+preset pill follows the block the cursor is in (the first block when the cursor
+is above every header), and shows only once that preset exists on another day.
+Its arrows step through `presetDayIndex()` with no wrap-around: an end arrow is
+disabled. A step pins the preset (`navPreset` in App) so a landing day holding
+several presets keeps the one being followed; any cursor move releases it.
+
+### Daily message
 
 The phrase does **not** flip on logged exercises: a preset drops a whole
 session in at once, which says it was planned, not trained. Finishing is a
