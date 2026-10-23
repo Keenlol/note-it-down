@@ -62,6 +62,19 @@ export function saveShowQuote(show: boolean) {
   localStorage.setItem(SHOW_QUOTE_KEY, show ? 'on' : 'off')
 }
 
+// ── Lock past days ────────────────────────────────────────────────────────────
+
+const LOCK_PAST_KEY = 'settings_lockPast'
+
+/** Whether past days are read-only. Defaults to off — every day editable. */
+export function getSavedLockPast(): boolean {
+  return localStorage.getItem(LOCK_PAST_KEY) === 'on'
+}
+
+export function saveLockPast(lock: boolean) {
+  localStorage.setItem(LOCK_PAST_KEY, lock ? 'on' : 'off')
+}
+
 // ── Preset graph metric ───────────────────────────────────────────────────────
 
 /** Which figure the per-exercise graphs in the preset panel plot. */

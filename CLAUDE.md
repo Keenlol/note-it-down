@@ -263,7 +263,8 @@ only their contents re-enabling, so their gradients can't swallow taps meant
 for the note. `.content` reserves `104px` for the pair, and `144px`
 (`.strip-tall`) when the day nav and the message are both up.
 
-It stacks two rows: the **day nav** (`DayNav.tsx`) over the **daily message**.
+It stacks two rows: the **daily message** over the **day nav** (`DayNav.tsx`),
+which sits nearest the icons.
 The nav centres `‹ #preset ›` and `Today →` as one group. `Today →` shows on
 past days only, in `--accent-tint` — it replaced the old right-edge tab. The
 preset pill follows the block the cursor is in (the first block when the cursor
@@ -322,6 +323,12 @@ every logical line from those spans, so a wrapped line is still one block.
   `lineEnd()`, not pinned to the right edge — and is held inside the column
   when a line runs long. It steps aside for an inline suggestion on that line,
   during a drag, in reveal and read-only. A tap on the grip does nothing.
+
+### Lock past days
+A settings toggle (`settings_lockPast`, off by default). While on, a past day's
+`Editor` is `readOnly`: the textarea takes no typing, its suggestions are
+null, and the grip, swap and the eye's drags all stand down. A `.lock-icon`
+sits beside the past day's title to say why. Today is never locked.
 
 ### Reveal (the eye)
 The `eyes` button is a toggle, not a hold. While it's on, the note shows its

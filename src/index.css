@@ -356,8 +356,8 @@ strong, b {
 }
 
 /* ── Bottom strip ──
-   Its own fixed strip directly above the icon row, holding the day nav and the
-   daily message. Deliberately a sibling of the bar rather than a child: at
+   Its own fixed strip directly above the icon row, holding the daily message
+   and, under it, the day nav — nearest the thumb, since it gets tapped. Deliberately a sibling of the bar rather than a child: at
    z-index 10 it passes *under* an open sheet, while the bar stays above at 30.
    A child could never do that — the bar's own z-index would carry it along. */
 
@@ -634,6 +634,16 @@ strong, b {
 
 .save-icon.visible {
   opacity: 1;
+}
+
+/* Beside a past day's title while past days are locked — why typing there
+   does nothing. */
+.lock-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--grey-dim);
+  animation: grip-in 0.15s ease both;
 }
 
 /* ── Editor ── */
@@ -951,7 +961,8 @@ strong, b {
   caret-color: transparent;
 }
 
-.editor-wrap.revealed .reveal-value {
+/* A locked day keeps its values as plain text. */
+.editor-wrap.revealed:not(.read-only) .reveal-value {
   pointer-events: auto;
   cursor: ns-resize;
   touch-action: none;

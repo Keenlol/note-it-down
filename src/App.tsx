@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Lock } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { WEEKS, weekOffsetForDate, historySetCount } from './utils/heatmapWindow'
 import { HeatmapHistory } from './components/HeatmapHistory'
@@ -19,7 +19,7 @@ import { exerciseVolumePerDay, type ExerciseEntry } from './utils/exercises'
 import { presetVolumePerDay, presetBlocks, presetDayIndex } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { press, release, cancelPress } from './utils/tap'
-import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedShowQuote, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
+import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedShowQuote, getSavedLockPast, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
@@ -273,6 +273,8 @@ export function App() {
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
   const [showDownTrend, setShowDownTrend] = useState<boolean>(() => getSavedShowDownTrend())
   const [showQuote, setShowQuote] = useState<boolean>(() => getSavedShowQuote())
+  // Past days read-only — the note, the eye's drags, the grip and swap alike.
+  const [lockPast, setLockPast] = useState<boolean>(() => getSavedLockPast())
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null)
   const [focusedPreset, setFocusedPreset] = useState<string | null>(null)
   // Preset the ‹ › stepper is following. Pinned on a step so it survives a
@@ -611,10 +613,10 @@ export function App() {
   }, [pastDays, viewDate])
 
   const pastSuggestion = useMemo<Suggestion | null>(() => {
-    if (!viewDate) return null
+    if (!viewDate || lockPast) return null
     return getHashPresetSuggestion(pastText, pastCursorPos, daysBeforeView)
         ?? getSuggestion(pastText, pastCursorPos, daysBeforeView)
-  }, [pastText, pastCursorPos, daysBeforeView, viewDate])
+  }, [pastText, pastCursorPos, daysBeforeView, viewDate, lockPast])
 
   // Most recent prior occurrence of each exercise, for trend indicators.
   // For today: search all past days. For a past day: search only days before it.
@@ -1176,6 +1178,11 @@ export function App() {
       >
         <div className="title-row" style={titleStyle}>
           <h1 className={`title${isViewingPast ? ' past' : ''}`}>{titleText}</h1>
+          {isViewingPast && lockPast && (
+            <span className="lock-icon" aria-label="Past days are locked">
+              <Lock size={16} strokeWidth={2.25} />
+            </span>
+          )}
           {!isViewingPast && (
             <span className={`save-icon${saveStatus === 'saved' && hasExercises ? ' visible' : ''}`}>
               <Check size={18} strokeWidth={2.5} />
@@ -1194,6 +1201,7 @@ export function App() {
               swapLine={swapTarget?.line ?? null}
               onTabConfirm={handlePastTabConfirm}
               suggestion={pastSuggestion}
+              readOnly={lockPast}
               knownPast={knownPast}
               todayCounts={todayCounts}
               previousExercises={previousExercises}
@@ -1229,13 +1237,13 @@ export function App() {
       {/* Above the icons but a sibling of the bar, not a child: it has to sit
           below the sheets in the stack, and the bar sits above them. */}
       <div className="bottom-strip">
+        {showMessage && <Encouragement canFinish={todayText.trim() !== ''} />}
         <DayNav
           preset={presetNav}
           showToday={isViewingPast}
           onPresetStep={stepPreset}
           onToday={() => { setViewDate(null); setCursorPos(0) }}
         />
-        {showMessage && <Encouragement canFinish={todayText.trim() !== ''} />}
       </div>
 
       <div className="bottom-bar">
@@ -1371,6 +1379,7 @@ export function App() {
         }}
         onShowDownTrendChange={setShowDownTrend}
         onShowQuoteChange={setShowQuote}
+        onLockPastChange={setLockPast}
         onWeightUnitChange={(unit: WeightUnit) => {
           setDefaultWeightUnit(unit)
           setWeightUnit(unit)

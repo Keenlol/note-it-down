@@ -631,6 +631,7 @@ export function Editor({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (readOnly) return
     if (e.key === 'Tab') {
       e.preventDefault()
       if (suggestion && !suggestion.isHint) onTabConfirm()
@@ -644,7 +645,7 @@ export function Editor({
   return (
     <div
       ref={wrapRef}
-      className={`editor-wrap${reveal ? ' revealed' : ''}`}
+      className={`editor-wrap${reveal ? ' revealed' : ''}${readOnly ? ' read-only' : ''}`}
       onPointerMove={handleWrapPointerMove}
       onPointerLeave={() => setHoverLine(null)}
     >

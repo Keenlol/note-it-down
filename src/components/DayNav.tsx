@@ -15,7 +15,7 @@ interface Props {
 }
 
 /**
- * The row above the daily message: ‹ preset › steps between the days that share
+ * The row under the daily message, just above the icons: ‹ preset › steps between the days that share
  * the viewed day's preset, Today → returns from a past day. Both are centred as
  * one group, so whichever is alone sits where the message does.
  */

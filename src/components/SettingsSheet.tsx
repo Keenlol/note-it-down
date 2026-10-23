@@ -8,6 +8,7 @@ import {
   type WeightUnit, getSavedWeightUnit, saveWeightUnit,
   getSavedShowDownTrend, saveShowDownTrend,
   getSavedShowQuote, saveShowQuote,
+  getSavedLockPast, saveLockPast,
   type AiRange, getSavedAiRange, saveAiRange,
   HEAT_ROUND_MIN, HEAT_ROUND_MAX, HEAT_ROUND_DEFAULT,
   getSavedHeatRound, saveAndApplyHeatRound,
@@ -37,6 +38,13 @@ const SHOW_HIDE_OPTIONS: { value: Toggle; label: string }[] = [
   { value: 'hide', label: 'Hide' },
 ]
 
+type OnOff = 'on' | 'off'
+
+const ON_OFF_OPTIONS: { value: OnOff; label: string }[] = [
+  { value: 'on',  label: 'On'  },
+  { value: 'off', label: 'Off' },
+]
+
 const AI_RANGE_OPTIONS: { value: AiRange; label: string }[] = [
   { value: '1m',  label: '1M'  },
   { value: '3m',  label: '3M'  },
@@ -62,17 +70,20 @@ interface Props {
   onWeightUnitChange?: (unit: WeightUnit) => void
   onShowDownTrendChange?: (show: boolean) => void
   onShowQuoteChange?: (show: boolean) => void
+  onLockPastChange?: (lock: boolean) => void
 }
 
 export function SettingsSheet({
   open, onClose, height, onResize, onResizeEnd, dataVersion, onDataChange,
   onAccentChange, onWeightUnitChange, onShowDownTrendChange, onShowQuoteChange,
+  onLockPastChange,
 }: Props) {
   const [accent, setAccent]         = useState<AccentKey>(() => getSavedAccent())
   const [heatRound, setHeatRound]   = useState<number>(() => getSavedHeatRound())
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(() => getSavedWeightUnit())
   const [downTrend, setDownTrend]   = useState<Toggle>(() => getSavedShowDownTrend() ? 'show' : 'hide')
   const [quote, setQuote]           = useState<Toggle>(() => getSavedShowQuote() ? 'show' : 'hide')
+  const [lockPast, setLockPast]     = useState<OnOff>(() => getSavedLockPast() ? 'on' : 'off')
   const [confirm, setConfirm]       = useState<ConfirmState>({ kind: 'none' })
   const [aiRange, setAiRange]       = useState<AiRange>(() => getSavedAiRange())
   const [copyState, setCopyState]   = useState<'idle' | 'ok' | 'fail'>('idle')
@@ -126,6 +137,12 @@ export function SettingsSheet({
     saveShowQuote(v === 'show')
     setQuote(v)
     onShowQuoteChange?.(v === 'show')
+  }
+
+  function handleLockPast(v: OnOff) {
+    saveLockPast(v === 'on')
+    setLockPast(v)
+    onLockPastChange?.(v === 'on')
   }
 
   function handleExport() {
@@ -235,6 +252,10 @@ export function SettingsSheet({
           <div className="settings-row">
             <span className="settings-row-label">Daily message</span>
             <SegmentedControl options={SHOW_HIDE_OPTIONS} value={quote} onChange={handleQuote} />
+          </div>
+          <div className="settings-row">
+            <span className="settings-row-label">Lock past days</span>
+            <SegmentedControl options={ON_OFF_OPTIONS} value={lockPast} onChange={handleLockPast} />
           </div>
         </div>
 
