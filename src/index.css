@@ -939,11 +939,12 @@ strong, b {
   color: var(--accent-dim);
 }
 
-/* ── Reveal: hold a value, drag to change it ──
+/* ── Reveal: drag a value to change it ──
    While the eye is on the note is read-only: the textarea stops taking the
    pointer, so a press lands on the formatted overlay beneath it, and only the
-   values the line actually writes take one. They pan vertically like the page
-   until a hold lands; then the drag is theirs. */
+   values the line actually writes take one. The browser pans nothing that
+   starts on a value — up and down is the value's, sideways the day swipe's —
+   so the page scrolls from anywhere else. */
 .editor-wrap.revealed .editor-textarea {
   pointer-events: none;
   caret-color: transparent;
@@ -952,7 +953,7 @@ strong, b {
 .editor-wrap.revealed .reveal-value {
   pointer-events: auto;
   cursor: ns-resize;
-  touch-action: pan-y;
+  touch-action: none;
   -webkit-touch-callout: none;
 }
 

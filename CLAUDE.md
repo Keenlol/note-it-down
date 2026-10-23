@@ -329,19 +329,22 @@ formatted overlay (`name 60kg 8reps x 3sets`) and is read-only: the textarea
 takes no pointer and the keyboard goes away, and the grip, swap and ghosts
 step aside.
 
-- **Hold a number (260 ms), then drag** up or down to change it — 14 px per
-  step; weight 2.5 kg / 5 lb (on the step grid, so 61.3 → 62.5), a `bw+n`
-  offset the same, a `bw×n` factor 0.1, reps and sets 1. A bubble above the
-  finger (`.adjust-bubble`) shows the value; the held value lights up.
-- Moving past 8 px before the hold lands gives the press back to the scroll.
-  Once held, a non-passive `touchmove` listener on the editor stops the page
-  scrolling and keeps the touch from the day swipe.
+- **Press a number and drag** up or down to change it — no hold, the values
+  are handles in this view. 14 px per step; weight 2.5 kg / 5 lb (on the step
+  grid, so 61.3 → 62.5), a `bw+n` offset the same, a `bw×n` factor 0.1, reps
+  and sets 1. A bubble above the finger (`.adjust-bubble`) shows the value;
+  the value being dragged lights up.
+- The first 4 px decide: up or down adjusts, sideways lets go for the day
+  swipe. Values are `touch-action: none`, so the page scrolls from anywhere
+  but a number; once adjusting, a non-passive `touchmove` listener on the
+  editor keeps the touch from the day swipe. The pointer is captured on the
+  press, so a fast drag that outruns the number still reaches it.
 - **The number is rewritten where it is written** (`stepLine` in
   `utils/adjust.ts`), so the rest of the line keeps its wording. The parser
   records where each value sits (`ParsedLine.values`: the digits and their
   token). A step that would make a larger-number-as-reps pair read the other
   way is spelled out instead: `10x3` → `2x3s`, `pullups 10 3` → `10x11s`.
-- Only values the line actually writes can be held — a bodyweight that was
+- Only values the line actually writes can be dragged — a bodyweight that was
   assumed, not written, has nothing to change.
 
 ### Swap picker

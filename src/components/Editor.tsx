@@ -25,7 +25,7 @@ interface Props {
   previousExercises: Map<string, Exercise>
   bodyweightKg?: number   // actual bodyweight for this date; defaults to 60
   bwIsSet?: boolean       // false → show "set bodyweight" hint on bw lines
-  reveal?: boolean        // the formatted view — read-only, its numbers held and dragged to change
+  reveal?: boolean        // the formatted view — read-only, its numbers dragged to change
   readOnly?: boolean
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   weightUnit?: WeightUnit
@@ -82,7 +82,7 @@ function adjustLabel(line: string, field: ValueField, bodyweightKg: number, unit
 
 // Reveal overlay: exercise lines show formatted values (all orange), non-exercise lines render normally.
 // It crossfades over the normal one while the eye is on. Each value the line
-// actually writes is tagged with its line and field, so it can be held.
+// actually writes is tagged with its line and field, so it can be dragged.
 function renderRevealOverlay(
   text: string, bodyweightKg: number, unit: WeightUnit,
   active: { line: number; field: ValueField } | null,
@@ -107,9 +107,9 @@ function renderRevealOverlay(
       // Separate the numeric value from its unit label so the label
       // gets reveal-unit styling (dimmed) matching "reps x" and "sets".
       const value = (field: ValueField, content: React.ReactNode) => {
-        const held = parsed.values?.[field] !== undefined
+        const written = parsed.values?.[field] !== undefined
         const on = active?.line === i && active.field === field
-        return held
+        return written
           ? <span className={`num reveal-value${on ? ' adjusting' : ''}`} data-line={i} data-field={field}>{content}</span>
           : <span className="num">{content}</span>
       }
@@ -332,10 +332,8 @@ function pickSlot(
 /** Below this, a press on the grip is a tap, not a drag. */
 const DRAG_SLOP = 4
 
-/** How long a press on a revealed value rests before it starts adjusting. */
-const HOLD_MS = 260
-/** Travel that gives such a press away as a scroll or a swipe before then. */
-const HOLD_SLOP = 8
+/** Travel that decides a press on a revealed value: up or down adjusts it, sideways is the day swipe. */
+const ADJUST_SLOP = 4
 /** Finger travel per step while adjusting. */
 const STEP_PX = 14
 
@@ -346,14 +344,12 @@ interface Press {
   x: number
   y: number
   el: HTMLElement
-  timer: number
-  held: boolean
 }
 
 interface Adjust {
   line: number
   field: ValueField
-  base: string                       // the line as it was when the hold landed
+  base: string                       // the line as it was when the drag began
   steps: number
   at: { left: number; top: number }  // the value's top centre, editor-relative
 }
@@ -514,42 +510,51 @@ export function Editor({
     return () => { el.removeEventListener('touchmove', onMove); el.removeEventListener('touchend', onEnd) }
   }, [])
 
-  useEffect(() => () => clearTimeout(press.current?.timer), [])
-
   // Turning the eye off mid-press drops it.
   useEffect(() => {
     if (reveal) return
-    clearTimeout(press.current?.timer)
     press.current = null
     holding.current = false
     setAdjust(null)
   }, [reveal])
 
   const endPress = () => {
-    clearTimeout(press.current?.timer)
     press.current = null
     holding.current = false
   }
 
+  // In the eye's view the values are handles: no hold, a press that sets off
+  // up or down adjusts straight away. The pointer is caught on the press, so
+  // a quick drag that outruns the number still reaches it.
   const handleValueDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (readOnly || e.button !== 0 || press.current) return
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-field]')
     if (!el) return
-    const p: Press = {
+    try { el.setPointerCapture(e.pointerId) } catch { /* pointer already gone */ }
+    press.current = {
       line: Number(el.dataset.line),
       field: el.dataset.field as ValueField,
       pointerId: e.pointerId,
       x: e.clientX,
       y: e.clientY,
       el,
-      timer: 0,
-      held: false,
     }
-    p.timer = window.setTimeout(() => {
-      if (press.current !== p || !wrapRef.current) return
-      p.held = true
+  }
+
+  const handleValueMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const p = press.current
+    if (!p || e.pointerId !== p.pointerId) return
+    if (!adjust) {
+      const dx = e.clientX - p.x
+      const dy = e.clientY - p.y
+      if (Math.hypot(dx, dy) < ADJUST_SLOP || !wrapRef.current) return
+      if (Math.abs(dx) > Math.abs(dy)) {
+        // Sideways: the day swipe's, which reads touch events and still has them.
+        try { p.el.releasePointerCapture(p.pointerId) } catch { /* already released */ }
+        endPress()
+        return
+      }
       holding.current = true
-      try { p.el.setPointerCapture(p.pointerId) } catch { /* pointer already gone */ }
       navigator.vibrate?.(8)
       const r = p.el.getBoundingClientRect()
       const base = wrapRef.current.getBoundingClientRect()
@@ -560,21 +565,11 @@ export function Editor({
         steps: 0,
         at: { left: r.left + r.width / 2 - base.left, top: r.top - base.top },
       })
-    }, HOLD_MS)
-    press.current = p
-  }
-
-  const handleValueMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const p = press.current
-    if (!p || e.pointerId !== p.pointerId) return
-    if (!p.held) {
-      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > HOLD_SLOP) endPress()
       return
     }
-    if (!adjust) return
     const steps = Math.round((p.y - e.clientY) / STEP_PX)
     if (steps === adjust.steps) return
-    // Stepped from the line as it was at the hold, so a step that can't move
+    // Stepped from the line as it was at the start, so a step that can't move
     // (a rep count at 1) holds still rather than drifting.
     const next = stepLine(adjust.base, adjust.field, steps, weightUnit)
     const out = value.split('\n')
