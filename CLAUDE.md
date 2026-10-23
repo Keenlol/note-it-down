@@ -329,12 +329,18 @@ textarea) and **Proper** (`ProperEditor.tsx`), remembered in
 `settings_editorMode`. Proper mode is the same day text drawn one box per line;
 it never keeps data of its own. Every edit goes back into the text through
 `utils/lines.ts`, which both editors share (`moveLines`, `blockRange`,
-`insertIntoBlock`, `writeLine`…).
+`appendLines`, `setDayPreset`, `writeLine`…).
+
+- **One preset per day.** The top of the day is always the preset selector
+  (`.proper-preset`, dashed while the day has none), then the exercises — no
+  unlabelled section above it. The preset is the day's first `#` header;
+  picking one (`setDayPreset`) writes it as line 1 and drops any other
+  headers. A day written in the note with a second header shows it as a dim
+  divider that can be removed. Nothing can be dropped above the header.
 
 - **Rows.** An exercise line is one `--surface-1` box that hugs its content: name, then weight and
   reps × sets as `--surface-2` chips (`--r-inner`). Trend badges or a "New"
-  label keep to the row's right edge. Headers render as `# name`; lines it
-  can't box (free text, `bw 82`) stay as dim text rows.
+  label keep to the row's right edge. Lines it can't box (free text, `bw 82`) stay as dim text rows.
 - **Only touched lines are rewritten**, in canonical form
   `name load repsxsets`, keeping the indent, the name as typed and any unit the
   line spelled out. Fewer reps than sets is written `3x5s`, since the parser
@@ -344,17 +350,17 @@ it never keeps data of its own. Every edit goes back into the text through
   "Removed · Undo" row for 5 s.
 - **Hold** (260 ms) a value chip and drag vertically to step it — 14 px per
   step; 2.5 kg / 5 lb, 1 rep, 1 set; a bubble above the finger shows the
-  value. Hold anywhere else on a row to move it; a header moves its preset.
+  value. Hold anywhere else on a row to move it.
   Movement past 8 px before the hold lands gives the press back to the scroll.
   Once held, a non-passive `touchmove` listener stops the page scrolling and
   keeps the touch from the day swipe. The keyboard never comes up for either.
-- **Adding.** Each block ends in a dashed `+` that opens the swap picker in
-  `mode: 'add'`; a search naming nothing logged offers itself as new
-  (`name 0 8x3`), the one place a name is typed. `# Preset` at the bottom opens
-  `PresetPickSheet` to pick or name a header.
-- **Ghosts.** Under a header, the exercises that preset held the last time it
-  was done before the viewed day (`presetTemplates` in App) and that aren't on
-  the day yet show as outlined rows. Tap one to add it, or **Apply all**;
+- **Adding.** The list ends in a dashed `+` that opens the swap picker in
+  `mode: 'add'` and appends to the end of the note; a search naming nothing
+  logged offers itself as new (`name 0 8x3`), the one place a name is typed.
+  The selector opens `PresetPickSheet` to pick or name the preset.
+- **Ghosts.** Under the exercises, what the preset held the last time it was
+  done before the viewed day (`presetTemplates` in App) and the day doesn't
+  have yet show as outlined rows. Tap one to add it, or **Apply all**;
   **Skip** hides them for the day.
 
 ### Swap picker

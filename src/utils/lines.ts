@@ -72,17 +72,18 @@ export function slotY(boxes: LineBox[], slot: number): number {
  * Gap the dragged block would land in. Moving up, its top edge picks the gap;
  * moving down, its bottom edge — so a block swaps with its neighbour once it is
  * halfway past it. Null while that gap is the block's own place. Nothing lands
- * past `maxSlot`, which keeps a trailing newline the last thing in the note.
+ * past `maxSlot`, which keeps a trailing newline the last thing in the note,
+ * nor before `minSlot`.
  */
 export function pickSlot(
-  boxes: LineBox[], start: number, count: number, dy: number, maxSlot: number,
+  boxes: LineBox[], start: number, count: number, dy: number, maxSlot: number, minSlot = 0,
 ): number | null {
   const first = boxes[start]
   const last = boxes[start + count - 1]
   const edge = dy < 0 ? first.top + dy : last.top + last.height + dy
-  let best = 0
+  let best = minSlot
   let bestDist = Infinity
-  for (let k = 0; k <= maxSlot; k++) {
+  for (let k = minSlot; k <= maxSlot; k++) {
     const d = Math.abs(slotY(boxes, k) - edge)
     if (d < bestDist) { best = k; bestDist = d }
   }
@@ -97,35 +98,26 @@ export function maxDropSlot(lines: string[]): number {
 // ── Blocks ──────────────────────────────────────────────────────────────────
 
 /**
- * Where a new line for a block goes: just past its last written line. `header`
- * is the block's "#" line, or -1 for the unlabelled lines above every header.
+ * Lines added in Proper mode go at the end of the note, just past its last
+ * written line — which, with the day's one preset on top, is in that preset.
  */
-export function blockInsertIndex(lines: string[], header: number): number {
-  let end = header + 1
-  while (end < lines.length && !isHeaderLine(lines[end])) end++
-  let at = end
-  while (at > header + 1 && isBlank(lines[at - 1])) at--
-  return at
-}
-
-/** Insert lines into a block; the unlabelled block stays set apart from a header below it. */
-export function insertIntoBlock(lines: string[], header: number, add: string[]): string[] {
-  const at = blockInsertIndex(lines, header)
+export function appendLines(lines: string[], add: string[]): string[] {
+  let at = lines.length
+  while (at > 0 && isBlank(lines[at - 1])) at--
   const out = [...lines]
-  // An empty note is one blank line — fill it rather than pushing it down.
-  if (out.length === 1 && out[0] === '') out.splice(0, 1)
-  const tail = header < 0 && at < out.length && isHeaderLine(out[at]) ? [''] : []
-  out.splice(Math.min(at, out.length), 0, ...add, ...tail)
+  out.splice(at, 0, ...add)
   return out
 }
 
-/** A new "#" header at the bottom, a blank line clear of whatever is above. */
-export function appendHeader(lines: string[], name: string): string[] {
-  const out = [...lines]
-  while (out.length > 0 && isBlank(out[out.length - 1])) out.pop()
-  if (out.length > 0) out.push('')
-  out.push(`# ${name}`)
-  return out
+/**
+ * Proper mode keeps one preset per day: its header is the first line. Setting
+ * it drops every other header, so lines that sat under a second preset now
+ * belong to this one.
+ */
+export function setDayPreset(lines: string[], name: string): string[] {
+  const rest = lines.filter(l => !isHeaderLine(l))
+  while (rest.length > 0 && isBlank(rest[0])) rest.shift()
+  return [`# ${name}`, ...rest]
 }
 
 // ── Values ──────────────────────────────────────────────────────────────────

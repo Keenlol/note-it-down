@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeftRight, Copy, Hash, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, ChevronDown, Copy, Plus, Trash2 } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, type Exercise } from '../utils/parser'
 import {
   isHeaderLine, isBlank, blockRange, moveLines, pickSlot, slotY, maxDropSlot,
-  insertIntoBlock, readValues, writeLine, type LineBox, type LineValues,
+  appendLines, readValues, writeLine, type LineBox, type LineValues,
 } from '../utils/lines'
 import type { WeightUnit } from '../utils/settings'
 import { buildTrend } from '../utils/trend'
@@ -17,8 +17,8 @@ interface Props {
   onChange: (text: string) => void
   onCursorLine: (line: number) => void         // a row was opened — the day nav follows it
   onSwapLine: (line: number) => void           // exercise row → exercise picker
-  onPickPreset: (line: number | null) => void  // header row, or null for a new header
-  onAddExercise: (header: number) => void      // "+" under a block (-1 = above every header)
+  onPickPreset: () => void                     // the preset selector on top
+  onAddExercise: () => void                    // "+" under the exercises
   swapLine: number | null                      // row held marked while a picker is up
   templates: Map<string, string[]>             // preset → its lines from the last time it was done
   aliases: Record<string, string>
@@ -97,10 +97,11 @@ interface Drag { start: number; count: number; originY: number; boxes: LineBox[]
 interface Undo { line: number; before: string; after: string; label: string }
 
 /**
- * Proper mode: the same note, one box per line. Nothing is typed here —
- * values are held and dragged, rows are held and moved, and exercises and
- * presets come from pickers. Every change is written straight back into the
- * text, which stays the one source of truth.
+ * Proper mode: the same note, one box per line. A day is one preset — its
+ * selector sits on top, every exercise below belongs to it. Nothing is typed
+ * here: values are held and dragged, rows are held and moved, and exercises
+ * and the preset come from pickers. Every change is written straight back into
+ * the text, which stays the one source of truth.
  */
 export function ProperEditor({
   value, onChange, onCursorLine, onSwapLine, onPickPreset, onAddExercise, swapLine,
@@ -184,6 +185,12 @@ export function ProperEditor({
     }
   }
 
+  // The day's preset is its first header, held as the selector on top. With
+  // it on the first line nothing can be dropped above it.
+  const primary = kinds.indexOf('header')
+  const minSlot = primary === 0 ? 1 : 0
+  const presetName = primary >= 0 ? headerName(lines[primary]) : ''
+
   const handleRowDown = (e: React.PointerEvent<HTMLDivElement>, line: number) => {
     if (e.button !== 0 || press.current) return
     const target = e.target as HTMLElement
@@ -218,7 +225,7 @@ export function ProperEditor({
         setAdjust({ ...adjust, steps })
       }
     } else if (drag) {
-      setDrag({ ...drag, dy, slot: pickSlot(drag.boxes, drag.start, drag.count, dy, maxDropSlot(lines)) })
+      setDrag({ ...drag, dy, slot: pickSlot(drag.boxes, drag.start, drag.count, dy, maxDropSlot(lines), minSlot) })
     }
   }
 
@@ -250,8 +257,6 @@ export function ProperEditor({
 
   const handleTap = (line: number) => {
     if (kinds[line] === 'blank') return
-    // A bare "#" is a header still waiting for its preset.
-    if (kinds[line] === 'header' && !headerName(lines[line])) { onPickPreset(line); return }
     setOpen(o => (o === line ? null : line))
     onCursorLine(line)
   }
@@ -272,21 +277,6 @@ export function ProperEditor({
     onChange(out.join('\n'))
   }
 
-  // ── Blocks ──
-  // Each block's ghosts and "+" sit under its last written line. The block
-  // above every header gets a "+" only once it holds something, or when there
-  // are no headers at all — otherwise it would be a second "+" for nothing.
-  const headers = kinds.flatMap((k, i) => (k === 'header' ? [i] : []))
-  const lastWritten = (from: number, to: number) => {
-    for (let i = to - 1; i >= from; i--) if (kinds[i] !== 'blank') return i
-    return -1
-  }
-  const topEnd = lastWritten(0, headers[0] ?? lines.length)
-  const blockAfter = new Map<number, number>()   // line → header of the block it closes
-  if (topEnd >= 0) blockAfter.set(topEnd, -1)
-  headers.forEach((h, n) => blockAfter.set(lastWritten(h, headers[n + 1] ?? lines.length), h))
-  const topAddFirst = topEnd < 0 && headers.length === 0
-
   // Canonical names on the day, so a preset's ghosts leave out what's already here.
   const onDay = useMemo(() => {
     const set = new Set<string>()
@@ -298,14 +288,12 @@ export function ProperEditor({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, aliases])
 
-  const ghostsFor = (header: number): string[] => {
-    const norm = headerName(lines[header]).toLowerCase()
-    if (!norm || dismissed.has(norm)) return []
-    return (templates.get(norm) ?? []).filter(l => {
-      const n = parseLine(l).exercise?.name
-      return n !== undefined && !onDay.has(aliases[normalizeName(n)] ?? normalizeName(n))
-    })
-  }
+  // What the preset held last time and the day doesn't have yet.
+  const presetNorm = presetName.toLowerCase()
+  const ghosts = !presetNorm || dismissed.has(presetNorm) ? [] : (templates.get(presetNorm) ?? []).filter(l => {
+    const n = parseLine(l).exercise?.name
+    return n !== undefined && !onDay.has(aliases[normalizeName(n)] ?? normalizeName(n))
+  })
 
   // ── Rendering ──
   const dragging = drag !== null
@@ -377,19 +365,17 @@ export function ProperEditor({
     )
   }
 
-  const renderHeader = (raw: string, i: number) => {
-    const name = headerName(raw)
-    return (
-      <div key={i} {...rowProps(i, 'proper-header')}>
-        <span className="proper-hash">#</span>
-        <span className={`proper-header-name${name ? '' : ' unnamed'}`}>{name || 'Choose a preset'}</span>
-        <span className="proper-actions">
-          {actionBtn('Change preset', <ArrowLeftRight size={15} strokeWidth={2.25} />, () => onPickPreset(i))}
-          {actionBtn('Remove header', <Trash2 size={15} strokeWidth={2.25} />, () => removeLine(i), true)}
-        </span>
-      </div>
-    )
-  }
+  // A second header, from a day written in the note with more than one
+  // preset. Proper mode has no place for it, so it shows as a divider that can
+  // be removed; picking the preset again folds it away too.
+  const renderHeader = (raw: string, i: number) => (
+    <div key={i} {...rowProps(i, 'proper-text proper-divider')}>
+      <span className="proper-text-body">#{headerName(raw)}</span>
+      <span className="proper-actions">
+        {actionBtn('Remove header', <Trash2 size={15} strokeWidth={2.25} />, () => removeLine(i), true)}
+      </span>
+    </div>
+  )
 
   const renderText = (raw: string, i: number) => (
     <div key={i} {...rowProps(i, 'proper-text')}>
@@ -400,44 +386,55 @@ export function ProperEditor({
     </div>
   )
 
-  const renderBlockEnd = (header: number) => {
-    const ghosts = header >= 0 ? ghostsFor(header) : []
-    return (
-      <div key={`end${header}`} className="proper-block-end">
-        {ghosts.map((g, n) => {
-          const v = readValues(g, weightUnit)!
-          return (
-            <div
-              key={n}
-              className="proper-row ghost"
-              onPointerDown={tap}
-              onClick={() => onChange(insertIntoBlock(lines, header, [g]).join('\n'))}
-            >
-              <div className="proper-box">
-                <span className="proper-name">{parseLine(g).exercise!.name}</span>
-                {renderValues(v, null)}
-              </div>
+  const selector = (
+    <button
+      key="preset"
+      type="button"
+      className={`proper-preset${presetName ? '' : ' empty'}${swapLine === primary && primary >= 0 ? ' marked' : ''}`}
+      onPointerDown={tap}
+      onClick={onPickPreset}
+    >
+      <span className="proper-hash">#</span>
+      <span className="proper-preset-name">{presetName || 'Choose a preset'}</span>
+      <ChevronDown size={16} strokeWidth={2.25} className="proper-preset-chevron" />
+    </button>
+  )
+
+  const listEnd = (
+    <div key="end" className="proper-block-end">
+      {ghosts.map((g, n) => {
+        const v = readValues(g, weightUnit)!
+        return (
+          <div
+            key={n}
+            className="proper-row ghost"
+            onPointerDown={tap}
+            onClick={() => onChange(appendLines(lines, [g]).join('\n'))}
+          >
+            <div className="proper-box">
+              <span className="proper-name">{parseLine(g).exercise!.name}</span>
+              {renderValues(v, null)}
             </div>
-          )
-        })}
-        {ghosts.length > 0 && (
-          <div className="proper-ghost-actions">
-            <button className="data-btn" onPointerDown={tap}
-              onClick={() => onChange(insertIntoBlock(lines, header, ghosts).join('\n'))}>
-              Apply all
-            </button>
-            <button className="data-btn data-btn-ghost" onPointerDown={tap}
-              onClick={() => setDismissed(d => new Set(d).add(headerName(lines[header]).toLowerCase()))}>
-              Skip
-            </button>
           </div>
-        )}
-        <button className="proper-add" onPointerDown={tap} onClick={() => onAddExercise(header)} aria-label="Add exercise">
-          <Plus size={16} strokeWidth={2.25} />
-        </button>
-      </div>
-    )
-  }
+        )
+      })}
+      {ghosts.length > 0 && (
+        <div className="proper-ghost-actions">
+          <button className="data-btn" onPointerDown={tap}
+            onClick={() => onChange(appendLines(lines, ghosts).join('\n'))}>
+            Apply all
+          </button>
+          <button className="data-btn data-btn-ghost" onPointerDown={tap}
+            onClick={() => setDismissed(d => new Set(d).add(presetNorm))}>
+            Skip
+          </button>
+        </div>
+      )}
+      <button className="proper-add" onPointerDown={tap} onClick={onAddExercise} aria-label="Add exercise">
+        <Plus size={16} strokeWidth={2.25} />
+      </button>
+    </div>
+  )
 
   const showUndo = undo !== null && undo.after === value
   const undoRow = showUndo && (
@@ -449,19 +446,26 @@ export function ProperEditor({
     </div>
   )
 
-  const rows: React.ReactNode[] = []
-  if (topAddFirst) rows.push(renderBlockEnd(-1))
+  // Every line keeps an element in order — the preset's own header as an
+  // empty one, since its selector is drawn above them all — so the drop
+  // slots can be measured line for line.
+  const rows: React.ReactNode[] = [selector]
   lines.forEach((raw, i) => {
     if (showUndo && undo.line === i) rows.push(undoRow)
     switch (kinds[i]) {
       case 'exercise': rows.push(renderExercise(raw, i)); break
-      case 'header':   rows.push(renderHeader(raw, i)); break
       case 'text':     rows.push(renderText(raw, i)); break
-      case 'blank':    rows.push(<div key={i} data-line={i} className={`proper-gap${trailing(i) ? ' trailing' : ''}`} />)
+      case 'header':
+        rows.push(i === primary
+          ? <div key={i} data-line={i} className="proper-gap trailing" />
+          : renderHeader(raw, i))
+        break
+      case 'blank':
+        rows.push(<div key={i} data-line={i} className={`proper-gap${trailing(i) || i === primary + 1 ? ' trailing' : ''}`} />)
     }
-    if (blockAfter.has(i)) rows.push(renderBlockEnd(blockAfter.get(i)!))
   })
   if (showUndo && undo.line >= lines.length) rows.push(undoRow)
+  rows.push(listEnd)
 
   return (
     <div
@@ -476,9 +480,6 @@ export function ProperEditor({
       {drag?.slot != null && (
         <div className="line-drop proper-drop" aria-hidden="true" style={{ top: slotY(drag.boxes, drag.slot) - 3 }} />
       )}
-      <button className="proper-add proper-add-preset" onPointerDown={tap} onClick={() => onPickPreset(null)}>
-        <Hash size={14} strokeWidth={2.25} /> Preset
-      </button>
     </div>
   )
 }

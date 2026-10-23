@@ -18,7 +18,7 @@ import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/st
 import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay } from './utils/exercises'
-import { insertIntoBlock, appendHeader, newExerciseLine } from './utils/lines'
+import { appendLines, setDayPreset, isHeaderLine, newExerciseLine } from './utils/lines'
 import { presetVolumePerDay, presetBlocks, presetDayIndex } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { press, release, cancelPress } from './utils/tap'
@@ -863,9 +863,10 @@ export function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewDate, pastText, todayText, aliases])
 
-  // Proper mode's "+": the same picker, adding to the block under `header`.
-  const handleAddExercise = (header: number) => {
+  // Proper mode's "+": the same picker, adding to the day's one preset.
+  const handleAddExercise = () => {
     const lines = (viewDate ? pastText : todayText).split('\n')
+    const header = lines.findIndex(isHeaderLine)
     const name = header >= 0 ? lines[header].trim().replace(/^#+\s*/, '') : ''
     openPicker()
     setSwapTarget({
@@ -885,7 +886,7 @@ export function App() {
     if (!swapTarget) return
     const lines = (viewDate ? pastText : todayText).split('\n')
     if (swapTarget.mode === 'add') {
-      applyText(insertIntoBlock(lines, swapTarget.line, [lastLine ?? newExerciseLine(name)]).join('\n'))
+      applyText(appendLines(lines, [lastLine ?? newExerciseLine(name)]).join('\n'))
       setSwapTarget(null)
       return
     }
@@ -902,25 +903,21 @@ export function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [swapTarget, viewDate, pastText, todayText, handlePastChange, handleChange])
 
-  // Proper mode's header prompt: change a header's preset, or add a new header.
-  const handlePickPreset = (line: number | null) => {
+  // Proper mode's preset selector. A day there is one preset, written as the
+  // note's first line; picking one replaces whatever headers the day had.
+  const handlePickPreset = () => {
     const lines = (viewDate ? pastText : todayText).split('\n')
+    const header = lines.findIndex(isHeaderLine)
     openPicker()
     setPresetPick({
-      line,
+      line: header >= 0 ? header : null,
       onDay: presetBlocks(lines.map(l => parseLine(l))).map(b => b.norm),
     })
   }
 
   const handlePresetPicked = (name: string) => {
     if (!presetPick) return
-    const lines = (viewDate ? pastText : todayText).split('\n')
-    if (presetPick.line === null) {
-      applyText(appendHeader(lines, name).join('\n'))
-    } else {
-      lines[presetPick.line] = lines[presetPick.line].match(/^\s*/)![0] + `# ${name}`
-      applyText(lines.join('\n'))
-    }
+    applyText(setDayPreset((viewDate ? pastText : todayText).split('\n'), name).join('\n'))
     setPresetPick(null)
   }
 

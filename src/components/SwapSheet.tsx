@@ -9,7 +9,7 @@ import { Sticker } from './Sticker'
 
 export interface SwapTarget {
   mode: 'swap' | 'add'       // replace the line's exercise, or add one to a block
-  line: number               // swap: the line in the viewed day's note; add: the block's header (-1 = none)
+  line: number               // swap: the line in the viewed day's note; add: the preset's header (-1 = none)
   name: string               // swap: the exercise as written on that line
   norm: string               // swap: its canonical key — left out of the list
   preset: { norm: string; name: string } | null  // the block the line sits in

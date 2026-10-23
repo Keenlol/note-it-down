@@ -6,7 +6,7 @@ import { SheetHandle } from './SheetHandle'
 import { Sticker } from './Sticker'
 
 export interface PresetPick {
-  line: number | null   // the header being changed, or null for a new one
+  line: number | null   // the day's header, or null while it has none
   onDay: string[]       // preset keys already on the viewed day
 }
 
@@ -21,7 +21,7 @@ interface Props {
 }
 
 /**
- * Proper mode's header prompt: pick a preset, or name a new one. Most recent
+ * Proper mode's preset selector: pick the day's preset, or name a new one. Most recent
  * first, since a split usually comes round in order; presets already on the
  * day sink to the end.
  */
