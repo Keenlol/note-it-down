@@ -281,6 +281,27 @@ every logical line from those spans, so a wrapped line is still one block.
   it at, and stays mounted through the drag because it holds the pointer
   capture. It stops touch propagation so the day swipe and history pull never
   see a drag, and `preventDefault`s the press so the keyboard stays up.
+- A **tap** on the grip (no drag) selects an exercise line: it is shaded
+  (`.line-mark`) and its trend badge gives way to an accent **Swap** chip
+  (`.line-action`). Typing, moving the caret or pressing anywhere else lets the
+  selection go. Headers and non-exercise lines don't select.
+
+### Swap picker
+`SwapSheet.tsx` is the exercise sheet as a one-tap picker. It reuses the sheet
+and row classes, but has no sort, merge, menus or history. A row tap swaps and
+closes.
+
+- Order: exercises ever logged under the line's preset first ("In #upper"),
+  then everything else, each by use count. Exercises already on the day sink
+  to the end of their group, with their names held back at `--text-2`.
+- Each row previews, in accent, the numbers the swap will bring
+  (`lastLinesBefore`): the exercise's latest line before the viewed day. A swap
+  writes that line in whole. With no earlier line, it renames the exercise and
+  keeps the swapped line's own numbers.
+- Opening it blurs the note and sizes the sheet to start just under the note
+  (`swapHeight`, never the shared `sheetHeight`), so the shaded line stays in
+  view. It counts as an open sheet everywhere the others do, closes when the
+  viewed day changes, and a drag on its handle below 240px closes it.
 
 ### Ghost / suggestion text
 ```css

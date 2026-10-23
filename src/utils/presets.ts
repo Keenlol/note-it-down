@@ -66,6 +66,24 @@ export function presetDayIndex(): Map<string, string[]> {
   return index
 }
 
+/** Canonical names of every exercise ever logged under preset `norm`. */
+export function presetExerciseNames(norm: string, aliases: Record<string, string>): Set<string> {
+  const names = new Set<string>()
+  for (const date of getAllDayKeys()) {
+    const day = loadDay(date)
+    if (!day) continue
+    const parsed = day.rawText.split('\n').map(l => parseLine(l))
+    for (const block of presetBlocks(parsed)) {
+      if (block.norm !== norm) continue
+      for (const idx of block.exerciseIndices) {
+        const n = normalizeName(parsed[idx].exercise!.name)
+        names.add(aliases[n] ?? n)
+      }
+    }
+  }
+  return names
+}
+
 export interface PresetEntry {
   norm: string        // normalized key: lowercase content after "#"
   displayName: string // rawContent or overridden nickname

@@ -10,10 +10,11 @@ import { BodyweightSheet } from './components/BodyweightSheet'
 import { SettingsSheet } from './components/SettingsSheet'
 import { Encouragement } from './components/Encouragement'
 import { DayNav, type PresetNav } from './components/DayNav'
+import { SwapSheet, type SwapTarget } from './components/SwapSheet'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
-import { exerciseVolumePerDay } from './utils/exercises'
+import { exerciseVolumePerDay, type ExerciseEntry } from './utils/exercises'
 import { presetVolumePerDay, presetBlocks, presetDayIndex } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { tap } from './utils/tap'
@@ -250,6 +251,13 @@ export function App() {
   const [presetSheetOpen, setPresetSheetOpen] = useState(false)
   const [bwSheetOpen, setBwSheetOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // The line being swapped; the swap picker is open while this is set.
+  const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null)
+  const swapOpen = swapTarget !== null
+  // The picker sizes itself to open just under the note, so the line being
+  // swapped stays in view; it never touches the other sheets' saved height.
+  const [swapHeight, setSwapHeight] = useState<number | undefined>(undefined)
+  const swapHeightRef = useRef<number | undefined>(undefined)
   const [historyMounted, setHistoryMounted] = useState(false)
   const [accentHex, setAccentHex] = useState(() => {
     const key = getSavedAccent()
@@ -326,6 +334,7 @@ export function App() {
 
   const closeAllSheets = () => {
     setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false)
+    setSwapTarget(null)
   }
 
   // Bottom of the note's last *non-empty* line — trailing blank lines are ignored
@@ -485,7 +494,7 @@ export function App() {
       prevViewDate.current = viewDate
       daySnapArmed.current = true
     }
-    if (activeSnap.current !== 'note' || !(sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen)) {
+    if (activeSnap.current !== 'note' || !(sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen || swapOpen)) {
       daySnapArmed.current = false
       return
     }
@@ -509,7 +518,7 @@ export function App() {
     })
     return () => cancelAnimationFrame(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewDate, todayText, pastText, sheetOpen, presetSheetOpen, bwSheetOpen, settingsOpen])
+  }, [viewDate, todayText, pastText, sheetOpen, presetSheetOpen, bwSheetOpen, settingsOpen, swapOpen])
 
   useEffect(() => {
     const saved = loadDay(todayKey())
@@ -785,6 +794,53 @@ export function App() {
     setNavPreset(null)
   }, [])
 
+  // ── Swap ────────────────────────────────────────────────────────────────
+  // A swap belongs to the day it was opened on.
+  useEffect(() => { setSwapTarget(null) }, [viewDate])
+
+  const handleSwapLine = useCallback((line: number) => {
+    const lines = (viewDate ? pastText : todayText).split('\n')
+    const ex = parseLine(lines[line]).exercise
+    if (!ex) return
+    const norm = normalizeName(ex.name)
+    const block = presetBlocks(lines.map(l => parseLine(l))).find(b => b.exerciseIndices.includes(line))
+    // The picker needs the room the keyboard is taking.
+    ;(viewDate ? pastTextareaRef : textareaRef).current?.blur()
+    setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false)
+    const vh = window.innerHeight
+    swapHeightRef.current = clampSheetHeight(Math.max(vh * 0.45, vh - measureNoteBottom() - 12))
+    setSwapHeight(swapHeightRef.current)
+    setSwapTarget({
+      line,
+      name: ex.name,
+      norm: aliases[norm] ?? norm,
+      preset: block ? { norm: block.norm, name: block.rawContent } : null,
+      beforeDate: viewDate ?? todayKey(),
+      onDay: lines.flatMap(l => {
+        const n = parseLine(l).exercise?.name
+        return n ? [aliases[normalizeName(n)] ?? normalizeName(n)] : []
+      }),
+    })
+  }, [viewDate, pastText, todayText, aliases])
+
+  // The picked exercise comes in as it was last written, numbers and all. One
+  // never logged before this day keeps the swapped line's numbers instead.
+  const handleSwapPick = useCallback((entry: ExerciseEntry, lastLine: string | undefined) => {
+    if (!swapTarget) return
+    const lines = (viewDate ? pastText : todayText).split('\n')
+    const old = lines[swapTarget.line] ?? ''
+    const names = parseLine(old).nameRanges
+    if (lastLine) {
+      lines[swapTarget.line] = old.match(/^\s*/)![0] + lastLine
+    } else if (names.length > 0) {
+      lines[swapTarget.line] =
+        old.slice(0, names[0].start) + entry.displayName + old.slice(names[names.length - 1].end)
+    }
+    const text = lines.join('\n')
+    if (viewDate) handlePastChange(text); else handleChange(text)
+    setSwapTarget(null)
+  }, [swapTarget, viewDate, pastText, todayText, handlePastChange, handleChange])
+
   // Inline heatmap pages back a whole 21-week "set" once the viewed day falls
   // outside the today-anchored window; returns to set 0 for recent days / today.
   const heatmapWeekOffset = useMemo(() => weekOffsetForDate(viewDate), [viewDate])
@@ -830,7 +886,7 @@ export function App() {
   // open (their own drag handle owns vertical drags) or once already revealed.
   const handleRevealTouchStart = (e: React.TouchEvent) => {
     if (historyMounted || historySets <= 1) return       // nothing older to reveal
-    if (sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen) return
+    if (sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen || swapOpen) return
     histDrag.current = { active: false, mode: 'open', startY: e.touches[0].clientY, startX: e.touches[0].clientX, progress: 0 }
   }
   const handleRevealTouchMove = (e: React.TouchEvent) => {
@@ -995,7 +1051,7 @@ export function App() {
 
   // Any panel up dims the page behind it — the sheets are the same colour as
   // the page, so without this they have only a 1px border to separate them.
-  const anySheetOpen = sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen
+  const anySheetOpen = sheetOpen || presetSheetOpen || bwSheetOpen || settingsOpen || swapOpen
 
   const isViewingPast = viewDate !== null
   const titleText = isViewingPast ? formatDisplayDate(viewDate!) : 'Today'
@@ -1043,6 +1099,8 @@ export function App() {
               value={pastText}
               onChange={handlePastChange}
               onCursorChange={handlePastCursorChange}
+              onSwapLine={handleSwapLine}
+              swapLine={swapTarget?.line ?? null}
               onTabConfirm={handlePastTabConfirm}
               suggestion={pastSuggestion}
               knownPast={knownPast}
@@ -1060,6 +1118,8 @@ export function App() {
               value={todayText}
               onChange={handleChange}
               onCursorChange={handleCursorChange}
+              onSwapLine={handleSwapLine}
+              swapLine={swapTarget?.line ?? null}
               onTabConfirm={handleTabConfirm}
               suggestion={suggestion}
               knownPast={knownPast}
@@ -1093,7 +1153,7 @@ export function App() {
             <button
               onPointerDown={tap}
               className={`bottom-btn${bwSheetOpen ? ' active' : ''}`}
-              onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) }}
+              onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Bodyweight"
             >
               <span className="bottom-emoji">⚖️</span>
@@ -1101,7 +1161,7 @@ export function App() {
             <button
               onPointerDown={tap}
               className={`bottom-btn${sheetOpen ? ' active' : ''}`}
-              onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
+              onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Exercises"
             >
               <span className="bottom-emoji">🏋️</span>
@@ -1109,7 +1169,7 @@ export function App() {
             <button
               onPointerDown={tap}
               className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
-              onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) }}
+              onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Presets"
             >
               <span className="bottom-emoji">🏷️</span>
@@ -1127,7 +1187,7 @@ export function App() {
           <button
             onPointerDown={tap}
             className={`bottom-btn bottom-btn-settings${settingsOpen ? ' active' : ''}`}
-            onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) }}
+            onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) ; setSwapTarget(null) }}
             aria-label="Settings"
           >
             <span className="bottom-emoji">⚙️</span>
@@ -1163,6 +1223,17 @@ export function App() {
         onResizeEnd={handleSheetResizeEnd}
         weightUnit={weightUnit}
         showDownTrend={showDownTrend}
+      />
+
+      <SwapSheet
+        target={swapTarget}
+        onPick={handleSwapPick}
+        onClose={() => setSwapTarget(null)}
+        aliases={aliases}
+        dataVersion={dataVersion}
+        height={swapHeight}
+        onResize={px => { swapHeightRef.current = clampSheetHeight(px); setSwapHeight(swapHeightRef.current) }}
+        onResizeEnd={() => { if ((swapHeightRef.current ?? 0) <= 240) setSwapTarget(null) }}
       />
 
       <PresetSheet

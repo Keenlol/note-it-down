@@ -767,6 +767,41 @@ strong, b {
   min-height: calc(var(--editor-lh) * 1em);   /* blank lines inside a block */
 }
 
+/* A selected line (tap on the grip) and the line being swapped: shaded on the
+   lifted copy's geometry, under the text. */
+.line-mark {
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  background: var(--surface-1);
+  border-radius: var(--r-inner);
+  pointer-events: none;
+  animation: grip-in 0.15s ease both;
+}
+
+/* The selected line's action, sitting where its trend badge would. */
+.line-action {
+  position: absolute;
+  right: 0;
+  margin-top: calc((var(--editor-lh) * var(--editor-size) - 26px) / 2);
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--r-chip);
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: var(--w-ui);
+  cursor: pointer;
+  z-index: 3;
+  touch-action: manipulation;
+  animation: grip-in 0.15s ease both;
+}
+
 /* Where the block came from, held faint until it lands. */
 .line-lifted {
   opacity: 0.25;
@@ -1309,6 +1344,7 @@ strong, b {
    dimmed; at semibold it competed with the names it was describing. Add a
    selector here rather than writing --w-note into a rule of its own. */
 .settings-section-hint,
+.swap-from,
 .slider-legend,
 .slider-default,
 .ex-last,
@@ -1723,6 +1759,43 @@ strong, b {
 
 .ex-name.is-open {
   color: var(--text);
+}
+
+/* ── Swap picker ──
+   The exercise sheet as a one-tap picker. Every row is a choice rather than a
+   collapsed entry, so names sit at full --text from the start — except those
+   already on the day, which keep the sheet's held-back --text-2. */
+.ex-name.swap-name {
+  color: var(--text);
+}
+
+.swap-from {
+  min-width: 0;
+  margin-left: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.swap-group-label {
+  margin: 4px 2px 8px;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.swap-group + .swap-group .swap-group-label {
+  margin-top: 14px;
+}
+
+/* The numbers the swap brings in, as last written — set like a history load. */
+.swap-numbers {
+  font-size: 0.78rem;
+  color: var(--accent);
+  white-space: nowrap;
 }
 
 .ex-nickname {

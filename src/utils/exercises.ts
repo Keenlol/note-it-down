@@ -102,6 +102,31 @@ export function buildCatalog(
   return entries
 }
 
+/**
+ * The latest line written for each exercise before `beforeDate`, keyed by its
+ * canonical name — what a swap drops into the note, so the new exercise arrives
+ * with the numbers it was last done at.
+ */
+export function lastLinesBefore(
+  beforeDate: string,
+  aliases: Record<string, string>,
+): Map<string, string> {
+  const lines = new Map<string, string>()
+  for (const date of getAllDayKeys().reverse()) {   // newest first
+    if (date >= beforeDate) continue
+    const day = loadDay(date)
+    if (!day) continue
+    for (const line of day.rawText.split('\n')) {
+      const p = parseLine(line)
+      if (!p.exercise?.name) continue
+      const norm = normalizeName(p.exercise.name)
+      const canonical = aliases[norm] ?? norm
+      if (!lines.has(canonical)) lines.set(canonical, line.trim())
+    }
+  }
+  return lines
+}
+
 function saveAliases(aliases: Record<string, string>): void {
   localStorage.setItem(ALIASES_KEY, JSON.stringify(aliases))
 }
