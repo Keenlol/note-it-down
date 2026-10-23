@@ -955,9 +955,10 @@ strong, b {
 }
 
 /* The one big box: name, then the values as nested boxes on the card formula
-   (--r-inner against the box's 5px padding). */
+   (--r-inner against the box's 5px padding). It hugs what it holds — the
+   values follow the name directly rather than being pushed to an edge. */
 .proper-box {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -970,7 +971,7 @@ strong, b {
 }
 
 .proper-name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   margin-right: 4px;
   overflow: hidden;
@@ -1082,22 +1083,24 @@ strong, b {
   color: var(--delete);
 }
 
+/* The trend keeps to the row's right edge, however short the box beside it. */
 .proper-side {
   display: flex;
   align-items: center;
   flex-shrink: 0;
   max-width: 160px;
+  margin-left: auto;
   overflow: hidden;
-  transition: max-width 0.22s ease, margin-left 0.22s ease, opacity 0.15s ease;
+  transition: max-width 0.22s ease, padding-left 0.22s ease, opacity 0.15s ease;
 }
 
 .proper-side:not(:empty) {
-  margin-left: 6px;
+  padding-left: 6px;
 }
 
 .proper-row.open .proper-side {
   max-width: 0;
-  margin-left: 0;
+  padding-left: 0;
   opacity: 0;
 }
 

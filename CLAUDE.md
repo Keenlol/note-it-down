@@ -331,9 +331,9 @@ it never keeps data of its own. Every edit goes back into the text through
 `utils/lines.ts`, which both editors share (`moveLines`, `blockRange`,
 `insertIntoBlock`, `writeLine`…).
 
-- **Rows.** An exercise line is one `--surface-1` box: name, then weight and
+- **Rows.** An exercise line is one `--surface-1` box that hugs its content: name, then weight and
   reps × sets as `--surface-2` chips (`--r-inner`). Trend badges or a "New"
-  label sit outside the box on the right. Headers render as `# name`; lines it
+  label keep to the row's right edge. Headers render as `# name`; lines it
   can't box (free text, `bw 82`) stay as dim text rows.
 - **Only touched lines are rewritten**, in canonical form
   `name load repsxsets`, keeping the indent, the name as typed and any unit the
