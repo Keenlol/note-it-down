@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { CornerDownLeft } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { CornerDownLeft, GripVertical } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, bwExtraLoadKg, type ParsedLine, type Exercise } from '../utils/parser'
 import { type WeightUnit, formatWeightDiff } from '../utils/settings'
 import { TrendItem } from './TrendItem'
@@ -139,6 +139,7 @@ function renderOverlay(
   knownPast: Set<string>,
   todayCounts: Map<string, number>,
   bodyweightKg: number,
+  lifted: { start: number; count: number } | null,
 ): React.ReactNode[] {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
@@ -149,7 +150,12 @@ function renderOverlay(
     const unknown = parsed.exercise
       ? !isKnownName(parsed.exercise.name, knownPast, todayCounts)
       : false
-    nodes.push(<span key={`l${i}`}>{renderLine(line, parsed, unknown)}</span>)
+    const isLifted = lifted !== null && i >= lifted.start && i < lifted.start + lifted.count
+    nodes.push(
+      <span key={`l${i}`} data-line={i} className={isLifted ? 'line-lifted' : undefined}>
+        {renderLine(line, parsed, unknown)}
+      </span>
+    )
 
     // Regular (non-preset) ghost: inline suffix on same line
     if (suggestion?.lineIndex === i && !suggestion.presetLines && !suggestion.nameSuffix) {
@@ -171,6 +177,126 @@ function renderOverlay(
   return nodes
 }
 
+// ── Line blocks ─────────────────────────────────────────────────────────────
+// The note stays one textarea; "blocks" are a layer over it. Each logical line
+// is measured off its overlay span, so a line that wraps is still one block.
+
+interface LineBox { top: number; height: number }
+
+/** Px box of every logical line, relative to the editor. */
+function measureLines(overlay: HTMLElement): LineBox[] {
+  const cs = getComputedStyle(overlay)
+  const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.65
+  const base = overlay.getBoundingClientRect().top
+  const boxes: LineBox[] = []
+  let next = 0
+  overlay.querySelectorAll<HTMLElement>('[data-line]').forEach(span => {
+    const rects = [...span.getClientRects()]
+    let top = next
+    let rows = 1
+    if (rects.length > 0) {
+      // A rect covers the glyphs only; half the leading sits above them.
+      top = Math.round(rects[0].top - base - (lh - rects[0].height) / 2)
+      rows = new Set(rects.map(r => Math.round(r.top))).size
+    }
+    boxes.push({ top, height: rows * lh })
+    next = top + rows * lh
+  })
+  return boxes
+}
+
+function isHeaderLine(line: string): boolean {
+  if (!line.trim().startsWith('#')) return false
+  const p = parseLine(line)
+  return p.exercise === null && p.bodyweightEntry === undefined
+}
+
+/**
+ * Lines that move together when `line` is dragged: just itself, or for a "#"
+ * header its whole preset — up to the next header, minus trailing blank lines,
+ * which stay behind as the gap between blocks.
+ */
+function blockRange(lines: string[], line: number): { start: number; count: number } {
+  if (!isHeaderLine(lines[line])) return { start: line, count: 1 }
+  let end = line + 1
+  while (end < lines.length && !isHeaderLine(lines[end])) end++
+  while (end > line + 1 && lines[end - 1].trim() === '') end--
+  return { start: line, count: end - line }
+}
+
+const isBlank = (line: string | undefined) => line !== undefined && line.trim() === ''
+
+/**
+ * Move `count` lines from `start` to before line `slot` (indices before the
+ * move); returns the new lines and where the block's first line landed.
+ *
+ * A preset block that sat apart from its neighbours with blank lines keeps
+ * that spacing: the hole it leaves closes up to a single gap, and it is set
+ * apart again wherever it lands. Single lines just move.
+ */
+function moveLines(
+  lines: string[], start: number, count: number, slot: number,
+): { lines: string[]; landed: number } {
+  const out = [...lines]
+  const moved = out.splice(start, count)
+  let at = slot > start ? slot - count : slot
+
+  const spaced = isHeaderLine(moved[0]) && (isBlank(lines[start - 1]) || isBlank(lines[start + count]))
+  if (spaced) {
+    // Close the hole: two gaps meeting where the block was, or one left on top.
+    if (start === 0 ? isBlank(out[0]) : isBlank(out[start - 1]) && isBlank(out[start])) {
+      out.splice(start, 1)
+      if (at > start) at--
+    }
+    if (at > 0 && !isBlank(out[at - 1])) { out.splice(at, 0, ''); at++ }
+    if (at < out.length && !isBlank(out[at])) out.splice(at, 0, '')
+  }
+
+  out.splice(at, 0, ...moved)
+  return { lines: out, landed: at }
+}
+
+function slotY(boxes: LineBox[], slot: number): number {
+  if (slot < boxes.length) return boxes[slot].top
+  const last = boxes[boxes.length - 1]
+  return last.top + last.height
+}
+
+/**
+ * Gap the dragged block would land in. Moving up, its top edge picks the gap;
+ * moving down, its bottom edge — so a block swaps with its neighbour once it is
+ * halfway past it. Null while that gap is the block's own place. Nothing lands
+ * past `maxSlot`, which keeps a trailing newline the last thing in the note.
+ */
+function pickSlot(
+  boxes: LineBox[], start: number, count: number, dy: number, maxSlot: number,
+): number | null {
+  const first = boxes[start]
+  const last = boxes[start + count - 1]
+  const edge = dy < 0 ? first.top + dy : last.top + last.height + dy
+  let best = 0
+  let bestDist = Infinity
+  for (let k = 0; k <= maxSlot; k++) {
+    const d = Math.abs(slotY(boxes, k) - edge)
+    if (d < bestDist) { best = k; bestDist = d }
+  }
+  return best >= start && best <= start + count ? null : best
+}
+
+/** Below this, a press on the grip is a tap, not a drag. */
+const DRAG_SLOP = 4
+
+interface DragState {
+  start: number
+  count: number
+  pointerId: number
+  originY: number      // pointer Y at press, editor-relative
+  boxes: LineBox[]     // line boxes measured at press
+  active: boolean      // past DRAG_SLOP
+  dy: number           // pointer travel since press
+  slot: number | null  // insertion slot, null while over the block's own place
+}
+
 export function Editor({
   value, onChange, onCursorChange, onTabConfirm,
   suggestion, knownPast, todayCounts, previousExercises,
@@ -178,6 +304,101 @@ export function Editor({
   reveal, readOnly, textareaRef, weightUnit = 'kg', showDownTrend = true,
 }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const [focused, setFocused] = useState(false)
+  const [caret, setCaret] = useState(0)
+  const [hoverLine, setHoverLine] = useState<number | null>(null)
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const [gripBox, setGripBox] = useState<LineBox | null>(null)
+  const [layoutTick, setLayoutTick] = useState(0)
+
+  const lines = value.split('\n')
+  // The grip sits on the hovered line (mouse), else the caret's line while the
+  // note has focus — so it only shows up once you're working in the note.
+  const caretLine = value.slice(0, caret).split('\n').length - 1
+  const gripLine = drag ? drag.start
+    : readOnly || reveal ? null
+    : hoverLine ?? (focused ? caretLine : null)
+  const showGrip = gripLine !== null && gripLine < lines.length &&
+    (drag !== null || lines[gripLine].trim() !== '')
+
+  useEffect(() => {
+    const bump = () => setLayoutTick(t => t + 1)
+    window.addEventListener('resize', bump)
+    return () => window.removeEventListener('resize', bump)
+  }, [])
+
+  // Re-measured after every edit, since a line above can wrap or unwrap. Held
+  // still during a drag: the grip rides with the lifted block instead.
+  useLayoutEffect(() => {
+    if (drag || !showGrip || gripLine === null || !overlayRef.current) return
+    setGripBox(measureLines(overlayRef.current)[gripLine] ?? null)
+  }, [drag, showGrip, gripLine, value, layoutTick])
+
+  const handleGripDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (gripLine === null || !overlayRef.current) return
+    e.preventDefault()   // keep the textarea's focus, and its keyboard, up
+    e.currentTarget.setPointerCapture(e.pointerId)
+    // Pick up the line actually under the press, not the one state last
+    // pointed the grip at — the two can differ while the grip slides over.
+    const boxes = measureLines(overlayRef.current)
+    const y = e.clientY - overlayRef.current.getBoundingClientRect().top
+    const pressed = boxes.findIndex(b => y >= b.top && y < b.top + b.height)
+    setDrag({
+      ...blockRange(lines, pressed >= 0 ? pressed : gripLine),
+      pointerId: e.pointerId,
+      originY: e.clientY,
+      boxes,
+      active: false,
+      dy: 0,
+      slot: null,
+    })
+  }
+
+  const handleGripMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag || e.pointerId !== drag.pointerId) return
+    const dy = e.clientY - drag.originY
+    if (!drag.active && Math.abs(dy) < DRAG_SLOP) return
+    if (!drag.active) navigator.vibrate?.(8)
+    // The empty line after a trailing newline stays last.
+    const maxSlot = lines.length > 1 && lines[lines.length - 1] === '' ? lines.length - 1 : lines.length
+    setDrag({ ...drag, active: true, dy, slot: pickSlot(drag.boxes, drag.start, drag.count, dy, maxSlot) })
+  }
+
+  const handleGripUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag || e.pointerId !== drag.pointerId) return
+    setDrag(null)
+    if (!drag.active || drag.slot === null) return
+
+    const { lines: next, landed } = moveLines(lines, drag.start, drag.count, drag.slot)
+    // Caret to the end of the moved line, so the grip follows it there.
+    const pos = next.slice(0, landed).reduce((n, l) => n + l.length + 1, 0) + next[landed].length
+    onChange(next.join('\n'))
+    setCaret(pos)
+    onCursorChange(pos)
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current
+      if (ta && document.activeElement === ta) ta.setSelectionRange(pos, pos)
+    })
+  }
+
+  const handleWrapPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse' || drag || !overlayRef.current) return
+    const y = e.clientY - overlayRef.current.getBoundingClientRect().top
+    const i = measureLines(overlayRef.current).findIndex(b => y >= b.top && y < b.top + b.height)
+    setHoverLine(i >= 0 ? i : null)
+  }
+
+  // The lifted block, and the gap it would drop into. Suggestions step aside
+  // meanwhile — a preset ghost floats over the very lines being rearranged.
+  const dragging = drag?.active === true
+  let ghost: LineBox | null = null
+  let dropY: number | null = null
+  if (drag?.active) {
+    const first = drag.boxes[drag.start]
+    const last = drag.boxes[drag.start + drag.count - 1]
+    ghost = { top: first.top + drag.dy, height: last.top + last.height - first.top }
+    if (drag.slot !== null) dropY = slotY(drag.boxes, drag.slot)
+  }
 
   // Auto-resize textarea to content
   useEffect(() => {
@@ -213,6 +434,7 @@ export function Editor({
   })
 
   const reportCursor = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    setCaret(e.currentTarget.selectionStart)
     onCursorChange(e.currentTarget.selectionStart)
   }
 
@@ -228,14 +450,18 @@ export function Editor({
   }
 
   return (
-    <div className="editor-wrap">
+    <div
+      className="editor-wrap"
+      onPointerMove={handleWrapPointerMove}
+      onPointerLeave={() => setHoverLine(null)}
+    >
       <div
         ref={overlayRef}
         className="editor-overlay"
         aria-hidden="true"
         style={{ opacity: reveal ? 0 : 1, transition: 'opacity 0.15s ease' }}
       >
-        {renderOverlay(value, suggestion, knownPast, todayCounts, bodyweightKg)}
+        {renderOverlay(value, dragging ? null : suggestion, knownPast, todayCounts, bodyweightKg, dragging ? drag : null)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
 
@@ -285,7 +511,7 @@ export function Editor({
       )}
 
       {/* Preset ghost block: positioned below the note line, outside normal text flow */}
-      {!reveal && suggestion?.presetLines && (
+      {!reveal && !dragging && suggestion?.presetLines && (
         <div
           className="ghost ghost-preset-block"
           aria-hidden="true"
@@ -303,14 +529,50 @@ export function Editor({
         </div>
       )}
 
+      {dropY !== null && (
+        <div className="line-drop" aria-hidden="true" style={{ top: dropY - 1 }} />
+      )}
+
+      {ghost && drag && (
+        <div className="line-ghost" aria-hidden="true" style={{ top: ghost.top, height: ghost.height }}>
+          {lines.slice(drag.start, drag.start + drag.count).map((line, i) => (
+            <div key={i}>{renderLine(line, parseLine(line, bodyweightKg), false)}</div>
+          ))}
+        </div>
+      )}
+
+      {/* Stays mounted through the drag — it holds the pointer capture. Touch
+          is stopped here so the day swipe and history pull never see it. */}
+      {showGrip && gripBox && (
+        <div
+          className={`line-grip${drag?.active ? ' dragging' : ''}`}
+          style={{ top: ghost ? ghost.top : gripBox.top }}
+          onPointerDown={handleGripDown}
+          onPointerMove={handleGripMove}
+          onPointerUp={handleGripUp}
+          onPointerCancel={() => setDrag(null)}
+          onMouseDown={e => e.preventDefault()}
+          onTouchStart={e => e.stopPropagation()}
+          onTouchMove={e => e.stopPropagation()}
+          onTouchEnd={e => e.stopPropagation()}
+          role="button"
+          aria-label="Drag to move line"
+        >
+          <GripVertical size={16} strokeWidth={2.25} />
+        </div>
+      )}
+
       <textarea
         ref={textareaRef}
         className={`editor-textarea${readOnly ? ' read-only' : ''}`}
         value={value}
         onChange={e => {
           onChange(e.target.value)
+          setCaret(e.target.selectionStart)
           onCursorChange(e.target.selectionStart)
         }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onKeyDown={handleKeyDown}
         onKeyUp={reportCursor}
         onMouseUp={reportCursor}

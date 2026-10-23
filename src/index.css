@@ -700,6 +700,90 @@ strong, b {
   cursor: default;
 }
 
+/* ── Line blocks ──
+   The grip sits in the page's left padding, outside the text column, so the
+   note keeps its exact layout. It shows on the caret's line (or the hovered
+   one with a mouse) and drags that line — or a "#" header's whole preset. */
+
+.line-grip {
+  position: absolute;
+  left: -22px;
+  width: 18px;
+  height: calc(var(--editor-lh) * var(--editor-size));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  z-index: 3;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: top 0.1s ease, color 0.12s ease;
+  animation: grip-in 0.15s ease both;
+}
+
+/* 18px is narrow for a thumb — widen the target into the text's edge too. */
+.line-grip::before {
+  content: '';
+  position: absolute;
+  inset: -4px -6px;
+}
+
+.line-grip.dragging {
+  color: var(--accent);
+  cursor: grabbing;
+  transition: color 0.12s ease;   /* follows the finger with no lag */
+}
+
+@keyframes grip-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* The lifted copy. Padded out 8px each side on a nested-box radius, with the
+   text column itself unchanged, so its lines wrap exactly like the note's. */
+.line-ghost {
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  padding: 0 8px;
+  background: var(--surface-1);
+  border-radius: var(--r-inner);
+  color: var(--text);
+  font-family: var(--editor-font);
+  font-size: var(--editor-size);
+  font-weight: var(--w-editor);
+  line-height: var(--editor-lh);
+  white-space: pre-wrap;
+  word-break: break-word;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+}
+
+.line-ghost > div {
+  min-height: calc(var(--editor-lh) * 1em);   /* blank lines inside a block */
+}
+
+/* Where the block came from, held faint until it lands. */
+.line-lifted {
+  opacity: 0.25;
+}
+
+/* The gap it will land in. 2px is too thin to take a corner from the scale. */
+.line-drop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 2;
+}
+
 /* Highlighted exercise numbers */
 .num {
   color: var(--accent);

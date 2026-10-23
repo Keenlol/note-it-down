@@ -260,6 +260,28 @@ would restart whatever the button had been animating before the hold.
 The confetti is portalled to `<body>` so the burst covers the sheets, which the
 strip itself deliberately sits under.
 
+### Line blocks
+The note is still **one textarea** — blocks are a layer over it, never separate
+inputs, so typing, paste and multi-line selection stay native. Each overlay
+line span carries `data-line={i}`, and `measureLines()` reads the real box of
+every logical line from those spans, so a wrapped line is still one block.
+
+- `.line-grip` (GripVertical, `--text-dim`) sits in the page's left padding at
+  `left: -22px`, outside the text column, so the note's layout never shifts.
+  It shows on the caret's line while the textarea has focus, or on the hovered
+  line with a mouse; never on a blank line, in reveal, or read-only.
+- Dragging a line moves it; dragging a `#` header moves its whole preset (up to
+  the next header, minus trailing blanks). A preset that was set apart with
+  blank lines stays set apart where it lands, and the hole it leaves closes.
+- While dragging: the source lines fade (`.line-lifted`), a `--surface-1` copy
+  follows the finger (`.line-ghost`), a 2px accent `.line-drop` marks the gap,
+  and suggestion ghosts are hidden. Nothing drops past the empty line after a
+  trailing newline.
+- The grip picks up the line under the press, not the one state last pointed
+  it at, and stays mounted through the drag because it holds the pointer
+  capture. It stops touch propagation so the day swipe and history pull never
+  see a drag, and `preventDefault`s the press so the keyboard stays up.
+
 ### Ghost / suggestion text
 ```css
 color: var(--text-dim);   /* inline ghost suffix */
