@@ -29,7 +29,7 @@ interface Props {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   weightUnit?: WeightUnit
   showDownTrend?: boolean
-  onSwapLine?: (line: number) => void   // the line's Swap chip was tapped
+  onSwapLine?: (line: number) => void   // the caret line's swap icon was tapped
   swapLine?: number | null              // line being swapped — held shaded meanwhile
 }
 
@@ -208,6 +208,20 @@ function measureLines(overlay: HTMLElement): LineBox[] {
   return boxes
 }
 
+/** Where a line's text ends: just past its last glyph, on its last row. */
+function lineEnd(overlay: HTMLElement, line: number): { left: number; top: number } | null {
+  const rects = overlay.querySelector(`[data-line="${line}"]`)?.getClientRects()
+  if (!rects || rects.length === 0) return null
+  const last = rects[rects.length - 1]
+  const cs = getComputedStyle(overlay)
+  const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.65
+  const base = overlay.getBoundingClientRect()
+  return {
+    left: last.right - base.left,
+    top: Math.round(last.top - base.top - (lh - last.height) / 2),
+  }
+}
+
 function isHeaderLine(line: string): boolean {
   if (!line.trim().startsWith('#')) return false
   const p = parseLine(line)
@@ -314,9 +328,8 @@ export function Editor({
   const [drag, setDrag] = useState<DragState | null>(null)
   const [gripBox, setGripBox] = useState<LineBox | null>(null)
   const [layoutTick, setLayoutTick] = useState(0)
-  // A tap on the grip (no drag) selects an exercise line and offers its actions.
-  const [selected, setSelected] = useState<number | null>(null)
   const [markBox, setMarkBox] = useState<LineBox | null>(null)
+  const [swapAt, setSwapAt] = useState<{ left: number; top: number } | null>(null)
 
   const lines = value.split('\n')
   // The grip sits on the hovered line (mouse), else the caret's line while the
@@ -341,24 +354,23 @@ export function Editor({
     setGripBox(measureLines(overlayRef.current)[gripLine] ?? null)
   }, [drag, showGrip, gripLine, value, layoutTick])
 
-  const showActions = selected !== null && onSwapLine !== undefined && !reveal && !readOnly
-  const markedLine = showActions ? selected : swapLine
+  // The line being swapped stays shaded while the picker is up.
+  useLayoutEffect(() => {
+    if (swapLine === null || !overlayRef.current) { setMarkBox(null); return }
+    setMarkBox(measureLines(overlayRef.current)[swapLine] ?? null)
+  }, [swapLine, value, layoutTick])
+
+  // The swap icon rides at the end of the caret's line whenever that line is an
+  // exercise — no tap to summon it. It steps aside for an inline suggestion,
+  // which would be sitting in the same spot.
+  const showSwap = onSwapLine !== undefined && focused && !reveal && !readOnly && !drag?.active &&
+    suggestion?.lineIndex !== caretLine &&
+    parseLine(lines[caretLine] ?? '', bodyweightKg).exercise !== null
 
   useLayoutEffect(() => {
-    if (markedLine === null || !overlayRef.current) { setMarkBox(null); return }
-    setMarkBox(measureLines(overlayRef.current)[markedLine] ?? null)
-  }, [markedLine, value, layoutTick])
-
-  // Any press elsewhere lets the selection go.
-  useEffect(() => {
-    if (selected === null) return
-    const release = (e: PointerEvent) => {
-      if ((e.target as Element).closest?.('.line-grip, .line-action')) return
-      setSelected(null)
-    }
-    document.addEventListener('pointerdown', release)
-    return () => document.removeEventListener('pointerdown', release)
-  }, [selected])
+    if (!showSwap || !overlayRef.current) { setSwapAt(null); return }
+    setSwapAt(lineEnd(overlayRef.current, caretLine))
+  }, [showSwap, caretLine, value, layoutTick])
 
   const handleGripDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (gripLine === null || !overlayRef.current) return
@@ -384,7 +396,7 @@ export function Editor({
     if (!drag || e.pointerId !== drag.pointerId) return
     const dy = e.clientY - drag.originY
     if (!drag.active && Math.abs(dy) < DRAG_SLOP) return
-    if (!drag.active) { navigator.vibrate?.(8); setSelected(null) }
+    if (!drag.active) navigator.vibrate?.(8)
     // The empty line after a trailing newline stays last.
     const maxSlot = lines.length > 1 && lines[lines.length - 1] === '' ? lines.length - 1 : lines.length
     setDrag({ ...drag, active: true, dy, slot: pickSlot(drag.boxes, drag.start, drag.count, dy, maxSlot) })
@@ -393,13 +405,7 @@ export function Editor({
   const handleGripUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!drag || e.pointerId !== drag.pointerId) return
     setDrag(null)
-    if (!drag.active) {
-      // A tap: select the line, or let it go if it was already selected.
-      const isExercise = drag.count === 1 && parseLine(lines[drag.start], bodyweightKg).exercise !== null
-      setSelected(prev => (prev === drag.start || !isExercise ? null : drag.start))
-      return
-    }
-    if (drag.slot === null) return
+    if (!drag.active || drag.slot === null) return
 
     const { lines: next, landed } = moveLines(lines, drag.start, drag.count, drag.slot)
     // Caret to the end of the moved line, so the grip follows it there.
@@ -466,7 +472,6 @@ export function Editor({
   })
 
   const reportCursor = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    if (e.currentTarget.selectionStart !== caret) setSelected(null)
     setCaret(e.currentTarget.selectionStart)
     onCursorChange(e.currentTarget.selectionStart)
   }
@@ -513,7 +518,7 @@ export function Editor({
       </div>
 
       {/* Trend badges: floated to the right edge, one per exercise line */}
-      {!reveal && lineTrends.filter(t => !(showActions && t.lineIndex === selected)).map(({ lineIndex, node }) => (
+      {!reveal && lineTrends.map(({ lineIndex, node }) => (
         <div
           key={lineIndex}
           className="trend-abs"
@@ -525,7 +530,7 @@ export function Editor({
       ))}
 
       {/* New-exercise label: right-aligned, fades in like trend badges */}
-      {!reveal && lineNewItems.filter(i => !(showActions && i === selected)).map(lineIndex => (
+      {!reveal && lineNewItems.map(lineIndex => (
         <div
           key={`new-${lineIndex}`}
           className="new-exercise-badge"
@@ -599,17 +604,17 @@ export function Editor({
         </div>
       )}
 
-      {showActions && markBox && (
+      {showSwap && swapAt && (
         <button
           type="button"
-          className="line-action"
-          style={{ top: markBox.top }}
+          className="line-swap"
+          style={{ left: `min(${swapAt.left + 2}px, 100% - 30px)`, top: swapAt.top }}
           onPointerDown={e => { e.preventDefault(); tap(e) }}
           onTouchStart={e => e.stopPropagation()}
-          onClick={() => { setSelected(null); onSwapLine(selected) }}
+          onClick={() => onSwapLine(caretLine)}
+          aria-label="Swap exercise"
         >
-          <ArrowLeftRight size={13} strokeWidth={2.25} />
-          Swap
+          <ArrowLeftRight size={15} strokeWidth={2.25} />
         </button>
       )}
 
@@ -619,7 +624,6 @@ export function Editor({
         value={value}
         onChange={e => {
           onChange(e.target.value)
-          setSelected(null)
           setCaret(e.target.selectionStart)
           onCursorChange(e.target.selectionStart)
         }}

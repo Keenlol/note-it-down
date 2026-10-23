@@ -301,10 +301,12 @@ every logical line from those spans, so a wrapped line is still one block.
   it at, and stays mounted through the drag because it holds the pointer
   capture. It stops touch propagation so the day swipe and history pull never
   see a drag, and `preventDefault`s the press so the keyboard stays up.
-- A **tap** on the grip (no drag) selects an exercise line: it is shaded
-  (`.line-mark`) and its trend badge gives way to an accent **Swap** chip
-  (`.line-action`). Typing, moving the caret or pressing anywhere else lets the
-  selection go. Headers and non-exercise lines don't select.
+- **Swap** needs no summoning: while the note has focus and the caret sits on
+  an exercise line, a bare `ArrowLeftRight` icon (`.line-swap`, `--text-dim`)
+  rides just past the end of that line's text — measured off its last glyph by
+  `lineEnd()`, not pinned to the right edge — and is held inside the column
+  when a line runs long. It steps aside for an inline suggestion on that line,
+  during a drag, in reveal and read-only. A tap on the grip does nothing.
 
 ### Swap picker
 `SwapSheet.tsx` is the exercise sheet as a one-tap picker. It reuses the sheet
@@ -319,7 +321,8 @@ closes.
   writes that line in whole. With no earlier line, it renames the exercise and
   keeps the swapped line's own numbers.
 - Opening it blurs the note and sizes the sheet to start just under the note
-  (`swapHeight`, never the shared `sheetHeight`), so the shaded line stays in
+  (`swapHeight`, never the shared `sheetHeight`), so the line — shaded by
+  `.line-mark` for as long as the picker is up — stays in
   view. It counts as an open sheet everywhere the others do, closes when the
   viewed day changes, and a drag on its handle below 240px closes it.
 

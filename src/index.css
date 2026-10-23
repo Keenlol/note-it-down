@@ -764,8 +764,8 @@ strong, b {
   min-height: calc(var(--editor-lh) * 1em);   /* blank lines inside a block */
 }
 
-/* A selected line (tap on the grip) and the line being swapped: shaded on the
-   lifted copy's geometry, under the text. */
+/* The line being swapped, shaded while the picker is up — on the lifted
+   copy's geometry, under the text. */
 .line-mark {
   position: absolute;
   left: -8px;
@@ -776,27 +776,30 @@ strong, b {
   animation: grip-in 0.15s ease both;
 }
 
-/* The selected line's action, sitting where its trend badge would. */
-.line-action {
+/* Swap: an icon riding just past the end of the caret's exercise line. The
+   30px box is the touch target; the glyph inside it sits ~9px off the text.
+   Held inside the column when a line runs right up to the edge. */
+.line-swap {
   position: absolute;
-  right: 0;
-  margin-top: calc((var(--editor-lh) * var(--editor-size) - 26px) / 2);
-  height: 26px;
-  display: inline-flex;
+  width: 30px;
+  height: calc(var(--editor-lh) * var(--editor-size));
+  display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 10px;
+  justify-content: center;
+  padding: 0;
   border: none;
-  border-radius: var(--r-chip);
-  background: var(--accent-tint);
-  color: var(--accent);
-  font-family: var(--font);
-  font-size: 0.75rem;
-  font-weight: var(--w-ui);
+  background: none;
+  color: var(--text-dim);
   cursor: pointer;
   z-index: 3;
   touch-action: manipulation;
+  transition: color 0.12s ease;
   animation: grip-in 0.15s ease both;
+}
+
+.line-swap:hover,
+.line-swap:active {
+  color: var(--accent);
 }
 
 /* Where the block came from, held faint until it lands. */
