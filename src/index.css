@@ -934,9 +934,355 @@ strong, b {
   background: var(--accent-tint);
 }
 
-/* Reveal mode unit labels (kg, reps, sets) */
-.reveal-unit {
+/* ── Proper mode ──
+   The note again, one box per line. Rows are held to move and their values
+   held and dragged to change, so nothing in here selects or calls up the
+   system's long-press menu, and the page only ever pans vertically. */
+.proper {
+  position: relative;
+  flex: 1;
+  padding-bottom: 8px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.proper-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+/* The one big box: name, then the values as nested boxes on the card formula
+   (--r-inner against the box's 5px padding). */
+.proper-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 5px 5px 12px;
+  background: var(--surface-1);
+  border-radius: var(--r-card);
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.proper-name {
+  flex: 1;
+  min-width: 0;
+  margin-right: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.proper-name.unnamed,
+.proper-header-name.unnamed {
+  color: var(--text-dim);
+}
+
+.proper-values {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.proper-chip {
+  position: relative;
+  min-width: 30px;
+  height: 28px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border-radius: var(--r-inner);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.proper-chip.adjusting {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.proper-unit {
+  margin-left: 1px;
+  font-size: 0.68rem;
   color: var(--accent-dim);
+}
+
+.proper-x {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* The finger covers the chip being dragged, so its value rides above it. */
+.proper-bubble {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 11px;
+  background: var(--surface-3);
+  border-radius: var(--r-card);
+  box-shadow: 0 6px 20px var(--sheet-shadow);
+  color: var(--accent);
+  font-size: 1rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  animation: grip-in 0.12s ease both;
+}
+
+/* Opening a row slides its actions out of the box's right edge, and the trend
+   beside the box steps aside to make the room. */
+.proper-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  max-width: 0;
+  margin-left: -4px;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width 0.22s ease, margin-left 0.22s ease, opacity 0.15s ease;
+}
+
+.open > .proper-actions,
+.open > .proper-box > .proper-actions {
+  max-width: 100px;
+  margin-left: 0;
+  opacity: 1;
+}
+
+.proper-action {
+  width: 30px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--grey-2);
+  cursor: pointer;
+}
+
+.proper-action.danger {
+  color: var(--delete);
+}
+
+.proper-side {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  max-width: 160px;
+  overflow: hidden;
+  transition: max-width 0.22s ease, margin-left 0.22s ease, opacity 0.15s ease;
+}
+
+.proper-side:not(:empty) {
+  margin-left: 6px;
+}
+
+.proper-row.open .proper-side {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+}
+
+/* Being swapped: held lit while the picker is up. */
+.proper-row.marked .proper-box,
+.proper-header.marked {
+  background: var(--surface-3);
+}
+
+/* Lifted rows follow the finger; the transform is set inline. */
+.lifted {
+  position: relative;
+  z-index: 3;
+}
+
+.proper-row.lifted .proper-box {
+  background: var(--surface-3);
+  box-shadow: 0 8px 24px var(--sheet-shadow);
+}
+
+.proper.dragging .proper-block-end,
+.proper.dragging .proper-add-preset {
+  opacity: 0.25;
+}
+
+.proper-drop {
+  left: 0;
+  right: 0;
+}
+
+.proper-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  margin: 12px 0 5px;
+  padding: 0 0 0 4px;
+  border-radius: var(--r-card);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.proper > .proper-header:first-child {
+  margin-top: 0;
+}
+
+.proper-header.lifted {
+  background: var(--surface-3);
+  box-shadow: 0 8px 24px var(--sheet-shadow);
+}
+
+.proper-hash {
+  color: var(--text-dim);
+}
+
+.proper-header-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A line Proper mode can't box — free text, a bodyweight entry — kept as the
+   note wrote it, at the note's own weight. */
+.proper-text {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  margin-bottom: 5px;
+  padding-left: 12px;
+  border-radius: var(--r-card);
+  font-family: var(--editor-font);
+  font-size: 0.92rem;
+  font-weight: var(--w-editor);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.proper-text.lifted {
+  background: var(--surface-3);
+}
+
+.proper-text-body {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.proper-gap {
+  height: 10px;
+}
+
+.proper-gap.trailing {
+  height: 0;
+}
+
+/* A preset's ghosts: what it held last time, outlined but not yet filled in. */
+.proper-row.ghost .proper-box {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--surface-1);
+}
+
+.proper-row.ghost .proper-name {
+  color: var(--text-dim);
+}
+
+.proper-row.ghost .proper-chip {
+  background: none;
+  color: var(--accent-dim);
+}
+
+.proper-ghost-actions {
+  display: flex;
+  gap: 8px;
+  margin: 2px 0 10px;
+}
+
+.proper-add {
+  width: 100%;
+  height: 34px;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: 1.5px dashed var(--surface-1);
+  border-radius: var(--r-card);
+  color: var(--grey-dim);
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: var(--w-ui);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.proper-add:active {
+  color: var(--accent);
+  border-color: var(--accent-mid);
+}
+
+.proper-add-preset {
+  width: auto;
+  margin-top: 14px;
+  padding: 0 14px;
+}
+
+.proper-undo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  margin-bottom: 5px;
+  padding: 0 5px 0 12px;
+  border: 1.5px dashed var(--surface-1);
+  border-radius: var(--r-card);
+  animation: grip-in 0.15s ease both;
+}
+
+.proper-undo-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* Adding: a search that names nothing logged yet offers itself as new. */
+.swap-new-icon {
+  flex-shrink: 0;
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.swap-new-label {
+  font-size: 0.72rem;
+  color: var(--accent);
 }
 
 /* ── Bottom bar ── */
@@ -1065,7 +1411,7 @@ strong, b {
 
 /* Lit state is driven exclusively by the .active class so each button follows
    its own logic: exercise / preset light up while their sheet is toggled open,
-   the eye lights up only while held. No shared :hover/:active so taps on one
+   the blocks while Proper mode is on. No shared :hover/:active so taps on one
    button never light another (and hover can't stick on touch). */
 .bottom-btn.active {
   color: var(--text);
@@ -1409,6 +1755,7 @@ strong, b {
    selector here rather than writing --w-note into a rule of its own. */
 .settings-row-value,
 .swap-from,
+.proper-undo-label,
 .slider-legend,
 .slider-default,
 .ex-last,

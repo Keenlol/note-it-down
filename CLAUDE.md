@@ -41,7 +41,7 @@ Use CSS variables exclusively — never hardcode these values in new rules.
 | `--grey-dim`    | `#5a5a5a`                    | Solid twin of `--text-dim` — line grip, swap icon |
 | `--grey-muted`  | `#444444`                    | Solid twin of `--text-muted` — disabled arrows, ghost ↵ |
 | `--accent`      | `#f97316`                    | Numbers, counts, active states |
-| `--accent-dim`  | `rgba(249,115,22,0.45)`      | Dimmed accent text (bw hint, reveal units) |
+| `--accent-dim`  | `rgba(249,115,22,0.45)`      | Dimmed accent text (bw hint, Proper-mode units) |
 | `--accent-mid`  | `rgba(249,115,22,0.28)`      | Selection/active bg (merge circle) |
 | `--accent-tint` | `rgba(249,115,22,0.12)`      | Subtle accent bg (chips, bw hint bg) |
 | `--delete`      | `rgba(220,80,80,0.85)`       | Destructive actions |
@@ -217,7 +217,7 @@ Sheets slide up from the bottom. Multiple sheets are mutually exclusive (opening
 
 ### Stickers
 The bar and the sheet headers use hand-drawn sticker icons (`Sticker.tsx`):
-`scale`, `dumbbell`, `tag`, `eyes`, `gear`. Each is drawn once as a list of
+`scale`, `dumbbell`, `tag`, `blocks`, `gear`. Each is drawn once as a list of
 pieces and rendered twice: a **cut** layer strokes every piece fat in the
 paper colour (the die-cut border, so it always hugs the drawing), then the
 **art** layer draws the pieces at their real fills with an ink outline.
@@ -304,7 +304,7 @@ every logical line from those spans, so a wrapped line is still one block.
 - `.line-grip` (GripVertical, `--grey-dim`) sits in the page's left padding at
   `left: -22px`, outside the text column, so the note's layout never shifts.
   It shows on the caret's line while the textarea has focus, or on the hovered
-  line with a mouse; never on a blank line, in reveal, or read-only.
+  line with a mouse; never on a blank line or read-only.
 - Dragging a line moves it; dragging a `#` header moves its whole preset (up to
   the next header, minus trailing blanks). A preset that was set apart with
   blank lines stays set apart where it lands, and the hole it leaves closes.
@@ -321,7 +321,41 @@ every logical line from those spans, so a wrapped line is still one block.
   rides just past the end of that line's text — measured off its last glyph by
   `lineEnd()`, not pinned to the right edge — and is held inside the column
   when a line runs long. It steps aside for an inline suggestion on that line,
-  during a drag, in reveal and read-only. A tap on the grip does nothing.
+  during a drag and read-only. A tap on the grip does nothing.
+
+### Proper mode
+The `blocks` sticker in the bar toggles the editor between **Note** (the
+textarea) and **Proper** (`ProperEditor.tsx`), remembered in
+`settings_editorMode`. Proper mode is the same day text drawn one box per line;
+it never keeps data of its own. Every edit goes back into the text through
+`utils/lines.ts`, which both editors share (`moveLines`, `blockRange`,
+`insertIntoBlock`, `writeLine`…).
+
+- **Rows.** An exercise line is one `--surface-1` box: name, then weight and
+  reps × sets as `--surface-2` chips (`--r-inner`). Trend badges or a "New"
+  label sit outside the box on the right. Headers render as `# name`; lines it
+  can't box (free text, `bw 82`) stay as dim text rows.
+- **Only touched lines are rewritten**, in canonical form
+  `name load repsxsets`, keeping the indent, the name as typed and any unit the
+  line spelled out. Fewer reps than sets is written `3x5s`, since the parser
+  takes the larger of a bare pair as reps.
+- **Tap** a row to open it: its actions (swap, duplicate, remove) slide out of
+  the box's right edge and the trend steps aside. Removing leaves an inline
+  "Removed · Undo" row for 5 s.
+- **Hold** (260 ms) a value chip and drag vertically to step it — 14 px per
+  step; 2.5 kg / 5 lb, 1 rep, 1 set; a bubble above the finger shows the
+  value. Hold anywhere else on a row to move it; a header moves its preset.
+  Movement past 8 px before the hold lands gives the press back to the scroll.
+  Once held, a non-passive `touchmove` listener stops the page scrolling and
+  keeps the touch from the day swipe. The keyboard never comes up for either.
+- **Adding.** Each block ends in a dashed `+` that opens the swap picker in
+  `mode: 'add'`; a search naming nothing logged offers itself as new
+  (`name 0 8x3`), the one place a name is typed. `# Preset` at the bottom opens
+  `PresetPickSheet` to pick or name a header.
+- **Ghosts.** Under a header, the exercises that preset held the last time it
+  was done before the viewed day (`presetTemplates` in App) and that aren't on
+  the day yet show as outlined rows. Tap one to add it, or **Apply all**;
+  **Skip** hides them for the day.
 
 ### Swap picker
 `SwapSheet.tsx` is the exercise sheet as a one-tap picker. It reuses the sheet

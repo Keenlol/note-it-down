@@ -1,16 +1,17 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { Search, X } from 'lucide-react'
-import { buildCatalog, lastLinesBefore, type ExerciseEntry } from '../utils/exercises'
+import { Plus, Search, X } from 'lucide-react'
+import { buildCatalog, lastLinesBefore } from '../utils/exercises'
 import { presetExerciseNames } from '../utils/presets'
-import { parseLine } from '../utils/parser'
+import { parseLine, normalizeName } from '../utils/parser'
 import { tap } from '../utils/tap'
 import { SheetHandle } from './SheetHandle'
 import { Sticker } from './Sticker'
 
 export interface SwapTarget {
-  line: number               // line index in the viewed day's note
-  name: string               // the exercise as written on that line
-  norm: string               // its canonical key — left out of the list
+  mode: 'swap' | 'add'       // replace the line's exercise, or add one to a block
+  line: number               // swap: the line in the viewed day's note; add: the block's header (-1 = none)
+  name: string               // swap: the exercise as written on that line
+  norm: string               // swap: its canonical key — left out of the list
   preset: { norm: string; name: string } | null  // the block the line sits in
   beforeDate: string         // numbers come from days strictly before this
   onDay: string[]            // canonical names already on the viewed day
@@ -18,7 +19,7 @@ export interface SwapTarget {
 
 interface Props {
   target: SwapTarget | null
-  onPick: (entry: ExerciseEntry, lastLine: string | undefined) => void
+  onPick: (name: string, lastLine: string | undefined) => void
   onClose: () => void
   aliases: Record<string, string>
   dataVersion: number
@@ -34,7 +35,9 @@ function numbersOf(line: string): string {
 }
 
 /**
- * The exercise sheet as a picker: one tap on a row swaps it in and closes.
+ * The exercise sheet as a picker: one tap on a row swaps it in (or, adding,
+ * puts it in) and closes. When adding, a search that matches no exercise
+ * offers itself as a new one.
  * Exercises from the same preset come first, since a swap is usually for
  * something that does the same job. No sort, merge, menus or history here —
  * each row shows the numbers the swap will bring with it instead.
@@ -88,7 +91,13 @@ export function SwapSheet({
     ].filter(g => g.entries.length > 0)
   }, [catalog, query, presetNames, shown])
 
-  const empty = groups.every(g => g.entries.length === 0)
+  const adding = shown?.mode === 'add'
+  // Adding is the one place a name gets typed: a search that names nothing
+  // logged yet can become a new exercise.
+  const typed = query.trim()
+  const offerNew = adding && typed !== '' && !catalog.some(e =>
+    e.norm === normalizeName(typed) || e.nicknames.includes(normalizeName(typed)))
+  const empty = groups.every(g => g.entries.length === 0) && !offerNew
 
   return (
     <div className={`exercise-sheet${open ? ' open' : ''}`} style={height !== undefined ? { height: `${height}px` } : undefined}>
@@ -96,8 +105,9 @@ export function SwapSheet({
 
       <div className="sheet-header">
         <div className="sheet-title-row">
-          <span className="sheet-title"><Sticker name="dumbbell" className="sheet-title-icon lit" />Swap</span>
-          {shown && <span className="swap-from">for {shown.name}</span>}
+          <span className="sheet-title"><Sticker name="dumbbell" className="sheet-title-icon lit" />{adding ? 'Add' : 'Swap'}</span>
+          {shown && !adding && <span className="swap-from">for {shown.name}</span>}
+          {shown && adding && shown.preset && <span className="swap-from">to #{shown.preset.name}</span>}
         </div>
 
         <div className="sheet-search">
@@ -106,7 +116,7 @@ export function SwapSheet({
             className="search-input"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search exercises…"
+            placeholder={adding ? 'Search or name a new one…' : 'Search exercises…'}
             spellCheck={false}
             autoCapitalize="off"
             autoComplete="off"
@@ -123,8 +133,19 @@ export function SwapSheet({
       <div className="exercise-list">
         {empty && (
           <p className="exercise-empty">
-            {query.trim() ? `No matches for “${query.trim()}”.` : 'Nothing else logged yet.'}
+            {query.trim() ? `No matches for “${query.trim()}”.` : adding ? 'Nothing logged yet — type a name.' : 'Nothing else logged yet.'}
           </p>
+        )}
+        {offerNew && (
+          <div className="exercise-item-wrap" onPointerDown={tap} onClick={() => onPick(typed, undefined)}>
+            <div className="exercise-item">
+              <div className="ex-row-left">
+                <Plus size={14} strokeWidth={2.25} className="swap-new-icon" />
+                <span className="ex-name swap-name">{typed}</span>
+              </div>
+              <div className="ex-row-right"><span className="swap-new-label">new</span></div>
+            </div>
+          </div>
         )}
         {groups.map(group => (
           <div key={group.label ?? 'all'} className="swap-group">
@@ -137,7 +158,7 @@ export function SwapSheet({
                   key={entry.norm}
                   className="exercise-item-wrap"
                   onPointerDown={tap}
-                  onClick={() => onPick(entry, last)}
+                  onClick={() => onPick(entry.displayName, last)}
                 >
                   <div className="exercise-item">
                     <div className="ex-row-left">

@@ -11,15 +11,18 @@ import { SettingsSheet } from './components/SettingsSheet'
 import { Encouragement } from './components/Encouragement'
 import { DayNav, type PresetNav } from './components/DayNav'
 import { SwapSheet, type SwapTarget } from './components/SwapSheet'
+import { PresetPickSheet, type PresetPick } from './components/PresetPickSheet'
+import { ProperEditor } from './components/ProperEditor'
 import { Sticker } from './components/Sticker'
 import { dateToKey, getAllDayKeys, loadDay, saveDay, todayKey } from './utils/storage'
 import { normalizeName, parseLine, countExercises, type ParsedLine, type Exercise } from './utils/parser'
 import { loadAliases } from './utils/aliases'
-import { exerciseVolumePerDay, type ExerciseEntry } from './utils/exercises'
+import { exerciseVolumePerDay } from './utils/exercises'
+import { insertIntoBlock, appendHeader, newExerciseLine } from './utils/lines'
 import { presetVolumePerDay, presetBlocks, presetDayIndex } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
 import { press, release, cancelPress } from './utils/tap'
-import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedShowQuote, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
+import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedShowQuote, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound, getSavedEditorMode, saveEditorMode, type EditorMode } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
 
 type SaveStatus = 'idle' | 'saving' | 'saved'
@@ -251,14 +254,18 @@ export function App() {
   const [titleStyle, setTitleStyle] = useState<React.CSSProperties>({})
   const [noteOpacity, setNoteOpacity] = useState(1)
   const [isSwipeAnimating, setIsSwipeAnimating] = useState(false)
-  const [reveal, setReveal] = useState(false)
+  const [editorMode, setEditorMode] = useState<EditorMode>(() => getSavedEditorMode())
+  const proper = editorMode === 'proper'
+  const properRef = useRef<HTMLDivElement>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [presetSheetOpen, setPresetSheetOpen] = useState(false)
   const [bwSheetOpen, setBwSheetOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   // The line being swapped; the swap picker is open while this is set.
   const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null)
-  const swapOpen = swapTarget !== null
+  // Proper mode's header prompt; open while this is set.
+  const [presetPick, setPresetPick] = useState<PresetPick | null>(null)
+  const swapOpen = swapTarget !== null || presetPick !== null
   // The picker sizes itself to open just under the note, so the line being
   // swapped stays in view; it never touches the other sheets' saved height.
   const [swapHeight, setSwapHeight] = useState<number | undefined>(undefined)
@@ -339,7 +346,7 @@ export function App() {
 
   const closeAllSheets = () => {
     setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false)
-    setSwapTarget(null)
+    setSwapTarget(null); setPresetPick(null)
   }
 
   // Bottom of the note's last *non-empty* line — trailing blank lines are ignored
@@ -347,6 +354,7 @@ export function App() {
   // textarea value (never stale React state).
   const measureNoteBottom = (): number => {
     const heatmapBottom = heatmapRef.current?.getBoundingClientRect().bottom ?? SHEET_TOP_GAP
+    if (proper) return properRef.current?.getBoundingClientRect().bottom ?? heatmapBottom
     const ta = (viewDate ? pastTextareaRef : textareaRef).current
     if (!ta) return heatmapBottom
     const lines = ta.value.split('\n')
@@ -505,12 +513,13 @@ export function App() {
     }
     const id = requestAnimationFrame(() => {
       const ta = (viewDate ? pastTextareaRef : textareaRef).current
-      if (!ta) return
+      if (!ta && !proper) return
       const vh = window.visualViewport?.height ?? window.innerHeight
       if (daySnapArmed.current) {
-        // Wait until the textarea holds the new day's saved text before animating.
+        // Wait until the editor holds the new day's saved text before animating.
         const expected = viewDate ? (loadDay(viewDate)?.rawText ?? '') : todayText
-        if (ta.value !== expected) return
+        const shown = ta ? ta.value : viewDate ? pastText : todayText
+        if (shown !== expected) return
         daySnapArmed.current = false
         animateSheetTo(vh - measureNoteBottom())
       } else {
@@ -523,7 +532,7 @@ export function App() {
     })
     return () => cancelAnimationFrame(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewDate, todayText, pastText, sheetOpen, presetSheetOpen, bwSheetOpen, settingsOpen, swapOpen])
+  }, [viewDate, todayText, pastText, sheetOpen, presetSheetOpen, bwSheetOpen, settingsOpen, swapOpen, proper])
 
   useEffect(() => {
     const saved = loadDay(todayKey())
@@ -607,6 +616,19 @@ export function App() {
     if (!viewDate) return []
     return pastDays.filter(d => d.date < viewDate)
   }, [pastDays, viewDate])
+
+  // Each preset as it was last done before the viewed day — Proper mode lays
+  // these out as ghosts under the preset's header.
+  const presetTemplates = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const day of viewDate ? daysBeforeView : pastDays) {   // newest first
+      for (const block of presetBlocks(day.parsedLines)) {
+        if (block.exerciseIndices.length === 0 || map.has(block.norm)) continue
+        map.set(block.norm, block.exerciseIndices.map(i => day.parsedLines[i].raw.trim()))
+      }
+    }
+    return map
+  }, [viewDate, daysBeforeView, pastDays])
 
   const pastSuggestion = useMemo<Suggestion | null>(() => {
     if (!viewDate) return null
@@ -799,9 +821,28 @@ export function App() {
     setNavPreset(null)
   }, [])
 
-  // ── Swap ────────────────────────────────────────────────────────────────
-  // A swap belongs to the day it was opened on.
-  useEffect(() => { setSwapTarget(null) }, [viewDate])
+  // ── Swap and add ────────────────────────────────────────────────────────
+  // A picker belongs to the day it was opened on.
+  useEffect(() => { setSwapTarget(null); setPresetPick(null) }, [viewDate])
+
+  const applyText = (text: string) => { if (viewDate) handlePastChange(text); else handleChange(text) }
+
+  /** Canonical names of the exercises on the viewed day. */
+  const namesOnDay = (lines: string[]) => lines.flatMap(l => {
+    const n = parseLine(l).exercise?.name
+    return n ? [aliases[normalizeName(n)] ?? normalizeName(n)] : []
+  })
+
+  // Pickers open sized to start just under the note, so the line they act on
+  // stays in view, and they need the room the keyboard is taking.
+  const openPicker = () => {
+    ;(viewDate ? pastTextareaRef : textareaRef).current?.blur()
+    setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false)
+    setSwapTarget(null); setPresetPick(null)
+    const vh = window.innerHeight
+    swapHeightRef.current = clampSheetHeight(Math.max(vh * 0.45, vh - measureNoteBottom() - 12))
+    setSwapHeight(swapHeightRef.current)
+  }
 
   const handleSwapLine = useCallback((line: number) => {
     const lines = (viewDate ? pastText : todayText).split('\n')
@@ -809,42 +850,94 @@ export function App() {
     if (!ex) return
     const norm = normalizeName(ex.name)
     const block = presetBlocks(lines.map(l => parseLine(l))).find(b => b.exerciseIndices.includes(line))
-    // The picker needs the room the keyboard is taking.
-    ;(viewDate ? pastTextareaRef : textareaRef).current?.blur()
-    setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false)
-    const vh = window.innerHeight
-    swapHeightRef.current = clampSheetHeight(Math.max(vh * 0.45, vh - measureNoteBottom() - 12))
-    setSwapHeight(swapHeightRef.current)
+    openPicker()
     setSwapTarget({
+      mode: 'swap',
       line,
       name: ex.name,
       norm: aliases[norm] ?? norm,
       preset: block ? { norm: block.norm, name: block.rawContent } : null,
       beforeDate: viewDate ?? todayKey(),
-      onDay: lines.flatMap(l => {
-        const n = parseLine(l).exercise?.name
-        return n ? [aliases[normalizeName(n)] ?? normalizeName(n)] : []
-      }),
+      onDay: namesOnDay(lines),
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewDate, pastText, todayText, aliases])
+
+  // Proper mode's "+": the same picker, adding to the block under `header`.
+  const handleAddExercise = (header: number) => {
+    const lines = (viewDate ? pastText : todayText).split('\n')
+    const name = header >= 0 ? lines[header].trim().replace(/^#+\s*/, '') : ''
+    openPicker()
+    setSwapTarget({
+      mode: 'add',
+      line: header,
+      name: '',
+      norm: '',
+      preset: name ? { norm: name.toLowerCase(), name } : null,
+      beforeDate: viewDate ?? todayKey(),
+      onDay: namesOnDay(lines),
+    })
+  }
 
   // The picked exercise comes in as it was last written, numbers and all. One
   // never logged before this day keeps the swapped line's numbers instead.
-  const handleSwapPick = useCallback((entry: ExerciseEntry, lastLine: string | undefined) => {
+  const handleSwapPick = useCallback((name: string, lastLine: string | undefined) => {
     if (!swapTarget) return
     const lines = (viewDate ? pastText : todayText).split('\n')
+    if (swapTarget.mode === 'add') {
+      applyText(insertIntoBlock(lines, swapTarget.line, [lastLine ?? newExerciseLine(name)]).join('\n'))
+      setSwapTarget(null)
+      return
+    }
     const old = lines[swapTarget.line] ?? ''
     const names = parseLine(old).nameRanges
     if (lastLine) {
       lines[swapTarget.line] = old.match(/^\s*/)![0] + lastLine
     } else if (names.length > 0) {
       lines[swapTarget.line] =
-        old.slice(0, names[0].start) + entry.displayName + old.slice(names[names.length - 1].end)
+        old.slice(0, names[0].start) + name + old.slice(names[names.length - 1].end)
     }
-    const text = lines.join('\n')
-    if (viewDate) handlePastChange(text); else handleChange(text)
+    applyText(lines.join('\n'))
     setSwapTarget(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [swapTarget, viewDate, pastText, todayText, handlePastChange, handleChange])
+
+  // Proper mode's header prompt: change a header's preset, or add a new header.
+  const handlePickPreset = (line: number | null) => {
+    const lines = (viewDate ? pastText : todayText).split('\n')
+    openPicker()
+    setPresetPick({
+      line,
+      onDay: presetBlocks(lines.map(l => parseLine(l))).map(b => b.norm),
+    })
+  }
+
+  const handlePresetPicked = (name: string) => {
+    if (!presetPick) return
+    const lines = (viewDate ? pastText : todayText).split('\n')
+    if (presetPick.line === null) {
+      applyText(appendHeader(lines, name).join('\n'))
+    } else {
+      lines[presetPick.line] = lines[presetPick.line].match(/^\s*/)![0] + `# ${name}`
+      applyText(lines.join('\n'))
+    }
+    setPresetPick(null)
+  }
+
+  // Opening a row in Proper mode is its stand-in for the caret, so the day
+  // nav's preset follows the row that was opened.
+  const handleCursorLine = (line: number) => {
+    const text = viewDate ? pastText : todayText
+    const pos = text.split('\n').slice(0, line).reduce((n, l) => n + l.length + 1, 0)
+    if (viewDate) handlePastCursorChange(pos); else handleCursorChange(pos)
+  }
+
+  const toggleEditorMode = () => {
+    const next: EditorMode = proper ? 'note' : 'proper'
+    saveEditorMode(next)
+    setEditorMode(next)
+    setSwapTarget(null); setPresetPick(null)
+  }
 
   // Inline heatmap pages back a whole 21-week "set" once the viewed day falls
   // outside the today-anchored window; returns to set 0 for recent days / today.
@@ -1182,14 +1275,34 @@ export function App() {
         </div>
 
         <div style={{ opacity: noteOpacity, transition: 'opacity 0.08s ease', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {isViewingPast ? (
+          {proper ? (
+            <ProperEditor
+              key={viewDate ?? 'today'}
+              rootRef={properRef}
+              value={isViewingPast ? pastText : todayText}
+              onChange={isViewingPast ? handlePastChange : handleChange}
+              onCursorLine={handleCursorLine}
+              onSwapLine={handleSwapLine}
+              onPickPreset={handlePickPreset}
+              onAddExercise={handleAddExercise}
+              swapLine={swapTarget?.mode === 'swap' ? swapTarget.line : presetPick?.line ?? null}
+              templates={presetTemplates}
+              aliases={aliases}
+              knownPast={knownPast}
+              todayCounts={todayCounts}
+              previousExercises={previousExercises}
+              bodyweightKg={currentBw}
+              weightUnit={weightUnit}
+              showDownTrend={showDownTrend}
+            />
+          ) : isViewingPast ? (
             <Editor
               key={viewDate}
               value={pastText}
               onChange={handlePastChange}
               onCursorChange={handlePastCursorChange}
               onSwapLine={handleSwapLine}
-              swapLine={swapTarget?.line ?? null}
+              swapLine={swapTarget?.mode === 'swap' ? swapTarget.line : null}
               onTabConfirm={handlePastTabConfirm}
               suggestion={pastSuggestion}
               knownPast={knownPast}
@@ -1197,7 +1310,6 @@ export function App() {
               previousExercises={previousExercises}
               bodyweightKg={currentBw}
               bwIsSet={bwSet}
-              reveal={reveal}
               textareaRef={pastTextareaRef}
               weightUnit={weightUnit}
               showDownTrend={showDownTrend}
@@ -1208,7 +1320,7 @@ export function App() {
               onChange={handleChange}
               onCursorChange={handleCursorChange}
               onSwapLine={handleSwapLine}
-              swapLine={swapTarget?.line ?? null}
+              swapLine={swapTarget?.mode === 'swap' ? swapTarget.line : null}
               onTabConfirm={handleTabConfirm}
               suggestion={suggestion}
               knownPast={knownPast}
@@ -1216,7 +1328,6 @@ export function App() {
               previousExercises={previousExercises}
               bodyweightKg={currentBw}
               bwIsSet={bwSet}
-              reveal={reveal}
               textareaRef={textareaRef}
               weightUnit={weightUnit}
               showDownTrend={showDownTrend}
@@ -1242,7 +1353,7 @@ export function App() {
             <button
               {...pressPop}
               className={`bottom-btn${bwSheetOpen ? ' active' : ''}`}
-              onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
+              onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null); setPresetPick(null) }}
               aria-label="Bodyweight"
             >
               <Sticker name="scale" className="bottom-icon" />
@@ -1250,7 +1361,7 @@ export function App() {
             <button
               {...pressPop}
               className={`bottom-btn${sheetOpen ? ' active' : ''}`}
-              onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
+              onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null); setPresetPick(null) }}
               aria-label="Exercises"
             >
               <Sticker name="dumbbell" className="bottom-icon" />
@@ -1258,26 +1369,25 @@ export function App() {
             <button
               {...pressPop}
               className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
-              onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
+              onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null); setPresetPick(null) }}
               aria-label="Presets"
             >
               <Sticker name="tag" className="bottom-icon" />
             </button>
             <button
-              className={`bottom-btn${reveal ? ' active' : ''}`}
-              onPointerDown={e => { press(e); e.preventDefault(); setReveal(true) }}
-              onPointerUp={e => { release(e); setReveal(false) }}
-              onPointerCancel={e => { cancelPress(e); setReveal(false) }}
-              onPointerLeave={e => { cancelPress(e); setReveal(false) }}
-              aria-label="Reveal exercise details"
+              {...pressPop}
+              className={`bottom-btn${proper ? ' active' : ''}`}
+              onClick={toggleEditorMode}
+              aria-label="Proper mode"
+              aria-pressed={proper}
             >
-              <Sticker name="eyes" className="bottom-icon" />
+              <Sticker name="blocks" className="bottom-icon" />
             </button>
           </div>
           <button
             {...pressPop}
             className={`bottom-btn bottom-btn-settings${settingsOpen ? ' active' : ''}`}
-            onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) ; setSwapTarget(null) }}
+            onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) ; setSwapTarget(null); setPresetPick(null) }}
             aria-label="Settings"
           >
             <Sticker name="gear" className="bottom-icon" />
@@ -1324,6 +1434,16 @@ export function App() {
         height={swapHeight}
         onResize={px => { swapHeightRef.current = clampSheetHeight(px); setSwapHeight(swapHeightRef.current) }}
         onResizeEnd={() => { if ((swapHeightRef.current ?? 0) <= 240) setSwapTarget(null) }}
+      />
+
+      <PresetPickSheet
+        target={presetPick}
+        onPick={handlePresetPicked}
+        onClose={() => setPresetPick(null)}
+        dataVersion={dataVersion}
+        height={swapHeight}
+        onResize={px => { swapHeightRef.current = clampSheetHeight(px); setSwapHeight(swapHeightRef.current) }}
+        onResizeEnd={() => { if ((swapHeightRef.current ?? 0) <= 240) setPresetPick(null) }}
       />
 
       <PresetSheet
