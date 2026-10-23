@@ -188,128 +188,95 @@ export function SettingsSheet({
 
       <div className="settings-body">
 
-        {/* ── Accent color ─────────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">Accent color</span>
-          <div className="accent-swatches">
-            {ACCENT_COLORS.map(c => (
-              <button
-                key={c.key}
-                className={`accent-swatch${accent === c.key ? ' active' : ''}`}
-                style={{ background: c.hex }}
-                onPointerDown={tap}
-                onClick={() => handleAccent(c.key)}
-                aria-label={c.label}
-                title={c.label}
-              >
-                {accent === c.key && <Check size={14} strokeWidth={2.5} color="#fff" />}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Heatmap corners ──────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">Heatmap corners</span>
-          <p className="settings-section-hint">
-            How round each day is in the grid above — it updates as you drag. The last
-            stretch of the slider is all circle; the selection ring follows the shape.
-          </p>
-          <Slider
-            value={heatRound}
-            min={HEAT_ROUND_MIN}
-            max={HEAT_ROUND_MAX}
-            defaultValue={HEAT_ROUND_DEFAULT}
-            snapWithin={2}
-            minLabel="Square"
-            maxLabel="Circle"
-            onChange={handleHeatRound}
-            ariaLabel="Heatmap corner rounding"
-          />
-        </div>
-
-        {/* ── Weight unit ─────────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">Default weight unit</span>
-          <p className="settings-section-hint">
-            Applied to entries with no explicit unit. Explicit kg / lbs always win.
-          </p>
-          <SegmentedControl
-            options={WEIGHT_UNIT_OPTIONS}
-            value={weightUnit}
-            onChange={handleWeightUnit}
-          />
-        </div>
-
-        {/* ── Downward trends ─────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">Downward trends</span>
-          <p className="settings-section-hint">
-            Badges for lighter or fewer than last time. Hide them if seeing a drop makes
-            you want to log something you didn't lift — a deload is training, not a setback.
-          </p>
-          <SegmentedControl
-            options={SHOW_HIDE_OPTIONS}
-            value={downTrend}
-            onChange={handleDownTrend}
-          />
-        </div>
-
-        {/* ── Daily message ───────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">Daily message</span>
-          <p className="settings-section-hint">
-            The line above the icons, and the hold that closes the day out. Hiding it
-            hides both — days already marked done stay marked.
-          </p>
-          <SegmentedControl
-            options={SHOW_HIDE_OPTIONS}
-            value={quote}
-            onChange={handleQuote}
-          />
-        </div>
-
-        {/* ── Data ─────────────────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">Data</span>
-
-          {/* Single stat card: size prominent, counts as supporting info */}
-          <div className="data-stat-card">
-            <div className="data-stat-size">
-              <span className="data-stat-size-value">{formatSize(stats.sizeBytes)}</span>
-              <span className="data-stat-size-label">stored</span>
-            </div>
-            <div className="data-stat-counts">
-              <span className="data-stat-count"><strong>{stats.exerciseCount}</strong> exercises</span>
-              <span className="data-stat-count"><strong>{stats.presetCount}</strong> presets</span>
-              <span className="data-stat-count"><strong>{stats.entryCount}</strong> log entries</span>
+        <div className="settings-group">
+          <div className="settings-row">
+            <span className="settings-row-label">Accent</span>
+            <div className="accent-swatches">
+              {ACCENT_COLORS.map(c => (
+                <button
+                  key={c.key}
+                  className={`accent-swatch${accent === c.key ? ' active' : ''}`}
+                  style={{ background: c.hex }}
+                  onPointerDown={tap}
+                  onClick={() => handleAccent(c.key)}
+                  aria-label={c.label}
+                  title={c.label}
+                >
+                  {accent === c.key && <Check size={11} strokeWidth={3} color="#fff" />}
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* Action buttons — or inline confirmation */}
-          {confirm.kind === 'none' && (
-            <div className="data-actions">
-              <button className="data-btn" onPointerDown={tap} onClick={handleExport}>
-                <Upload size={14} strokeWidth={2} />
-                Export
-              </button>
-              <button className="data-btn" onPointerDown={tap} onClick={() => fileInputRef.current?.click()}>
-                <Download size={14} strokeWidth={2} />
-                Import
-              </button>
-              <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => setConfirm({ kind: 'clear' })}>
-                <Trash2 size={14} strokeWidth={2} />
-                Clear
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                style={{ display: 'none' }}
-                onChange={handleImportFile}
+          <div className="settings-row">
+            <span className="settings-row-label">Heatmap corners</span>
+            <div className="settings-row-slider">
+              <Slider
+                value={heatRound}
+                min={HEAT_ROUND_MIN}
+                max={HEAT_ROUND_MAX}
+                defaultValue={HEAT_ROUND_DEFAULT}
+                snapWithin={2}
+                onChange={handleHeatRound}
+                ariaLabel="Heatmap corner rounding"
               />
             </div>
+          </div>
+        </div>
+
+        <div className="settings-group">
+          <div className="settings-row">
+            <span className="settings-row-label">Weight unit</span>
+            <SegmentedControl options={WEIGHT_UNIT_OPTIONS} value={weightUnit} onChange={handleWeightUnit} />
+          </div>
+          <div className="settings-row">
+            <span className="settings-row-label">Downward trends</span>
+            <SegmentedControl options={SHOW_HIDE_OPTIONS} value={downTrend} onChange={handleDownTrend} />
+          </div>
+          <div className="settings-row">
+            <span className="settings-row-label">Daily message</span>
+            <SegmentedControl options={SHOW_HIDE_OPTIONS} value={quote} onChange={handleQuote} />
+          </div>
+        </div>
+
+        <div className="settings-group">
+          <div className="settings-row">
+            <span className="settings-row-label">Data</span>
+            <span className="settings-row-value">
+              {formatSize(stats.sizeBytes)} · {stats.entryCount} entr{stats.entryCount !== 1 ? 'ies' : 'y'}
+            </span>
+          </div>
+
+          {confirm.kind === 'none' && (
+            <>
+              <div className="settings-row">
+                <span className="settings-row-label">Backup</span>
+                <div className="data-actions">
+                  <button className="data-btn" onPointerDown={tap} onClick={handleExport}>
+                    <Upload size={14} strokeWidth={2} />
+                    Export
+                  </button>
+                  <button className="data-btn" onPointerDown={tap} onClick={() => fileInputRef.current?.click()}>
+                    <Download size={14} strokeWidth={2} />
+                    Import
+                  </button>
+                </div>
+              </div>
+              <div className="settings-row">
+                <span className="settings-row-label">Clear all data</span>
+                <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={() => setConfirm({ kind: 'clear' })}>
+                  <Trash2 size={14} strokeWidth={2} />
+                  Clear
+                </button>
+              </div>
+            </>
           )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
 
           {/* Import: choose add or replace */}
           {(confirm.kind === 'import' || confirm.kind === 'import-mode') && (
@@ -318,8 +285,7 @@ export function SettingsSheet({
                 Import {confirm.summary.dayCount} log entr{confirm.summary.dayCount !== 1 ? 'ies' : 'y'}
               </p>
               <p className="data-confirm-hint">
-                <strong>Add</strong> merges with your current data.{' '}
-                <strong>Replace</strong> overwrites everything — export first to be safe.
+                <strong>Add</strong> merges in. <strong>Replace</strong> overwrites everything.
               </p>
               <div className="data-confirm-actions">
                 <button className="data-btn" onPointerDown={tap} onClick={() => handleImportConfirm('add')}>
@@ -341,7 +307,7 @@ export function SettingsSheet({
             <div className="data-confirm">
               <p className="data-confirm-title">Clear all data?</p>
               <p className="data-confirm-hint">
-                This permanently deletes all log entries, exercises, presets, and bodyweight records. Your settings are kept.
+                Deletes every log, exercise, preset and bodyweight entry. Settings stay.
               </p>
               <div className="data-confirm-actions">
                 <button className="data-btn data-btn-danger" onPointerDown={tap} onClick={handleClearConfirm}>
@@ -356,76 +322,53 @@ export function SettingsSheet({
           )}
         </div>
 
-        {/* ── Analyse with AI ──────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">Analyse with AI</span>
-          <p className="settings-section-hint">
-            Writes your log as a compact report — totals, per-exercise progress, weekly
-            rollup, then every session — with a legend so any AI reads it correctly.
-            Paste it into ChatGPT, Claude or anything else. Nothing leaves this device
-            on its own; you send it yourself.
-          </p>
-
-          <SegmentedControl
-            options={AI_RANGE_OPTIONS}
-            value={aiRange}
-            onChange={handleAiRange}
-          />
-
-          {aiStats.sessions === 0 ? (
-            <p className="settings-section-hint">Nothing logged in this range yet.</p>
-          ) : (
-            <>
-              <div className="data-stat-counts">
-                <span className="data-stat-count"><strong>{aiStats.sessions}</strong> sessions</span>
-                <span className="data-stat-count"><strong>{formatTokens(aiStats.tokens)}</strong> tokens</span>
-                <span className="data-stat-count"><strong>{formatSize(aiStats.chars)}</strong> of text</span>
-              </div>
-
+        <div className="settings-group">
+          <div className="settings-row">
+            <span className="settings-row-label">AI report</span>
+            <SegmentedControl options={AI_RANGE_OPTIONS} value={aiRange} onChange={handleAiRange} />
+          </div>
+          <div className="settings-row">
+            <span className="settings-row-value">
+              {aiStats.sessions === 0
+                ? 'Nothing in this range'
+                : `${aiStats.sessions} sessions · ${formatTokens(aiStats.tokens)} tokens`}
+            </span>
+            {aiStats.sessions > 0 && (
               <div className="data-actions">
-                <button
-                  className="data-btn data-btn-filled"
-                  onPointerDown={tap}
-                  onClick={handleAiCopy}
-                >
+                <button className="data-btn data-btn-filled" onPointerDown={tap} onClick={handleAiCopy}>
                   {copyState === 'ok'
                     ? <Check size={14} strokeWidth={2} />
                     : <ClipboardCopy size={14} strokeWidth={2} />}
-                  {copyState === 'ok' ? 'Copied' : copyState === 'fail' ? 'Copy failed' : 'Copy report'}
+                  {copyState === 'ok' ? 'Copied' : copyState === 'fail' ? 'Failed' : 'Copy'}
                 </button>
                 <button
                   className="data-btn"
                   onPointerDown={tap}
                   onClick={() => downloadMarkdown(aiReport)}
+                  aria-label="Save as Markdown"
                 >
                   <FileDown size={14} strokeWidth={2} />
-                  Save .md
+                  .md
                 </button>
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* ── About ────────────────────────────────────────── */}
-        <div className="settings-section">
-          <span className="settings-section-label">About</span>
-          <div className="about-card">
-            <div className="about-row">
-              <span className="about-val">v{__APP_VERSION__}</span>
-              <span className="about-sep">·</span>
-              <span className="about-val">{__BUILD_DATE__}</span>
-              <span className="about-sep">·</span>
-              <a
-                className="about-link"
-                href="https://github.com/Keenlol/note-it-down"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Keenlol/note-it-down
-                <ExternalLink size={11} strokeWidth={2} />
-              </a>
-            </div>
-          </div>
+        <div className="settings-about">
+          <span className="about-val">v{__APP_VERSION__}</span>
+          <span className="about-sep">·</span>
+          <span className="about-val">{__BUILD_DATE__}</span>
+          <span className="about-sep">·</span>
+          <a
+            className="about-link"
+            href="https://github.com/Keenlol/note-it-down"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Keenlol/note-it-down
+            <ExternalLink size={11} strokeWidth={2} />
+          </a>
         </div>
 
       </div>

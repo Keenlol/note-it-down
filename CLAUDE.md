@@ -93,7 +93,7 @@ exist for exactly two jobs, listed below — anything else gets `--w-ui`.
 
 **Job 1 — small descriptive text.** Text that comments on something rather
 than being the thing: hints, timestamps, captions, empty states, supporting
-counts. One shared selector list above `.settings-section-hint` in index.css
+counts. One shared selector list above `.settings-row-value` in index.css
 carries `--w-note`; add to that list rather than writing the token into a rule
 of its own, so the layer stays visible in one place.
 
@@ -244,10 +244,15 @@ overlap:
 /* gradient background for separation from content below */
 background: linear-gradient(to top, var(--bg) 62%, transparent);
 ```
-They also opt out of the shared `.tapping` squish: `.bottom-btn.tapping` sets
-`animation: none` and the sticker runs `sticker-pop` instead — squash to 0.76
-and overshoot to 1.2 with a twist, on the same spring the daily message pops
-on. Two nested scale animations would fight, hence the opt-out.
+They also opt out of the shared `.tapping` squish, and they animate on
+**release**, not press: a finger covers the button while it is down, so a
+bounce played on press is over before anyone can see it. They take
+`press` / `release` / `cancelPress` from `utils/tap.ts` (bundled as
+`pressPop` in App) instead of `tap`. Held, `.pressing` squashes the sticker to
+0.8 with a twist; on release `.tapping` runs `sticker-pop` from that squash,
+overshooting to 1.2 on the same spring the daily message pops on.
+`.bottom-btn.tapping` sets `animation: none` — two nested scale animations
+would fight.
 
 ### Bottom strip
 `.bottom-strip` is its own fixed strip above the icon row, and a **sibling**
@@ -386,17 +391,25 @@ Single-page React 19 + TypeScript app, no backend. All data lives in `localStora
 
 ## Settings patterns
 
-### Section layout
-Every settings section uses this structure:
+### Row layout
+One setting per line — the name on the left, its control on the right. **No
+explanatory hints**: if a setting needs a paragraph, rethink the setting.
+Related rows share a `settings-group`; groups are set apart by space alone.
 ```tsx
-<div className="settings-section">
-  <span className="settings-section-label">Section title</span>
-  <p className="settings-section-hint">Optional one-liner explaining behaviour.</p>
-  {/* control */}
+<div className="settings-group">
+  <div className="settings-row">
+    <span className="settings-row-label">Setting name</span>
+    <SegmentedControl options={...} value={...} onChange={...} />
+  </div>
 </div>
 ```
-- Label: `0.72rem`, `font-weight: 600`, uppercase, `--text-dim`
-- Hint: `0.7rem`, `--text-muted`, `line-height: 1.5`, `margin-top: -6px`
+- Row: `min-height: 44px`, label `0.92rem` `--text` (the row-name scale)
+- A read-only value takes the control's place as `.settings-row-value`
+  (`0.75rem`, `--text-dim`, `--w-note`)
+- In a row a segmented control is `--seg-n × 50px` wide, so the two-way
+  switches line up down the right edge; a slider sits in `.settings-row-slider`
+- Confirmations (`.data-confirm`) replace the rows they belong to, inside the
+  same group
 
 ### Segmented control
 Use `<SegmentedControl options={...} value={...} onChange={...} />` for any mutually-exclusive setting. Generic over string unions — works for 2+ options. The sliding pill is driven by CSS custom properties (`--seg-n`, `--seg-i`), no JS layout math. Do not hand-roll toggles.
@@ -415,10 +428,12 @@ Use `<Slider>` for a continuous setting — the counterpart to SegmentedControl.
 <Slider
   value={v} min={0} max={60}
   defaultValue={24} snapWithin={2}      /* marks the default; taps back to it */
-  minLabel="Square" maxLabel="Circle"
+  minLabel="Square" maxLabel="Circle"    /* optional; omit both for a bare track */
   onChange={setV}
 />
 ```
+Without end labels there is no legend, so the "default" caption goes too —
+the notch and the snap still mark the default. Settings rows use it bare.
 Thumb and marker positions are CSS custom properties (`--p`, `--t`), no JS
 layout math. Both ride the thumb's travel, inset half a thumb at each end.
 

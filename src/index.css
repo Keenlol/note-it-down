@@ -1035,20 +1035,32 @@ strong, b {
   animation: none;
 }
 
+/* Squash while held, pop on release (press / release in utils/tap.ts). The pop
+   starts from the held squash, so the hand-off from finger to spring has no
+   seam; a quick tap that never reaches the squash still pops from wherever
+   the transition had got to. */
+.bottom-btn .bottom-icon {
+  transition: transform 0.12s cubic-bezier(0.3, 0, 0.5, 1);
+}
+
+.bottom-btn.pressing .bottom-icon {
+  transform: scale(0.8) rotate(-6deg);
+}
+
 .bottom-btn.tapping .bottom-icon {
-  animation: sticker-pop 0.4s cubic-bezier(0.34, 1.45, 0.5, 1) both;
+  animation: sticker-pop 0.46s cubic-bezier(0.34, 1.45, 0.5, 1) both;
 }
 
 @keyframes sticker-pop {
-  0%   { transform: scale(1)    rotate(0deg); }
-  22%  { transform: scale(0.76) rotate(-7deg); }
-  52%  { transform: scale(1.2)  rotate(6deg); }
-  76%  { transform: scale(0.95) rotate(-2deg); }
+  0%   { transform: scale(0.8)  rotate(-6deg); }
+  40%  { transform: scale(1.22) rotate(6deg); }
+  70%  { transform: scale(0.95) rotate(-2deg); }
   100% { transform: scale(1)    rotate(0deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .bottom-btn.tapping .bottom-icon { animation: none; }
+  .bottom-btn.pressing .bottom-icon { transform: none; }
 }
 
 /* Lit state is driven exclusively by the .active class so each button follows
@@ -1180,21 +1192,51 @@ strong, b {
   padding: 12px var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 18px;
 }
 
-.settings-section {
+/* One setting per line: the name on the left, its control on the right. No
+   hints — if a setting needs a paragraph to explain, the setting is wrong.
+   Related rows sit together in a group; groups are set apart by space. */
+.settings-group {
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
-.settings-section-label {
-  font-size: 0.7rem;
-  font-weight: var(--w-ui);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.settings-row-label {
+  font-size: 0.92rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.settings-row-value {
+  font-size: 0.75rem;
   color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* In a row the segmented control sizes itself by option count, so every
+   two-way switch lines up at the same width down the right edge. */
+.settings-row .seg-control {
+  width: calc(var(--seg-n) * 50px + 6px);
+  flex-shrink: 0;
+}
+
+.settings-row-slider {
+  width: 50%;
+  max-width: 180px;
+}
+
+.settings-group .data-confirm {
+  margin: 4px 0;
 }
 
 /* Segmented control — generic, works for any number of options */
@@ -1365,7 +1407,7 @@ strong, b {
    empty states, supporting counts. Everything here is already small and
    dimmed; at semibold it competed with the names it was describing. Add a
    selector here rather than writing --w-note into a rule of its own. */
-.settings-section-hint,
+.settings-row-value,
 .swap-from,
 .slider-legend,
 .slider-default,
@@ -1379,25 +1421,14 @@ strong, b {
   font-weight: var(--w-note);
 }
 
-.settings-section-hint {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  margin-top: -6px;
-}
+/* About — a single quiet footer line under the last group. */
 
-/* About card */
-
-.about-card {
-  background: var(--surface-1);
-  border-radius: var(--r-card);
-}
-
-.about-row {
+.settings-about {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding-top: 6px;
 }
 
 .about-val {
@@ -1571,15 +1602,15 @@ strong, b {
 
 .accent-swatches {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .accent-swatch {
-  width: 36px;
-  height: 36px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
   border-radius: 50%;
-  border: 2.5px solid transparent;
+  border: 2px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;

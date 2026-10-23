@@ -5,11 +5,11 @@ interface Props {
   min: number
   max: number
   step?: number
-  /** Marked on the track with a notch; its caption taps back to this value. */
+  /** Marked on the track with a notch; with a legend, its caption taps back to this value. */
   defaultValue?: number
   /** Values within this distance of `defaultValue` snap to it. */
   snapWithin?: number
-  /** End captions, e.g. "Square" … "Circle". */
+  /** End captions, e.g. "Square" … "Circle". Leave both out for a bare track. */
   minLabel?: string
   maxLabel?: string
   onChange: (value: number) => void
@@ -57,7 +57,7 @@ export function Slider({
         {hasMark && <span className="slider-notch" />}
       </div>
 
-      {(hasMark || minLabel || maxLabel) && (
+      {(minLabel || maxLabel) && (
         <div className="slider-legend">
           <span>{minLabel}</span>
           {/* No `tap` bounce on the caption: it is centred on the marker with a

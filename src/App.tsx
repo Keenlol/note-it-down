@@ -18,7 +18,7 @@ import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay, type ExerciseEntry } from './utils/exercises'
 import { presetVolumePerDay, presetBlocks, presetDayIndex } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
-import { tap } from './utils/tap'
+import { press, release, cancelPress } from './utils/tap'
 import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedShowQuote, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
 
@@ -233,6 +233,10 @@ function extractBwFromText(text: string): number | null {
 // Gap left above the panel when snapped to the top of the screen (also the
 // hard cap on how tall a drag can grow it).
 const SHEET_TOP_GAP = 12
+
+// Bottom-bar buttons squash while held and pop as the finger lifts, so the pop
+// isn't spent under the finger.
+const pressPop = { onPointerDown: press, onPointerUp: release, onPointerCancel: cancelPress, onPointerLeave: cancelPress }
 
 export function App() {
   const [todayText, setTodayText] = useState(() => loadDay(todayKey())?.rawText ?? '')
@@ -1236,7 +1240,7 @@ export function App() {
         <div className="bottom-bar-row">
           <div className="bottom-bar-main">
             <button
-              onPointerDown={tap}
+              {...pressPop}
               className={`bottom-btn${bwSheetOpen ? ' active' : ''}`}
               onClick={() => { setBwSheetOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Bodyweight"
@@ -1244,7 +1248,7 @@ export function App() {
               <Sticker name="scale" className="bottom-icon" />
             </button>
             <button
-              onPointerDown={tap}
+              {...pressPop}
               className={`bottom-btn${sheetOpen ? ' active' : ''}`}
               onClick={() => { setSheetOpen(v => !v); setPresetSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Exercises"
@@ -1252,7 +1256,7 @@ export function App() {
               <Sticker name="dumbbell" className="bottom-icon" />
             </button>
             <button
-              onPointerDown={tap}
+              {...pressPop}
               className={`bottom-btn${presetSheetOpen ? ' active' : ''}`}
               onClick={() => { setPresetSheetOpen(v => !v); setSheetOpen(false); setBwSheetOpen(false); setSettingsOpen(false) ; setSwapTarget(null) }}
               aria-label="Presets"
@@ -1261,16 +1265,17 @@ export function App() {
             </button>
             <button
               className={`bottom-btn${reveal ? ' active' : ''}`}
-              onPointerDown={e => { tap(e); e.preventDefault(); setReveal(true) }}
-              onPointerUp={() => setReveal(false)}
-              onPointerLeave={() => setReveal(false)}
+              onPointerDown={e => { press(e); e.preventDefault(); setReveal(true) }}
+              onPointerUp={e => { release(e); setReveal(false) }}
+              onPointerCancel={e => { cancelPress(e); setReveal(false) }}
+              onPointerLeave={e => { cancelPress(e); setReveal(false) }}
               aria-label="Reveal exercise details"
             >
               <Sticker name="eyes" className="bottom-icon" />
             </button>
           </div>
           <button
-            onPointerDown={tap}
+            {...pressPop}
             className={`bottom-btn bottom-btn-settings${settingsOpen ? ' active' : ''}`}
             onClick={() => { setSettingsOpen(v => !v); setSheetOpen(false); setPresetSheetOpen(false); setBwSheetOpen(false) ; setSwapTarget(null) }}
             aria-label="Settings"
