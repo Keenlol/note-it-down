@@ -324,6 +324,24 @@ every logical line from those spans, so a wrapped line is still one block.
   when a line runs long. It steps aside for an inline suggestion on that line,
   during a drag, in reveal and read-only. A tap on the grip does nothing.
 
+### Undo / redo
+One history per day (`utils/history.ts`), kept for the session and shared by
+the note and the eye's view: every edit goes through `handleChange` /
+`handlePastChange` in App, which `remember` the text before it. Undo and redo
+write back through `writeToday` / `writePast`, which don't.
+
+- **Steps.** Typing runs together until a 1 s pause or a new line. Anything
+  else passes a group from `newEditGroup()` and makes exactly one step: a
+  filled suggestion, a swap, a grip move, a trash, one whole value drag (the
+  group lives on its `Stepping`). Pass a group for any new kind of edit.
+- **Controls.** `.history-btns` at the right end of the date's row, drawn like
+  the eye's row icons, up once there is anything to step through; a disabled
+  one stays in place, dimmer. A press keeps the note's focus. ⌘Z / ⇧⌘Z (Ctrl,
+  and Ctrl+Y) stand in for the browser's own undo, which can't see the edits
+  made around the textarea.
+- A locked past day has no history. Sheets that rewrite other days (merge,
+  delete) don't go through it.
+
 ### Lock past days
 A settings toggle (`settings_lockPast`, off by default). While on, a past day's
 `Editor` is `readOnly`: the textarea takes no typing, its suggestions are

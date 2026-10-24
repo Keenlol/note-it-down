@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Check, Lock } from 'lucide-react'
+import { Check, Lock, Redo2, Undo2 } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { WEEKS, weekOffsetForDate, historySetCount } from './utils/heatmapWindow'
 import { HeatmapHistory } from './components/HeatmapHistory'
@@ -18,7 +18,8 @@ import { loadAliases } from './utils/aliases'
 import { exerciseVolumePerDay, type ExerciseEntry } from './utils/exercises'
 import { presetVolumePerDay, presetBlocks, presetDayIndex } from './utils/presets'
 import { getBwOn, setBwEntry, isBwSet, loadBwHistory } from './utils/bodyweight'
-import { press, release, cancelPress } from './utils/tap'
+import { press, release, cancelPress, tap } from './utils/tap'
+import { remember, undo, redo, canUndo, canRedo, newEditGroup } from './utils/history'
 import { getSavedAccent, applyAccent, ACCENT_COLORS, type AccentKey, getSavedWeightUnit, type WeightUnit, getSavedShowDownTrend, getSavedShowQuote, getSavedLockPast, getSavedSheetHeight, saveSheetHeight, getSavedHeatRound, applyHeatRound } from './utils/settings'
 import { setDefaultWeightUnit } from './utils/parser'
 
@@ -569,7 +570,16 @@ export function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [navigateDay])
 
-  const handleChange = useCallback((text: string) => {
+  // The text on screen, for callbacks that outlive a render.
+  const todayTextRef = useRef(todayText)
+  todayTextRef.current = todayText
+  const pastTextRef = useRef(pastText)
+  pastTextRef.current = pastText
+  // Bumped whenever a day's history changes, so the undo / redo icons follow.
+  const [, setHistoryTick] = useState(0)
+
+  // Writes, unremembered: the edit paths below remember first, undo and redo don't.
+  const writeToday = useCallback((text: string) => {
     setTodayText(text)
     fireBloomIfNewLine(todayKey(), text)
     setSaveStatus('saving')
@@ -584,7 +594,7 @@ export function App() {
     }, 400)
   }, [])
 
-  const handlePastChange = useCallback((text: string) => {
+  const writePast = useCallback((text: string) => {
     if (!viewDate) return
     setPastText(text)
     fireBloomIfNewLine(viewDate, text)
@@ -597,6 +607,52 @@ export function App() {
       if (bw !== null) { setBwEntry(dateSnapshot, bw); setBwVersion(v => v + 1) }
     }, 400)
   }, [viewDate])
+
+  // Every edit to a day's note comes through one of these two, so it lands in
+  // that day's history. `group` ties a run of changes into one undo step; none
+  // means typing.
+  const handleChange = useCallback((text: string, group?: string) => {
+    remember(todayKey(), todayTextRef.current, text, group)
+    setHistoryTick(t => t + 1)
+    writeToday(text)
+  }, [writeToday])
+
+  const handlePastChange = useCallback((text: string, group?: string) => {
+    if (!viewDate) return
+    remember(viewDate, pastTextRef.current, text, group)
+    setHistoryTick(t => t + 1)
+    writePast(text)
+  }, [viewDate, writePast])
+
+  // ── Undo / redo ──
+  // A locked past day has nothing to undo: it can't be edited to begin with.
+  const historyDay = viewDate ?? todayKey()
+  const historyOn = !(viewDate && lockPast)
+  const showUndo = historyOn && canUndo(historyDay)
+  const showRedo = historyOn && canRedo(historyDay)
+
+  const stepHistory = useCallback((dir: 'undo' | 'redo') => {
+    if (viewDate && lockPast) return
+    const day = viewDate ?? todayKey()
+    const current = viewDate ? pastTextRef.current : todayTextRef.current
+    const text = dir === 'undo' ? undo(day, current) : redo(day, current)
+    if (text === null) return
+    setHistoryTick(t => t + 1)
+    if (viewDate) writePast(text); else writeToday(text)
+  }, [viewDate, lockPast, writePast, writeToday])
+
+  // ⌘Z / ⇧⌘Z (Ctrl on other systems, and Ctrl+Y) — in the note too, standing
+  // in for the browser's own undo, which can't see the edits made around it.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key === 'z') { e.preventDefault(); stepHistory(e.shiftKey ? 'redo' : 'undo') }
+      else if (key === 'y' && e.ctrlKey) { e.preventDefault(); stepHistory('redo') }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [stepHistory])
 
   const suggestion = useMemo<Suggestion | null>(() => {
     if (viewDate !== null) return null
@@ -666,16 +722,8 @@ export function App() {
       newCursor = lineStart + fullLine.length
     }
 
-    setTodayText(newText)
-    fireBloomIfNewLine(todayKey(), newText)
+    handleChange(newText, newEditGroup())
     setCursorPos(newCursor)
-    setSaveStatus('saving')
-    clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      saveDay(todayKey(), newText)
-      setSaveStatus('saved')
-      setDataVersion(v => v + 1)
-    }, 400)
 
     requestAnimationFrame(() => {
       if (textareaRef.current) {
@@ -684,7 +732,7 @@ export function App() {
         textareaRef.current.focus()
       }
     })
-  }, [suggestion, todayText])
+  }, [suggestion, todayText, handleChange])
 
   const handlePastTabConfirm = useCallback(() => {
     if (!pastSuggestion || !pastTextareaRef.current) return
@@ -708,15 +756,8 @@ export function App() {
     }
 
     if (!viewDate) return
-    setPastText(newText)
-    fireBloomIfNewLine(viewDate, newText)
+    handlePastChange(newText, newEditGroup())
     setPastCursorPos(newCursor)
-    clearTimeout(pastSaveTimer.current)
-    const dateSnapshot = viewDate
-    pastSaveTimer.current = setTimeout(() => {
-      saveDay(dateSnapshot, newText)
-      setDataVersion(v => v + 1)
-    }, 400)
 
     requestAnimationFrame(() => {
       if (pastTextareaRef.current) {
@@ -725,7 +766,7 @@ export function App() {
         pastTextareaRef.current.focus()
       }
     })
-  }, [pastSuggestion, pastText, viewDate])
+  }, [pastSuggestion, pastText, viewDate, handlePastChange])
 
   const handleDayClick = useCallback((date: string) => {
     const today = todayKey()
@@ -849,7 +890,7 @@ export function App() {
         old.slice(0, names[0].start) + entry.displayName + old.slice(names[names.length - 1].end)
     }
     const text = lines.join('\n')
-    if (viewDate) handlePastChange(text); else handleChange(text)
+    if (viewDate) handlePastChange(text, newEditGroup()); else handleChange(text, newEditGroup())
     setSwapTarget(null)
   }, [swapTarget, viewDate, pastText, todayText, handlePastChange, handleChange])
 
@@ -1190,6 +1231,32 @@ export function App() {
             <span className={`save-icon${saveStatus === 'saved' && hasExercises ? ' visible' : ''}`}>
               <Check size={18} strokeWidth={2.5} />
             </span>
+          )}
+          {/* Up once there is anything to step through. A press here keeps
+              the note's focus, so the keyboard stays up mid-typing. */}
+          {(showUndo || showRedo) && (
+            <div className="history-btns">
+              <button
+                type="button"
+                className="history-btn"
+                disabled={!showUndo}
+                onPointerDown={e => { e.preventDefault(); tap(e) }}
+                onClick={() => stepHistory('undo')}
+                aria-label="Undo"
+              >
+                <Undo2 size={17} strokeWidth={2.25} />
+              </button>
+              <button
+                type="button"
+                className="history-btn"
+                disabled={!showRedo}
+                onPointerDown={e => { e.preventDefault(); tap(e) }}
+                onClick={() => stepHistory('redo')}
+                aria-label="Redo"
+              >
+                <Redo2 size={17} strokeWidth={2.25} />
+              </button>
+            </div>
           )}
         </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowLeftRight, CornerDownLeft, GripVertical, Trash2 } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, bwExtraLoadKg, type ParsedLine, type Exercise, type ValueField } from '../utils/parser'
 import { stepLine } from '../utils/adjust'
+import { newEditGroup } from '../utils/history'
 import { type WeightUnit, formatWeightDiff } from '../utils/settings'
 import { TrendItem } from './TrendItem'
 import { tap } from '../utils/tap'
@@ -16,7 +17,7 @@ export interface Suggestion {
 
 interface Props {
   value: string
-  onChange: (text: string) => void
+  onChange: (text: string, group?: string) => void   // group: one undo step; none = typing
   onCursorChange: (pos: number) => void
   onTabConfirm: () => void
   suggestion: Suggestion | null
@@ -377,6 +378,7 @@ interface Stepping {
   base: string      // the line as it was when the drag began
   cur: number       // steps applied so far
   target: number    // steps the finger has travelled
+  group: string     // the whole drag is one undo step
 }
 
 interface DragState {
@@ -529,7 +531,7 @@ export function Editor({
     const { lines: next, landed } = moveLines(lines, drag.start, drag.count, drag.slot)
     // Caret to the end of the moved line, so the grip follows it there.
     const pos = next.slice(0, landed).reduce((n, l) => n + l.length + 1, 0) + next[landed].length
-    onChange(next.join('\n'))
+    onChange(next.join('\n'), newEditGroup())
     setCaret(pos)
     onCursorChange(pos)
     requestAnimationFrame(() => {
@@ -597,7 +599,7 @@ export function Editor({
       navigator.vibrate?.(4)
       out[s.line] = next
       valueRef.current = out.join('\n')
-      onChangeRef.current(valueRef.current)
+      onChangeRef.current(valueRef.current, s.group)
     }
     if (s.cur !== s.target) catchUp.current = window.setTimeout(stepOnce, CATCH_UP_MS)
   }
@@ -612,7 +614,7 @@ export function Editor({
     const out = valueRef.current.split('\n')
     out[s.line] = stepLine(s.base, s.field, s.target)
     valueRef.current = out.join('\n')
-    onChangeRef.current(valueRef.current)
+    onChangeRef.current(valueRef.current, s.group)
   }
 
   useEffect(() => () => clearTimeout(catchUp.current), [])
@@ -662,6 +664,7 @@ export function Editor({
         base: valueRef.current.split('\n')[p.line] ?? '',
         cur: 0,
         target: 0,
+        group: newEditGroup(),
       }
       setAdjust({
         line: p.line,
@@ -691,7 +694,7 @@ export function Editor({
 
   const removeLine = (i: number) => {
     setArmedTrash(null)
-    onChange(lines.filter((_, k) => k !== i).join('\n'))
+    onChange(lines.filter((_, k) => k !== i).join('\n'), newEditGroup())
   }
 
   // Auto-resize textarea to content

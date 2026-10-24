@@ -332,6 +332,7 @@ strong, b {
   display: flex;
   align-items: baseline;
   gap: 12px;
+  min-width: 0;
   margin-top: var(--pad);
   margin-bottom: 20px;
 }
@@ -634,6 +635,41 @@ strong, b {
 
 .save-icon.visible {
   opacity: 1;
+}
+
+/* Undo / redo, at the right end of the date's row — drawn like the eye's row
+   icons. A disabled one stays in place, dimmer, so the other doesn't shift. */
+.history-btns {
+  display: flex;
+  align-self: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: -6px;    /* the icon's own padding into the page margin */
+  animation: grip-in 0.15s ease both;
+}
+
+.history-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--grey-2);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 0.12s ease;
+}
+
+.history-btn:active {
+  color: var(--accent);
+}
+
+.history-btn:disabled {
+  color: var(--grey-muted);
+  cursor: default;
 }
 
 /* Beside a past day's title while past days are locked — why typing there
