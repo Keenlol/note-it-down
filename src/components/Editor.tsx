@@ -206,7 +206,7 @@ function renderOverlay(
       nodes.push(
         <span key={`g${i}`} className="ghost">
           {suggestion.suffix}
-          <CornerDownLeft size={12} strokeWidth={2} className="ghost-enter-icon" />
+          <CornerDownLeft size={15} strokeWidth={2.25} className="ghost-enter-icon" />
         </span>
       )
     }
@@ -835,7 +835,7 @@ export function Editor({
           ))}
           {!suggestion.isHint && (
             <div className="ghost-preset-hint">
-              <CornerDownLeft size={11} strokeWidth={2} style={{ verticalAlign: 'middle' }} />
+              <CornerDownLeft size={14} strokeWidth={2.25} className="ghost-hint-icon" />
               {' '}enter to fill all
             </div>
           )}
