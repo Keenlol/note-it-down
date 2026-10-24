@@ -407,6 +407,27 @@ closes.
   view. It counts as an open sheet everywhere the others do, closes when the
   viewed day changes, and a drag on its handle below 240px closes it.
 
+### Preset cards
+The preset sheet has no metric switch: each exercise card shows every figure
+at once, weighted by how often it moves.
+
+- **Weight leads.** The latest weight is the big figure (`.preset-ex-weight`,
+  `--font-display`, accent), with its change across the window as a
+  `TrendItem` under it, and a step-line `MetricGraph` (`step`) beside it — it
+  holds level until the session the weight changed.
+- **Reps and sets are chips** in the name row (`FigureChip`). A chip takes the
+  `TrendItem` badge when the figure changed since the session before, and
+  stays plain grey when it held. They get no graph.
+- **Plain bodyweight movements lead with reps** instead (their "weight" is
+  just the day's bodyweight), and drop the reps chip.
+- **Volume is per preset, not per exercise.** It sits in the stat card as a
+  small `MetricGraph` (`nodes="last"`) with the latest session's load and its
+  change across the window. The ⋮ menu lives in the sheet's title row.
+- The card is the card/list pattern with the inner box split in two: the plot
+  (inside the expand button) and the history (outside it) are both
+  `--surface-2`, and the plot's bottom corners stay square while the history
+  is open — they wait out its 0.2s close before rounding.
+
 ### Ghost / suggestion text
 ```css
 color: var(--text-dim);   /* inline ghost suffix */
@@ -453,7 +474,7 @@ Single-page React 19 + TypeScript app, no backend. All data lives in `localStora
 - `components/Editor.tsx` — textarea with overlay for syntax highlighting (orange numbers) and inline ghost text. Renders trend indicators (↑↓), "New exercise!" badges, and bodyweight hint per line.
 - `components/Heatmap.tsx` — 21-week grid; cell color = volume (reps × sets). Clicking a cell sets `viewDate` in App.
 - `components/ExerciseSheet.tsx` — bottom sheet: exercise catalog with sort, merge mode, per-exercise expandable history, nickname/delete dropdown.
-- `components/PresetSheet.tsx` — bottom sheet: preset catalog with sort, always-visible exercise list per preset, rename/delete-label/delete-with-exercises dropdown.
+- `components/PresetSheet.tsx` — bottom sheet: preset tabs, a stat card with the preset's volume per session, one card per exercise (weight + graph, reps/sets chips, expandable history), rename/delete-label/delete-with-exercises dropdown.
 
 ## Settings patterns
 

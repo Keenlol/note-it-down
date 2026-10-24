@@ -25,7 +25,7 @@ interface Plotted { x: number; y: number; label: string; date: string; gapAfter:
  * With onSelectDate, tapping a node navigates to that date; without it the
  * nodes take no taps, which fall through to whatever the graph sits in.
  */
-export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0, showDots = true }: {
+export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0, showDots = true, step = false, nodes = 'pills' }: {
   points: GraphPoint[]
   accentHex: string
   onSelectDate?: (date: string) => void
@@ -34,6 +34,18 @@ export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0, sho
    * the run reads as the bare line between the pills that bound it.
    */
   showDots?: boolean
+  /**
+   * Draw the line as steps: it holds level until the session the value
+   * changed, then jumps. For a figure that moves in discrete increments (a
+   * working weight), a slope between two sessions would invent values that
+   * were never lifted.
+   */
+  step?: boolean
+  /**
+   * 'pills' labels every point (repeats as dots); 'last' marks only the
+   * newest point with a dot, for a small graph whose value is printed beside it.
+   */
+  nodes?: 'pills' | 'last'
   /**
    * Smallest vertical span the plot is allowed to represent. Without it the
    * series always fills the full height, so on a small-integer metric like reps
@@ -91,7 +103,10 @@ export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0, sho
   if (run.length > 0) segments.push(run)
 
   const pathOf = (seg: Plotted[]) =>
-    seg.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+    (step ? seg.flatMap((p, i) => i === 0 ? [p] : [{ ...p, y: seg[i - 1].y }, p]) : seg)
+      .map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+
+  const shown = nodes === 'last' ? pts.slice(-1).map(p => ({ ...p, dot: true })) : pts
 
   return (
     <div className="bw-graph">
@@ -131,7 +146,7 @@ export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0, sho
         ))}
       </svg>
       <div className="bw-graph-nodes">
-        {pts.map((p, i) => (
+        {shown.map((p, i) => (
           <span
             key={i}
             className={[

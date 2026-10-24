@@ -1,24 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import {
   buildPresetCatalog, setPresetNickname,
   deletePresetLabelOnly, deletePresetWithExercises,
   getPresetHistory, getPresetExerciseSeries,
   type PresetHistoryEntry, type PresetExercisePoint,
 } from '../utils/presets'
-import {
-  type WeightUnit, type PresetMetric,
-  getSavedPresetMetric, savePresetMetric,
-} from '../utils/settings'
+import { type WeightUnit, formatWeightDiff } from '../utils/settings'
 import { todayKey } from '../utils/storage'
 import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
 import { MetricGraph } from './MetricGraph'
 import { ExerciseHistoryList } from './ExerciseHistoryList'
-import { SegmentedControl } from './SegmentedControl'
 import { SheetHandle } from './SheetHandle'
 import { Sticker } from './Sticker'
+import { TrendItem } from './TrendItem'
 
 interface Props {
   open: boolean
@@ -46,28 +43,31 @@ function fmtFull(kg: number, unit: WeightUnit): string {
   return Math.round(toUnit(kg, unit)).toLocaleString()
 }
 
-/** Abbreviated total volume for the graph pills so big numbers don't overlap. */
-function fmtCompact(kg: number, unit: WeightUnit): string {
-  const v = Math.round(toUnit(kg, unit))
-  if (v >= 1000) {
-    const k = v / 1000
-    return `${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}k`
-  }
-  return `${v}`
-}
-
-/** Plain number for the weight/reps pills — no unit suffix, it wouldn't fit. */
+/** Plain number for the weight pills and headline — the unit is set apart, smaller. */
 function fmtNum(v: number): string {
   const r = Math.round(v * 10) / 10
   return r % 1 === 0 ? `${Math.round(r)}` : `${r}`
 }
 
-const METRIC_OPTIONS: { value: PresetMetric; label: string }[] = [
-  { value: 'load',   label: 'Volume' },
-  { value: 'weight', label: 'Weight' },
-  { value: 'reps',   label: 'Reps' },
-  { value: 'sets',   label: 'Sets' },
-]
+/**
+ * Reps or sets for the latest session, as a chip in the card's header. These
+ * move far less than the weight, so they get no graph of their own — the chip
+ * takes the trend badge's colours when the figure changed since the session
+ * before, and stays plain grey when it held.
+ */
+function FigureChip({ value, prev, noun, showDown }: {
+  value: number
+  prev: number | undefined
+  noun: string
+  showDown: boolean
+}) {
+  const label = `${value} ${noun}${value === 1 ? '' : 's'}`
+  const diff = prev === undefined ? 0 : value - prev
+  if (diff > 0 || (diff < 0 && showDown)) {
+    return <span className="preset-ex-chip"><TrendItem diff={diff} size={10}>{label}</TrendItem></span>
+  }
+  return <span className="preset-ex-chip is-plain">{label}</span>
+}
 
 type DeleteMode = 'label-only' | 'with-exercises'
 
@@ -75,11 +75,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
   const [activeNorm, setActiveNorm] = useState<string | null>(null)
   // Which exercise row has its history expanded (accordion — one at a time).
   const [expandedEx, setExpandedEx] = useState<string | null>(null)
-  // Which figure every graph in the panel plots. Panel-local view preference,
-  // but remembered — re-picking it on every open would be tedious.
-  const [metric, setMetric] = useState<PresetMetric>(getSavedPresetMetric)
-
-  // Stat-card ⋮ menu (rename / delete), portalled to body.
+  // Title-row ⋮ menu (rename / delete), portalled to body.
   const [menuOpen, setMenuOpen]         = useState(false)
   const [menuClosing, setMenuClosing]   = useState(false)
   const closeTimerRef                   = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -151,41 +147,6 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
 
   const active = activeNorm ? catalog.find(e => e.norm === activeNorm) ?? null : null
 
-  // How the selected metric is read off a session point, labelled, and scaled.
-  const metricView = useMemo(() => {
-    switch (metric) {
-      case 'weight':
-        return {
-          value: (p: PresetExercisePoint) => toUnit(p.weight, weightUnit),
-          label: (p: PresetExercisePoint) => fmtNum(toUnit(p.weight, weightUnit)),
-          // Roughly one plate change — a 2.5kg bump should read as a step up,
-          // not as the same full-height climb a 40kg one gets.
-          minRange: weightUnit === 'lbs' ? 10 : 5,
-        }
-      case 'reps':
-        return {
-          value: (p: PresetExercisePoint) => p.reps,
-          label: (p: PresetExercisePoint) => `${p.reps}`,
-          minRange: 4,
-        }
-      case 'sets':
-        return {
-          value: (p: PresetExercisePoint) => p.sets,
-          label: (p: PresetExercisePoint) => `${p.sets}`,
-          // Sets move in whole numbers and rarely by more than one, so without
-          // a floor a 3 → 4 week would draw the same full-height climb as a
-          // real jump.
-          minRange: 3,
-        }
-      default:
-        return {
-          value: (p: PresetExercisePoint) => toUnit(p.load, weightUnit),
-          label: (p: PresetExercisePoint) => fmtCompact(p.load, weightUnit),
-          minRange: 0,   // spans orders of magnitude already — let it auto-scale
-        }
-    }
-  }, [metric, weightUnit])
-
   // Sessions within the visible heatmap window, newest first (graph reverses it).
   const windowed = useMemo(() => {
     if (!activeNorm) return [] as PresetHistoryEntry[]
@@ -217,7 +178,15 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
     [windowed],
   )
 
-  const totalLoad = windowed.reduce((sum, e) => sum + e.load, 0)
+  // The preset's load per session, oldest first, and its change across the
+  // window as a percentage of where it started.
+  const loads = [...windowed].reverse()
+  const loadPct = loads.length >= 2 && loads[0].load > 0
+    ? Math.round((loads[loads.length - 1].load - loads[0].load) / loads[0].load * 100)
+    : 0
+  const sinceLast = windowed.length > 0
+    ? dayIndex(todayKey(), windowStart()) - dayIndex(windowed[0].date, windowStart())
+    : null
   // Recent cadence: average days between the last 5 sessions (needs ≥2).
   const recent = windowed.slice(0, 5)
   const cadence = recent.length >= 2
@@ -274,6 +243,11 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
       <div className="sheet-header">
         <div className="sheet-title-row">
           <span className="sheet-title"><Sticker name="tag" className="sheet-title-icon lit" />Presets</span>
+          {active && (
+            <button className="ex-menu-btn" onClick={openMenu} aria-label="Preset options">
+              <MoreVertical size={16} strokeWidth={2} />
+            </button>
+          )}
         </div>
         {catalog.length > 0 && (
           <div className="sort-chips preset-tabs">
@@ -289,15 +263,6 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
             ))}
           </div>
         )}
-        {active && series.length > 0 && (
-          <div className="preset-metric-seg">
-            <SegmentedControl
-              options={METRIC_OPTIONS}
-              value={metric}
-              onChange={m => { setMetric(m); savePresetMetric(m) }}
-            />
-          </div>
-        )}
       </div>
 
       <div className="preset-body">
@@ -305,72 +270,113 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
           <p className="exercise-empty">No presets logged yet.</p>
         ) : (
           <>
-            <div className="preset-stat-wrap">
-              {windowed.length > 0 ? (
-                <div className="data-stat-card">
+            {windowed.length > 0 ? (
+              <div className="data-stat-card preset-stat-card">
+                <div className="preset-stat-left">
                   <div className="data-stat-size">
                     <span className="data-stat-size-value">{windowed.length}</span>
                     <span className="data-stat-size-label">session{windowed.length !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="data-stat-counts">
-                    <span className="data-stat-count"><strong>{fmtFull(totalLoad, weightUnit)}{weightUnit}</strong> total</span>
                     {cadence !== null && (
                       <span className="data-stat-count"><strong>~{cadence}d</strong> cadence</span>
                     )}
+                    {sinceLast !== null && (sinceLast === 0
+                      ? <span className="data-stat-count"><strong>today</strong> last</span>
+                      : <span className="data-stat-count"><strong>{sinceLast}d</strong> since last</span>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <div className="data-stat-card">
-                  <div className="data-stat-size">
-                    <span className="data-stat-size-value"># {active.displayName}</span>
-                    <span className="data-stat-size-label">no sessions in this window</span>
+                {/* Volume lives here, once for the whole preset: per exercise
+                    it only restated the weight with reps and sets folded in. */}
+                <div className="preset-vol">
+                  <div className="preset-vol-head">
+                    <span className="preset-vol-label">Volume</span>
+                    <span className="preset-vol-value">{fmtFull(loads[loads.length - 1].load, weightUnit)}{weightUnit}</span>
+                    <span className="preset-trend">
+                      <TrendItem diff={loadPct} size={10} showDown={showDownTrend}>{Math.abs(loadPct)}%</TrendItem>
+                    </span>
                   </div>
+                  <MetricGraph
+                    points={loads.map(e => ({ date: e.date, value: toUnit(e.load, weightUnit), label: '' }))}
+                    accentHex={accentHex}
+                    nodes="last"
+                  />
                 </div>
-              )}
-              <button className="ex-menu-btn preset-stat-menu" onClick={openMenu} aria-label="Preset options">
-                <MoreVertical size={16} strokeWidth={2} />
-              </button>
-            </div>
+              </div>
+            ) : (
+              <div className="data-stat-card">
+                <div className="data-stat-size">
+                  <span className="data-stat-size-value"># {active.displayName}</span>
+                  <span className="data-stat-size-label">no sessions in this window</span>
+                </div>
+              </div>
+            )}
 
             {series.map(ex => {
               const chrono = [...ex.points].reverse()
               const done = new Set(chrono.map(e => e.date))
               const isExpanded = expandedEx === ex.norm
+              const latest = chrono[chrono.length - 1]
+              const before = chrono[chrono.length - 2]
+              // A plain bodyweight movement's "weight" is just the bodyweight of
+              // the day, so its drift says nothing about the exercise. Those
+              // lead with reps instead — the figure they actually progress by.
+              const bwOnly = ex.entries.every(e => e.exercise.bwExpr?.op === 'plain')
+              const lead = bwOnly
+                ? { of: (p: PresetExercisePoint) => p.reps, minRange: 4 }
+                : { of: (p: PresetExercisePoint) => toUnit(p.weight, weightUnit), minRange: weightUnit === 'lbs' ? 10 : 5 }
+              // The lead figure's change across the window — the one that moves
+              // often enough to be worth a trend over the whole run.
+              const leadDiff = lead.of(latest) - lead.of(chrono[0])
               return (
-                <div key={ex.norm} className="preset-block" onPointerDown={tap}>
-                  {/* The whole graph field is the expand hitbox; the name/latest
-                      row floats on top of it rather than taking its own band. */}
+                <div key={ex.norm} className={`preset-block${isExpanded ? ' is-open' : ''}`} onPointerDown={tap}>
                   <button
                     className="preset-ex-field"
                     onClick={() => setExpandedEx(cur => cur === ex.norm ? null : ex.norm)}
                   >
                     <span className="preset-ex-head">
-                      <span className={`preset-ex-name${isExpanded ? ' is-open' : ''}`}>{ex.displayName}</span>
-                      <ChevronRight
-                        size={14}
-                        strokeWidth={2}
-                        className={`preset-ex-chevron${isExpanded ? ' open' : ''}`}
-                      />
+                      <span className="preset-ex-name">{ex.displayName}</span>
+                      {!bwOnly && <FigureChip value={latest.reps} prev={before?.reps} noun="rep" showDown={showDownTrend} />}
+                      <FigureChip value={latest.sets} prev={before?.sets} noun="set" showDown={showDownTrend} />
                     </span>
 
-                    <MetricGraph
-                      points={chrono.map((e, i) => {
-                        // Gap when a later session happened that this exercise sat out.
-                        const next = chrono[i + 1]
-                        const skipped = next !== undefined && sessionDates.some(
-                          d => d > e.date && d < next.date && !done.has(d),
-                        )
-                        return {
-                          date: e.date,
-                          value: metricView.value(e),
-                          label: metricView.label(e),
-                          gapAfter: skipped,
-                        }
-                      })}
-                      accentHex={accentHex}
-                      minRange={metricView.minRange}
-                      showDots={isExpanded}
-                    />
+                    <span className="preset-ex-plot">
+                      <span className="preset-ex-hero">
+                        <span className="preset-ex-weight">
+                          {fmtNum(lead.of(latest))}
+                          <span className="preset-ex-unit">{bwOnly ? 'reps' : weightUnit}</span>
+                        </span>
+                        <span className="preset-trend">
+                          <TrendItem diff={Math.abs(leadDiff) < 0.05 ? 0 : leadDiff} size={10} showDown={showDownTrend}>
+                            {bwOnly ? `${Math.abs(leadDiff)} reps` : formatWeightDiff(Math.abs(leadDiff), weightUnit)}
+                          </TrendItem>
+                        </span>
+                      </span>
+
+                      <MetricGraph
+                        points={chrono.map((e, i) => {
+                          // Gap when a later session happened that this exercise sat out.
+                          const next = chrono[i + 1]
+                          const skipped = next !== undefined && sessionDates.some(
+                            d => d > e.date && d < next.date && !done.has(d),
+                          )
+                          return {
+                            date: e.date,
+                            value: lead.of(e),
+                            label: fmtNum(lead.of(e)),
+                            gapAfter: skipped,
+                          }
+                        })}
+                        accentHex={accentHex}
+                        // Roughly one plate change (or a few reps) — a 2.5kg bump
+                        // should read as a step up, not as the same full-height
+                        // climb a 40kg one gets.
+                        minRange={lead.minRange}
+                        showDots={isExpanded}
+                        step
+                      />
+                    </span>
                   </button>
 
                   {/* Always mounted, so the list is there to slide in and out. */}
@@ -392,7 +398,7 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
         )}
       </div>
 
-      {/* Stat-card ⋮ menu — portalled to escape overflow clipping */}
+      {/* Preset ⋮ menu — portalled to escape overflow clipping */}
       {menuOpen && active && createPortal(
         <div
           className={`ex-dropdown${menuClosing ? ' closing' : ''}`}

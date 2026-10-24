@@ -75,24 +75,6 @@ export function saveLockPast(lock: boolean) {
   localStorage.setItem(LOCK_PAST_KEY, lock ? 'on' : 'off')
 }
 
-// ── Preset graph metric ───────────────────────────────────────────────────────
-
-/** Which figure the per-exercise graphs in the preset panel plot. */
-export type PresetMetric = 'load' | 'weight' | 'reps' | 'sets'
-
-const PRESET_METRIC_KEY = 'settings_presetMetric'
-
-const PRESET_METRICS: PresetMetric[] = ['load', 'weight', 'reps', 'sets']
-
-export function getSavedPresetMetric(): PresetMetric {
-  const v = localStorage.getItem(PRESET_METRIC_KEY) as PresetMetric | null
-  return v && PRESET_METRICS.includes(v) ? v : 'load'
-}
-
-export function savePresetMetric(metric: PresetMetric): void {
-  localStorage.setItem(PRESET_METRIC_KEY, metric)
-}
-
 // ── AI export range ───────────────────────────────────────────────────────────
 
 /** How far back the AI-report export reaches. */

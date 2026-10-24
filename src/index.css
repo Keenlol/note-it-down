@@ -1594,6 +1594,7 @@ strong, b {
 .exercise-empty,
 .history-empty,
 .data-stat-count,
+.preset-vol-label,
 .dd-confirm-label,
 .about-val {
   font-weight: var(--w-note);
@@ -2424,95 +2425,196 @@ strong, b {
 
 /* ── Preset sheet ── */
 
-/* Exercise lines inside each preset card — inner box */
-/* The whole graph field is the expand hitbox. Its nodes are static labels, so
-   a tap on a pill toggles the card like a tap anywhere else on the graph. */
+/* Stat card: the session counts on the left, the preset's volume per session
+   on the right. Volume sits straight on the card — no inner box. */
+.preset-stat-card {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 14px;
+  padding: 12px 12px 12px 14px;
+}
+
+.preset-stat-left {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.preset-stat-left .data-stat-counts {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preset-vol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 2px;
+}
+
+.preset-vol-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.preset-vol-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.preset-vol-value {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.preset-vol .bw-graph {
+  height: 58px;
+  padding: 10px 4px 4px;
+}
+
+.preset-vol .bw-graph-nodes {
+  inset: 10px 4px 4px;
+}
+
+/* The dot's ring cuts it out of the line in the card's own colour. */
+.preset-vol .bw-node.is-dot {
+  box-shadow: 0 0 0 1.5px var(--surface-1);
+}
+
+/* Trend badges at the size of the figures they qualify. */
+.preset-trend {
+  display: inline-flex;
+  font-size: 0.64rem;
+}
+
+/* One card per exercise, in the card/list pattern: a surface-1 card holding
+   the name row, then a surface-2 box with the weight and its graph. The
+   history opens under that box and continues it. The 5px bottom padding is
+   the pattern's inner margin-bottom, kept on the card so it holds whether the
+   history is open or not. */
+.preset-block {
+  background: var(--surface-1);
+  border-radius: var(--r-card);
+  padding: 0 5px 5px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* Name row and plot together are the expand hitbox. */
 .preset-ex-field {
-  position: relative;
   display: block;
   width: 100%;
   padding: 0;
   background: none;
   border: none;
+  font: inherit;
+  color: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-/* Name + latest load float on top of the graph rather than taking their own
-   band above it. pointer-events:none so taps fall through to the field. */
 .preset-ex-head {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 3;   /* above the node pills (2) and dots (1) */
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px 0;
-  pointer-events: none;
-}
-
-/* Shorter than the stat card above it — five of these stack in one sheet. */
-.preset-block .bw-graph {
-  height: 74px;
-  padding: 22px 12px 8px;
-}
-
-.preset-block .bw-graph-nodes {
-  inset: 22px 12px 8px;
+  gap: 5px;
+  padding: 7px 2px 6px 7px;
 }
 
 .preset-ex-name {
+  flex: 1;
+  min-width: 0;
   font-size: 0.92rem;
-  font-weight: var(--w-ui);
   letter-spacing: -0.015em;
-  color: var(--text-2);
-  transition: color 0.15s ease;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.preset-ex-name.is-open {
-  color: var(--text);
-}
-
-.preset-ex-chevron {
-  margin-left: auto;
-  color: var(--text-muted);
+/* Reps and sets: a chip each. A changed figure wears the TrendItem badge; a
+   held one gets the same shape, plain. */
+.preset-ex-chip {
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  display: inline-flex;
+  font-size: 0.68rem;
+  white-space: nowrap;
 }
 
-.preset-ex-chevron.open {
-  transform: rotate(90deg);
+.preset-ex-chip.is-plain {
+  padding: 0.2em 0.45em;
+  border-radius: var(--r-chip);
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+/* The squared-off bottom corners wait for the history to finish closing
+   (its 0.2s grid-row transition) before rounding, so the two never part. */
+.preset-ex-plot {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface-2);
+  border-radius: var(--r-inner);
+  transition: border-radius 0s 0.2s;
+}
+
+.preset-block.is-open .preset-ex-plot {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  transition-delay: 0s;
+}
+
+/* The latest weight, large, with its change across the window under it.
+   Fixed width so every card's graph starts at the same x. */
+.preset-ex-hero {
+  width: 92px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px 0 8px 10px;
+  box-sizing: border-box;
+}
+
+.preset-ex-weight {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: var(--w-display);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.preset-ex-unit {
+  margin-left: 2px;
+  font-size: 0.7rem;
+  letter-spacing: 0;
+  color: var(--accent-dim);
+}
+
+.preset-ex-plot .bw-graph {
+  flex: 1;
+  min-width: 0;
+  height: 62px;
+  padding: 14px 18px 8px 10px;
+}
+
+.preset-ex-plot .bw-graph-nodes {
+  inset: 14px 18px 8px 10px;
 }
 
 /* Preset tabs reuse the sort-chip look but wrap to multiple rows. */
 .preset-tabs {
   flex-wrap: wrap;
-}
-
-/* Metric switch for every graph in the panel — full width under the tabs. */
-.preset-metric-seg {
-  margin-top: 8px;
-}
-
-.preset-metric-seg .seg-control {
-  display: flex;
-  width: 100%;
-}
-
-/* ⋮ menu anchored to the top-right of the active preset's stat card. */
-.preset-stat-wrap {
-  position: relative;
-}
-
-.preset-stat-menu {
-  position: absolute;
-  top: 12px;
-  right: 12px;
 }
 
 /* Preset panel scrolls as one page below the fixed tabs — unlike the bodyweight
@@ -2526,8 +2628,6 @@ strong, b {
   padding: 12px var(--pad) calc(var(--pad) + 56px);
   display: flex;
   flex-direction: column;
-  /* Matches the gap between the preset tabs and the metric switch, so the
-     whole panel reads on one rhythm. */
   gap: 8px;
 }
 
@@ -2537,14 +2637,10 @@ strong, b {
   flex-shrink: 0;
 }
 
-/* Graph + history share one surface-2 field. The history opens below the graph
-   through the exercise rows' .history-expand-wrap, and the whole card takes the
-   rows' light squish on tap. */
-.preset-block {
+/* The history continues the plot's surface-2 box below it. */
+.preset-block .history-expand-wrap {
   background: var(--surface-2);
-  border-radius: var(--r-card);
-  overflow: hidden;
-  cursor: pointer;
+  border-radius: 0 0 var(--r-inner) var(--r-inner);
 }
 
 /* History flows in the page scroll (no internal scrollbar). */
