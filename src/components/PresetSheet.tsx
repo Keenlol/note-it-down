@@ -50,24 +50,29 @@ function fmtNum(v: number): string {
 }
 
 /**
- * Reps or sets for the latest session, on the line under the weight. These
- * move far less than the weight, so they get no graph of their own — a figure
- * that changed since the session before takes the trend badge's colour and
- * arrow, inline; one that held stays accent like any other number.
+ * Reps or sets for the latest session, on the line under the weight, with a
+ * small unit word the way the weight has its "kg". These move far less than
+ * the weight, so they get no graph of their own — a figure that changed since
+ * the session before takes the trend badge's colour and arrow, inline; one
+ * that held stays accent like any other number.
  */
-function Figure({ value, prev, suffix = '', showDown }: {
+function Figure({ value, prev, noun, showDown }: {
   value: number
   prev: number | undefined
-  suffix?: string
+  noun: string
   showDown: boolean
 }) {
   const diff = prev === undefined ? 0 : value - prev
   const dir = diff > 0 ? 'up' : diff < 0 && showDown ? 'down' : null
   const Icon = dir === 'up' ? ArrowUp : ArrowDown
   return (
-    <span className="preset-ex-fig" style={dir ? { color: dir === 'up' ? POS_COLOR : NEG_COLOR } : undefined}>
-      {value}{suffix}
-      {dir && <Icon size={11} strokeWidth={2.5} />}
+    <span
+      className={`preset-ex-fig${dir ? ' is-trend' : ''}`}
+      style={dir ? { color: dir === 'up' ? POS_COLOR : NEG_COLOR } : undefined}
+    >
+      {value}
+      <span className="preset-ex-fig-unit">{noun}{value === 1 ? '' : 's'}</span>
+      {dir && <Icon size={12} strokeWidth={2.5} />}
     </span>
   )
 }
@@ -334,69 +339,72 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
               const leadDiff = lead.of(latest) - lead.of(chrono[0])
               return (
                 <div key={ex.norm} className={`preset-block${isExpanded ? ' is-open' : ''}`} onPointerDown={tap}>
-                  <button
-                    className="preset-ex-field"
-                    onClick={() => setExpandedEx(cur => cur === ex.norm ? null : ex.norm)}
-                  >
-                    {/* Everything to read sits in one column left of the graph:
-                        name, then the weight with its trend beside it, then
-                        reps × sets under it. */}
-                    <span className="preset-ex-info">
-                      <span className="preset-ex-name">{ex.displayName}</span>
-                      <span className="preset-ex-lead">
-                        <span className="preset-ex-weight">
-                          {fmtNum(lead.of(latest))}
-                          <span className="preset-ex-unit">{bwOnly ? 'reps' : weightUnit}</span>
+                  {/* The card/list pattern: a surface-1 border around one surface-2 box. */}
+                  <div className="preset-ex-box">
+                    <button
+                      className="preset-ex-field"
+                      onClick={() => setExpandedEx(cur => cur === ex.norm ? null : ex.norm)}
+                    >
+                      {/* Everything to read sits in one column left of the graph:
+                          name, then the weight with its trend beside it, then
+                          reps × sets under it. */}
+                      <span className="preset-ex-info">
+                        <span className="preset-ex-name">{ex.displayName}</span>
+                        <span className="preset-ex-lead">
+                          <span className="preset-ex-weight">
+                            {fmtNum(lead.of(latest))}
+                            <span className="preset-ex-unit">{bwOnly ? 'reps' : weightUnit}</span>
+                          </span>
+                          <span className="preset-trend">
+                            <TrendItem diff={Math.abs(leadDiff) < 0.05 ? 0 : leadDiff} size={10} showDown={showDownTrend}>
+                              {bwOnly ? `${Math.abs(leadDiff)}` : formatWeightDiff(Math.abs(leadDiff), weightUnit)}
+                            </TrendItem>
+                          </span>
                         </span>
-                        <span className="preset-trend">
-                          <TrendItem diff={Math.abs(leadDiff) < 0.05 ? 0 : leadDiff} size={10} showDown={showDownTrend}>
-                            {bwOnly ? `${Math.abs(leadDiff)}` : formatWeightDiff(Math.abs(leadDiff), weightUnit)}
-                          </TrendItem>
+                        <span className="preset-ex-rs">
+                          {!bwOnly && <>
+                            <Figure value={latest.reps} prev={before?.reps} noun="rep" showDown={showDownTrend} />
+                            <span className="history-sep">×</span>
+                          </>}
+                          <Figure value={latest.sets} prev={before?.sets} noun="set" showDown={showDownTrend} />
                         </span>
                       </span>
-                      <span className="preset-ex-rs">
-                        {!bwOnly && <>
-                          <Figure value={latest.reps} prev={before?.reps} showDown={showDownTrend} />
-                          <span className="history-sep"> × </span>
-                        </>}
-                        <Figure value={latest.sets} prev={before?.sets} suffix={bwOnly ? ' sets' : ''} showDown={showDownTrend} />
-                      </span>
-                    </span>
 
-                    <MetricGraph
-                      points={chrono.map((e, i) => {
-                        // Gap when a later session happened that this exercise sat out.
-                        const next = chrono[i + 1]
-                        const skipped = next !== undefined && sessionDates.some(
-                          d => d > e.date && d < next.date && !done.has(d),
-                        )
-                        return {
-                          date: e.date,
-                          value: lead.of(e),
-                          label: fmtNum(lead.of(e)),
-                          gapAfter: skipped,
-                        }
-                      })}
-                      accentHex={accentHex}
-                      // Roughly one plate change (or a few reps) — a 2.5kg bump
-                      // should read as a step up, not as the same full-height
-                      // climb a 40kg one gets.
-                      minRange={lead.minRange}
-                      showDots={isExpanded}
-                      step
-                    />
-                  </button>
-
-                  {/* Always mounted, so the list is there to slide in and out. */}
-                  <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
-                    <div className="history-expand-inner">
-                      <ExerciseHistoryList
-                        entries={ex.entries}
-                        unit={weightUnit}
-                        showDownTrend={showDownTrend}
-                        onSelectDate={onSelectDate}
-                        className="history-list preset-history-list"
+                      <MetricGraph
+                        points={chrono.map((e, i) => {
+                          // Gap when a later session happened that this exercise sat out.
+                          const next = chrono[i + 1]
+                          const skipped = next !== undefined && sessionDates.some(
+                            d => d > e.date && d < next.date && !done.has(d),
+                          )
+                          return {
+                            date: e.date,
+                            value: lead.of(e),
+                            label: fmtNum(lead.of(e)),
+                            gapAfter: skipped,
+                          }
+                        })}
+                        accentHex={accentHex}
+                        // Roughly one plate change (or a few reps) — a 2.5kg bump
+                        // should read as a step up, not as the same full-height
+                        // climb a 40kg one gets.
+                        minRange={lead.minRange}
+                        showDots={isExpanded}
+                        step
                       />
+                    </button>
+
+                    {/* Always mounted, so the list is there to slide in and out. */}
+                    <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
+                      <div className="history-expand-inner">
+                        <ExerciseHistoryList
+                          entries={ex.entries}
+                          unit={weightUnit}
+                          showDownTrend={showDownTrend}
+                          onSelectDate={onSelectDate}
+                          className="history-list preset-history-list"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

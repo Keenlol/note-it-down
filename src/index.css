@@ -2494,13 +2494,21 @@ strong, b {
   font-size: 0.64rem;
 }
 
-/* One box per exercise, no header bar: a column of figures on the left, the
-   graph filling the rest, and the history opening underneath. */
+/* One card per exercise in the card/list pattern, minus its header row: a
+   surface-1 border 5px all round one surface-2 box. Inside, a column of
+   figures on the left, the graph filling the rest, and the history opening
+   underneath. */
 .preset-block {
-  background: var(--surface-2);
+  background: var(--surface-1);
   border-radius: var(--r-card);
-  overflow: hidden;
+  padding: 5px;
   cursor: pointer;
+}
+
+.preset-ex-box {
+  background: var(--surface-2);
+  border-radius: var(--r-inner);
+  overflow: hidden;
 }
 
 /* The info column and the graph together are the expand hitbox. */
@@ -2517,15 +2525,17 @@ strong, b {
   cursor: pointer;
 }
 
-/* Fixed width, so every card's graph starts at the same x. */
+/* Fixed width, so every card's graph starts at the same x. Centred, so the
+   column sits in the middle of whatever height the graph gives the card. */
 .preset-ex-info {
-  width: 136px;
+  width: 148px;
   flex-shrink: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 10px 0 10px 12px;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 0 11px 12px;
 }
 
 .preset-ex-name {
@@ -2561,19 +2571,43 @@ strong, b {
   color: var(--accent-dim);
 }
 
-/* Reps × sets under the weight, set like the history row's figures. A
-   changed one takes its trend colour and arrow inline (style, from TrendItem). */
+/* Reps × sets under the weight, set like a smaller weight: accent figure,
+   dimmer unit word. A changed one takes its trend colour and arrow inline
+   (style, from TrendItem), unit word included. */
 .preset-ex-rs {
-  font-size: 0.78rem;
-  font-weight: var(--w-note);
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+  line-height: 1;
   color: var(--accent);
   white-space: nowrap;
 }
 
+.preset-ex-rs .history-sep {
+  font-size: 0.8rem;
+}
+
 .preset-ex-fig {
   display: inline-flex;
-  align-items: center;
-  gap: 1px;
+  align-items: baseline;
+}
+
+.preset-ex-fig-unit {
+  margin-left: 2px;
+  font-size: 0.66rem;
+  letter-spacing: 0;
+  color: var(--accent-dim);
+}
+
+.preset-ex-fig.is-trend .preset-ex-fig-unit {
+  color: inherit;
+}
+
+.preset-ex-fig svg {
+  align-self: center;
+  margin-left: 1px;
 }
 
 .preset-ex-field .bw-graph {

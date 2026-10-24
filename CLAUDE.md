@@ -409,18 +409,21 @@ closes.
 
 ### Preset cards
 The preset sheet has no metric switch: each exercise card shows every figure
-at once, weighted by how often it moves. A card is one `--surface-2` box with
-no header bar: a fixed-width column of figures (`.preset-ex-info`) on the
-left, the graph filling the rest, and the history opening underneath.
+at once, weighted by how often it moves. A card is the card/list pattern
+minus its header row: a `--surface-1` border 5px all round one `--surface-2`
+box (`.preset-ex-box`). Inside, a fixed-width column of figures
+(`.preset-ex-info`, vertically centred) on the left, the graph filling the
+rest, and the history opening underneath.
 
 - **The column reads top to bottom:** the name, then the latest weight as the
   big figure (`.preset-ex-weight`, `--font-display`, accent) with its change
   across the window as a `TrendItem` beside it, then reps × sets under it.
 - **Weight leads the graph** too: a step-line `MetricGraph` (`step`) that
   holds level until the session the weight changed.
-- **Reps and sets get no graph.** They are set like the history row's figures
-  (accent, `--w-note`); one that changed since the session before takes the
-  trend colour and arrow inline (`Figure`, colours exported from `TrendItem`).
+- **Reps and sets get no graph.** They are set like a smaller weight — an
+  accent figure with a dimmer unit word (`12 reps × 3 sets`); one that changed
+  since the session before takes the trend colour and arrow inline (`Figure`,
+  colours exported from `TrendItem`).
 - **Plain bodyweight movements lead with reps** instead (their "weight" is
   just the day's bodyweight), so the line under them shows only sets.
 - **Volume is per preset, not per exercise.** It sits in the stat card as a
