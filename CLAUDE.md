@@ -270,7 +270,7 @@ past days only, in `--accent-tint` — it replaced the old right-edge tab. The
 preset pill follows the block the cursor is in (the first block when the cursor
 is above every header), and shows only once that preset exists on another day.
 Its arrows step through `presetDayIndex()` with no wrap-around: an end arrow is
-disabled. After the name, an accent figure gives the viewed day's place in that
+disabled. After the name, a grey (`--text-2`) figure gives the viewed day's place in that
 same list — which session of the preset it is, counting from 1. A step pins the preset (`navPreset` in App) so a landing day holding
 several presets keeps the one being followed; any cursor move releases it.
 

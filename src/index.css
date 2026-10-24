@@ -444,12 +444,12 @@ strong, b {
   margin-right: 1px;
 }
 
-/* Which session of the preset this day is — a count, so it takes the
-   accent, and it never gives way to a long name. */
+/* Which session of the preset this day is — grey, a step back from the name,
+   and it never gives way to a long one. */
 .preset-nav-session {
   flex-shrink: 0;
   margin-left: 6px;
-  color: var(--accent);
+  color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 
