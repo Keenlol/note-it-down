@@ -2547,14 +2547,11 @@ strong, b {
   white-space: nowrap;
 }
 
-/* The latest weight, large, with its change across the window beside it. */
-.preset-ex-lead {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.preset-ex-weight {
+/* Weight, reps and sets are all one Figure: an accent number with a dimmer
+   unit word. A changed one takes its trend colour (style, from TrendItem),
+   unit word included, with its arrow in front. The weight is the big one. */
+.preset-ex-fig.is-big {
+  align-self: flex-start;
   font-family: var(--font-display);
   font-size: 1.45rem;
   font-weight: var(--w-display);
@@ -2564,16 +2561,11 @@ strong, b {
   white-space: nowrap;
 }
 
-.preset-ex-unit {
-  margin-left: 2px;
+.preset-ex-fig.is-big .preset-ex-fig-unit {
   font-size: 0.7rem;
-  letter-spacing: 0;
-  color: var(--accent-dim);
 }
 
-/* Reps × sets under the weight, set like a smaller weight: accent figure,
-   dimmer unit word. A changed one takes its trend colour and arrow inline
-   (style, from TrendItem), unit word included. */
+/* Reps × sets under the weight. */
 .preset-ex-rs {
   display: flex;
   align-items: baseline;
@@ -2607,7 +2599,7 @@ strong, b {
 
 .preset-ex-fig svg {
   align-self: center;
-  margin-left: 1px;
+  margin-right: 1px;
 }
 
 .preset-ex-field .bw-graph {

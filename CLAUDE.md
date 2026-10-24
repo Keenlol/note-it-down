@@ -415,15 +415,15 @@ box (`.preset-ex-box`). Inside, a fixed-width column of figures
 (`.preset-ex-info`, vertically centred) on the left, the graph filling the
 rest, and the history opening underneath.
 
-- **The column reads top to bottom:** the name, then the latest weight as the
-  big figure (`.preset-ex-weight`, `--font-display`, accent) with its change
-  across the window as a `TrendItem` beside it, then reps × sets under it.
+- **The column reads top to bottom:** the name, the latest weight as the big
+  figure, then reps × sets under it.
+- **Every figure is one `Figure`:** an accent number with a dimmer unit word
+  (`60kg`, `12 reps × 3 sets`); the weight is the same thing at `is-big`,
+  in `--font-display`. A figure that changed since the session before takes
+  the trend colour, unit included, with its arrow in front — weight, reps and
+  sets all alike, no badge (colours exported from `TrendItem`).
 - **Weight leads the graph** too: a step-line `MetricGraph` (`step`) that
-  holds level until the session the weight changed.
-- **Reps and sets get no graph.** They are set like a smaller weight — an
-  accent figure with a dimmer unit word (`12 reps × 3 sets`); one that changed
-  since the session before takes the trend colour and arrow inline (`Figure`,
-  colours exported from `TrendItem`).
+  holds level until the session the weight changed. Reps and sets get none.
 - **Plain bodyweight movements lead with reps** instead (their "weight" is
   just the day's bodyweight), so the line under them shows only sets.
 - **Volume is per preset, not per exercise.** It sits in the stat card as a

@@ -7,7 +7,7 @@ import {
   getPresetHistory, getPresetExerciseSeries,
   type PresetHistoryEntry, type PresetExercisePoint,
 } from '../utils/presets'
-import { type WeightUnit, formatWeightDiff } from '../utils/settings'
+import { type WeightUnit } from '../utils/settings'
 import { todayKey } from '../utils/storage'
 import { windowStart, dayIndex } from '../utils/window'
 import { tap } from '../utils/tap'
@@ -50,31 +50,36 @@ function fmtNum(v: number): string {
 }
 
 /**
- * Reps or sets for the latest session, on the line under the weight, with a
- * small unit word the way the weight has its "kg". These move far less than
- * the weight, so they get no graph of their own — a figure that changed since
- * the session before takes the trend badge's colour and arrow, inline; one
- * that held stays accent like any other number.
+ * One of the latest session's figures — the weight (`big`), reps or sets —
+ * with a dimmer unit word after it. Every figure is marked the same way: one
+ * that changed since the session before takes the trend badge's colour, unit
+ * included, with its arrow in front; one that held stays accent like any
+ * other number.
  */
-function Figure({ value, prev, noun, showDown }: {
-  value: number
-  prev: number | undefined
-  noun: string
+function Figure({ value, diff, unit, showDown, big = false }: {
+  value: string
+  diff: number
+  unit: string
   showDown: boolean
+  big?: boolean
 }) {
-  const diff = prev === undefined ? 0 : value - prev
   const dir = diff > 0 ? 'up' : diff < 0 && showDown ? 'down' : null
   const Icon = dir === 'up' ? ArrowUp : ArrowDown
   return (
     <span
-      className={`preset-ex-fig${dir ? ' is-trend' : ''}`}
+      className={`preset-ex-fig${big ? ' is-big' : ''}${dir ? ' is-trend' : ''}`}
       style={dir ? { color: dir === 'up' ? POS_COLOR : NEG_COLOR } : undefined}
     >
+      {dir && <Icon size={big ? 17 : 12} strokeWidth={2.5} />}
       {value}
-      <span className="preset-ex-fig-unit">{noun}{value === 1 ? '' : 's'}</span>
-      {dir && <Icon size={12} strokeWidth={2.5} />}
+      <span className="preset-ex-fig-unit">{unit}</span>
     </span>
   )
+}
+
+/** Change from the session before, or none for the first. Sub-0.05 is noise. */
+function changeFrom(value: number, prev: number | undefined): number {
+  return prev === undefined || Math.abs(value - prev) < 0.05 ? 0 : value - prev
 }
 
 type DeleteMode = 'label-only' | 'with-exercises'
@@ -334,9 +339,6 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
               const lead = bwOnly
                 ? { of: (p: PresetExercisePoint) => p.reps, minRange: 4 }
                 : { of: (p: PresetExercisePoint) => toUnit(p.weight, weightUnit), minRange: weightUnit === 'lbs' ? 10 : 5 }
-              // The lead figure's change across the window — the one that moves
-              // often enough to be worth a trend over the whole run.
-              const leadDiff = lead.of(latest) - lead.of(chrono[0])
               return (
                 <div key={ex.norm} className={`preset-block${isExpanded ? ' is-open' : ''}`} onPointerDown={tap}>
                   {/* The card/list pattern: a surface-1 border around one surface-2 box. */}
@@ -346,27 +348,22 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                       onClick={() => setExpandedEx(cur => cur === ex.norm ? null : ex.norm)}
                     >
                       {/* Everything to read sits in one column left of the graph:
-                          name, then the weight with its trend beside it, then
-                          reps × sets under it. */}
+                          name, then the weight, then reps × sets under it. */}
                       <span className="preset-ex-info">
                         <span className="preset-ex-name">{ex.displayName}</span>
-                        <span className="preset-ex-lead">
-                          <span className="preset-ex-weight">
-                            {fmtNum(lead.of(latest))}
-                            <span className="preset-ex-unit">{bwOnly ? 'reps' : weightUnit}</span>
-                          </span>
-                          <span className="preset-trend">
-                            <TrendItem diff={Math.abs(leadDiff) < 0.05 ? 0 : leadDiff} size={10} showDown={showDownTrend}>
-                              {bwOnly ? `${Math.abs(leadDiff)}` : formatWeightDiff(Math.abs(leadDiff), weightUnit)}
-                            </TrendItem>
-                          </span>
-                        </span>
+                        <Figure
+                          big
+                          value={fmtNum(lead.of(latest))}
+                          diff={changeFrom(lead.of(latest), before && lead.of(before))}
+                          unit={bwOnly ? 'reps' : weightUnit}
+                          showDown={showDownTrend}
+                        />
                         <span className="preset-ex-rs">
                           {!bwOnly && <>
-                            <Figure value={latest.reps} prev={before?.reps} noun="rep" showDown={showDownTrend} />
+                            <Figure value={`${latest.reps}`} diff={changeFrom(latest.reps, before?.reps)} unit={latest.reps === 1 ? 'rep' : 'reps'} showDown={showDownTrend} />
                             <span className="history-sep">×</span>
                           </>}
-                          <Figure value={latest.sets} prev={before?.sets} noun="set" showDown={showDownTrend} />
+                          <Figure value={`${latest.sets}`} diff={changeFrom(latest.sets, before?.sets)} unit={latest.sets === 1 ? 'set' : 'sets'} showDown={showDownTrend} />
                         </span>
                       </span>
 
