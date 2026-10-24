@@ -344,7 +344,10 @@ step aside.
   either unit (on the step grid, so 61.3 → 61.5), a `bw+n` offset the same, a
   `bw×n` factor 0.1, reps and sets 1. The value never skips: when the finger
   outruns it, it walks there one step per 30 ms (`stepOnce`), and letting go
-  lands it where the finger got to. A bubble above the finger (`.adjust-bubble`) shows the value;
+  lands it where the finger got to.
+- **White when moved.** While dragged, a value off its starting value reads
+  `--text` (number and bubble), so the accent it started in marks where it
+  came from; dragged back onto it, it turns accent again (`.changed`). A bubble above the finger (`.adjust-bubble`) shows the value;
   the value being dragged lights up.
 - **A touch that starts on a value is the value's, start to finish.** Native
   listeners on the editor stop its touchstart / move / end from reaching the

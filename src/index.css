@@ -992,6 +992,17 @@ strong, b {
   background: var(--accent-tint);
 }
 
+/* Moved off its starting value, the dragged value reads white, so the accent
+   it started in marks where it came from; back on it, accent again. */
+.reveal-value.changed .num,
+.adjust-bubble.changed {
+  color: var(--text);
+}
+
+.reveal-value.changed .reveal-unit {
+  color: var(--text-2);
+}
+
 /* The eye's row controls. Every line's grip sits in the left padding like the
    note's one; each exercise's swap and trash ride the right edge, so the
    eye's view keeps that much clear on the right to wrap short of them. */

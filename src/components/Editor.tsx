@@ -86,7 +86,7 @@ function adjustLabel(line: string, field: ValueField, bodyweightKg: number, unit
 // each line carries data-rline, so it can be measured for its grip and icons.
 function renderRevealLine(
   line: string, i: number, bodyweightKg: number, unit: WeightUnit,
-  active: { line: number; field: ValueField } | null, lifted = false,
+  active: { line: number; field: ValueField; changed?: boolean } | null, lifted = false,
 ): React.ReactNode {
   const parsed = parseLine(line, bodyweightKg)
   const props = { 'data-rline': i, className: lifted ? 'line-lifted' : undefined }
@@ -109,8 +109,10 @@ function renderRevealLine(
     const content = <><span className="num">{n}</span><span className="reveal-unit">{label}</span></>
     if (parsed.values?.[field] === undefined) return content
     const on = active?.line === i && active.field === field
+    // Moved off where it started, it goes white; back on it, accent again.
+    const moved = on && active.changed ? ' changed' : ''
     return (
-      <span className={`reveal-value${on ? ' adjusting' : ''}`} data-line={i} data-field={field}>
+      <span className={`reveal-value${on ? ' adjusting' : ''}${moved}`} data-line={i} data-field={field}>
         {content}
       </span>
     )
@@ -129,7 +131,7 @@ function renderRevealLine(
 
 function renderRevealOverlay(
   text: string, bodyweightKg: number, unit: WeightUnit,
-  active: { line: number; field: ValueField } | null,
+  active: { line: number; field: ValueField; changed?: boolean } | null,
   lifted: { start: number; count: number } | null,
 ): React.ReactNode[] {
   const nodes: React.ReactNode[] = []
@@ -364,6 +366,7 @@ interface Press {
 interface Adjust {
   line: number
   field: ValueField
+  base: string                       // the line as it was when the drag began
   at: { left: number; top: number }  // the value's top centre, editor-relative
 }
 
@@ -663,6 +666,7 @@ export function Editor({
       setAdjust({
         line: p.line,
         field: p.field,
+        base: stepping.current.base,
         at: { left: r.left + r.width / 2 - base.left, top: r.top - base.top },
       })
       return
@@ -681,6 +685,9 @@ export function Editor({
     finishStepping()
     setAdjust(null)
   }
+
+  // Whether the value being dragged now differs from where it started.
+  const adjustShown = adjust && { ...adjust, changed: lines[adjust.line] !== adjust.base }
 
   const removeLine = (i: number) => {
     setArmedTrash(null)
@@ -771,12 +778,12 @@ export function Editor({
         onContextMenu={reveal ? e => e.preventDefault() : undefined}
         ref={revealOverlayRef}
       >
-        {renderRevealOverlay(value, bodyweightKg, weightUnit, adjust, reveal && dragging ? drag : null)}
+        {renderRevealOverlay(value, bodyweightKg, weightUnit, adjustShown, reveal && dragging ? drag : null)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
 
       {adjust && (
-        <div className="adjust-bubble" aria-hidden="true" style={{ left: adjust.at.left, top: adjust.at.top }}>
+        <div className={`adjust-bubble${adjustShown?.changed ? ' changed' : ''}`} aria-hidden="true" style={{ left: adjust.at.left, top: adjust.at.top }}>
           {adjustLabel(lines[adjust.line] ?? '', adjust.field, bodyweightKg, weightUnit)}
         </div>
       )}
