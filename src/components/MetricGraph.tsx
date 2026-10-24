@@ -22,12 +22,18 @@ interface Plotted { x: number; y: number; label: string; date: string; gapAfter:
  * Line + area chart used by the bodyweight and preset panels. Points are placed
  * horizontally by date across the shared 21-week window (so they line up with
  * the heatmap) and vertically by value, auto-scaled to the series range.
- * Tapping a node navigates to that date (via onSelectDate).
+ * With onSelectDate, tapping a node navigates to that date; without it the
+ * nodes take no taps, which fall through to whatever the graph sits in.
  */
-export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0 }: {
+export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0, showDots = true }: {
   points: GraphPoint[]
   accentHex: string
   onSelectDate?: (date: string) => void
+  /**
+   * Whether a repeat of the previous value marks its point with a dot. Off,
+   * the run reads as the bare line between the pills that bound it.
+   */
+  showDots?: boolean
   /**
    * Smallest vertical span the plot is allowed to represent. Without it the
    * series always fills the full height, so on a small-integer metric like reps
@@ -128,13 +134,18 @@ export function MetricGraph({ points, accentHex, onSelectDate, minRange = 0 }: {
         {pts.map((p, i) => (
           <span
             key={i}
-            className={`bw-node${p.dot ? ' is-dot' : ''}`}
+            className={[
+              'bw-node',
+              p.dot ? 'is-dot' : '',
+              p.dot && !showDots ? 'is-hidden' : '',
+              onSelectDate ? '' : 'is-static',
+            ].filter(Boolean).join(' ')}
             style={{ left: `${(p.x / VB_W) * 100}%`, top: `${(p.y / VB_H) * 100}%`, background: accentHex }}
             title={p.dot ? p.label : undefined}
-            onPointerDown={tap}
+            onPointerDown={onSelectDate ? tap : undefined}
             // Stop here so tapping a node jumps to that date without also
             // toggling the expandable row the graph may sit inside.
-            onClick={e => { e.stopPropagation(); onSelectDate?.(p.date) }}
+            onClick={onSelectDate ? e => { e.stopPropagation(); onSelectDate(p.date) } : undefined}
           >
             {p.dot ? null : p.label}
           </span>

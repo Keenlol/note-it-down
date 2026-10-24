@@ -335,21 +335,21 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
             {series.map(ex => {
               const chrono = [...ex.points].reverse()
               const done = new Set(chrono.map(e => e.date))
+              const isExpanded = expandedEx === ex.norm
               return (
-                <div key={ex.norm} className="preset-block">
+                <div key={ex.norm} className="preset-block" onPointerDown={tap}>
                   {/* The whole graph field is the expand hitbox; the name/latest
                       row floats on top of it rather than taking its own band. */}
                   <button
                     className="preset-ex-field"
-                    onPointerDown={tap}
                     onClick={() => setExpandedEx(cur => cur === ex.norm ? null : ex.norm)}
                   >
                     <span className="preset-ex-head">
-                      <span className={`preset-ex-name${expandedEx === ex.norm ? ' is-open' : ''}`}>{ex.displayName}</span>
+                      <span className={`preset-ex-name${isExpanded ? ' is-open' : ''}`}>{ex.displayName}</span>
                       <ChevronRight
                         size={14}
                         strokeWidth={2}
-                        className={`preset-ex-chevron${expandedEx === ex.norm ? ' open' : ''}`}
+                        className={`preset-ex-chevron${isExpanded ? ' open' : ''}`}
                       />
                     </span>
 
@@ -369,19 +369,22 @@ export function PresetSheet({ open, onClose, onFocusPreset, onSelectDate, dataVe
                       })}
                       accentHex={accentHex}
                       minRange={metricView.minRange}
-                      onSelectDate={onSelectDate}
+                      showDots={isExpanded}
                     />
                   </button>
 
-                  {expandedEx === ex.norm && (
-                    <ExerciseHistoryList
-                      entries={ex.entries}
-                      unit={weightUnit}
-                      showDownTrend={showDownTrend}
-                      onSelectDate={onSelectDate}
-                      className="history-list preset-history-list"
-                    />
-                  )}
+                  {/* Always mounted, so the list is there to slide in and out. */}
+                  <div className={`history-expand-wrap${isExpanded ? ' history-expand-open' : ''}`}>
+                    <div className="history-expand-inner">
+                      <ExerciseHistoryList
+                        entries={ex.entries}
+                        unit={weightUnit}
+                        showDownTrend={showDownTrend}
+                        onSelectDate={onSelectDate}
+                        className="history-list preset-history-list"
+                      />
+                    </div>
+                  </div>
                 </div>
               )
             })}

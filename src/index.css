@@ -185,7 +185,8 @@ html, body {
 
 /* Heavier elements get a subtler scale */
 .exercise-item-wrap.tapping,
-.preset-item-wrap.tapping {
+.preset-item-wrap.tapping,
+.preset-block.tapping {
   animation: tap-scale-row 0.18s ease-out both;
 }
 
@@ -2257,6 +2258,21 @@ strong, b {
   border-radius: 50%;
   box-shadow: 0 0 0 1.5px var(--surface-2);
   z-index: 1;   /* below every pill */
+  transition: opacity 0.2s ease, scale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* A graph that leaves repeats bare (a collapsed preset card) keeps its dots
+   mounted and shrinks them away, so opening the card grows them back in place. */
+.bw-node.is-dot.is-hidden {
+  opacity: 0;
+  scale: 0;
+}
+
+/* No date to jump to: the node is only a label, and taps fall through to the
+   graph's container. */
+.bw-node.is-static {
+  pointer-events: none;
+  cursor: inherit;
 }
 
 /* A 6px dot is below a comfortable tap target, so extend the hit area
@@ -2409,8 +2425,8 @@ strong, b {
 /* ── Preset sheet ── */
 
 /* Exercise lines inside each preset card — inner box */
-/* The whole graph field is the expand hitbox (graph nodes stop propagation, so
-   tapping a data point still navigates to its date instead of toggling). */
+/* The whole graph field is the expand hitbox. Its nodes are static labels, so
+   a tap on a pill toggles the card like a tap anywhere else on the graph. */
 .preset-ex-field {
   position: relative;
   display: block;
@@ -2423,8 +2439,7 @@ strong, b {
 }
 
 /* Name + latest load float on top of the graph rather than taking their own
-   band above it. pointer-events:none so taps fall through to the field (and to
-   any data-point pill sitting underneath). */
+   band above it. pointer-events:none so taps fall through to the field. */
 .preset-ex-head {
   position: absolute;
   top: 0;
@@ -2467,7 +2482,7 @@ strong, b {
   margin-left: auto;
   color: var(--text-muted);
   flex-shrink: 0;
-  transition: transform 0.15s ease;
+  transition: transform 0.2s ease;
 }
 
 .preset-ex-chevron.open {
@@ -2522,11 +2537,14 @@ strong, b {
   flex-shrink: 0;
 }
 
-/* Graph + history share one surface-2 field that grows with its content. */
+/* Graph + history share one surface-2 field. The history opens below the graph
+   through the exercise rows' .history-expand-wrap, and the whole card takes the
+   rows' light squish on tap. */
 .preset-block {
   background: var(--surface-2);
   border-radius: var(--r-card);
   overflow: hidden;
+  cursor: pointer;
 }
 
 /* History flows in the page scroll (no internal scrollbar). */
