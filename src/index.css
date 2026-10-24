@@ -992,6 +992,51 @@ strong, b {
   background: var(--accent-tint);
 }
 
+/* The eye's row controls. Every line's grip sits in the left padding like the
+   note's one; each exercise's swap and trash ride the right edge, so the
+   eye's view keeps that much clear on the right to wrap short of them. */
+.editor-wrap.revealed .reveal-overlay {
+  padding-right: 64px;
+}
+
+.line-ghost.reveal {
+  padding-right: 72px;   /* the overlay's 64px plus the ghost's own 8px */
+}
+
+.row-actions {
+  position: absolute;
+  right: -6px;           /* the icon's own padding into the page margin */
+  height: calc(var(--editor-lh) * var(--editor-size));
+  display: flex;
+  align-items: center;
+  z-index: 3;
+  animation: grip-in 0.15s ease both;
+}
+
+.row-action {
+  width: 30px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--grey-dim);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 0.12s ease;
+}
+
+.row-action:active {
+  color: var(--accent);
+}
+
+/* Armed by a first tap — the second removes the line. */
+.row-action.trash.armed {
+  color: var(--delete);
+}
+
 /* The finger covers the value being dragged, so it is read off above it. */
 .adjust-bubble {
   position: absolute;

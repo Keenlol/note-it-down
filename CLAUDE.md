@@ -340,9 +340,11 @@ step aside.
 - **Press a value and drag** up or down to change it — no hold, the values
   are handles in this view. A value is its number and its unit together
   (`.reveal-value` wraps both), and its `::before` stretches the target to
-  the line's full height. 42 px per step; weight 2.5 kg / 5 lb (on the step
-  grid, so 61.3 → 62.5), a `bw+n` offset the same, a `bw×n` factor 0.1, reps
-  and sets 1. A bubble above the finger (`.adjust-bubble`) shows the value;
+  the line's full height. 42 px per step, whole steps only; weight 0.5 in
+  either unit (on the step grid, so 61.3 → 61.5), a `bw+n` offset the same, a
+  `bw×n` factor 0.1, reps and sets 1. The value never skips: when the finger
+  outruns it, it walks there one step per 30 ms (`stepOnce`), and letting go
+  lands it where the finger got to. A bubble above the finger (`.adjust-bubble`) shows the value;
   the value being dragged lights up.
 - **A touch that starts on a value is the value's, start to finish.** Native
   listeners on the editor stop its touchstart / move / end from reaching the
@@ -355,6 +357,13 @@ step aside.
   records where each value sits (`ParsedLine.values`: the digits and their
   token). A step that would make a larger-number-as-reps pair read the other
   way is spelled out instead: `10x3` → `2x3s`, `pullups 10 3` → `10x11s`.
+- **Row controls, always up.** Every non-blank line gets its own grip in the
+  left padding (the note's single caret-line grip stands down), dragging it
+  or its whole preset like the note's grip does. Each exercise gets a swap and
+  a trash (`.row-actions`) on the right edge; the eye's overlay keeps 64px
+  clear on the right so text wraps short of them. The trash takes two taps:
+  the first arms it red for 4 s, the second removes the line. Rows are
+  measured off the eye's overlay (`data-rline`), not the note's.
 - Only values the line actually writes can be dragged — a bodyweight that was
   assumed, not written, has nothing to change.
 

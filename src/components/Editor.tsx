@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, CornerDownLeft, GripVertical } from 'lucide-react'
+import { ArrowLeftRight, CornerDownLeft, GripVertical, Trash2 } from 'lucide-react'
 import { parseLine, isKnownName, normalizeName, bwExtraLoadKg, type ParsedLine, type Exercise, type ValueField } from '../utils/parser'
 import { stepLine } from '../utils/adjust'
 import { type WeightUnit, formatWeightDiff } from '../utils/settings'
@@ -82,56 +82,62 @@ function adjustLabel(line: string, field: ValueField, bodyweightKg: number, unit
 
 // Reveal overlay: exercise lines show formatted values (all orange), non-exercise lines render normally.
 // It crossfades over the normal one while the eye is on. Each value the line
-// actually writes is tagged with its line and field, so it can be dragged.
+// actually writes is tagged with its line and field, so it can be dragged;
+// each line carries data-rline, so it can be measured for its grip and icons.
+function renderRevealLine(
+  line: string, i: number, bodyweightKg: number, unit: WeightUnit,
+  active: { line: number; field: ValueField } | null, lifted = false,
+): React.ReactNode {
+  const parsed = parseLine(line, bodyweightKg)
+  const props = { 'data-rline': i, className: lifted ? 'line-lifted' : undefined }
+  if (parsed.bodyweightEntry !== undefined) {
+    // Show bodyweight entry lines as-is with the number orange
+    return (
+      <span key={i} {...props}>
+        {line.slice(0, parsed.highlights[0]?.start ?? line.length)}
+        <span className="num">{line.slice(parsed.highlights[0]?.start, parsed.highlights[0]?.end)}</span>
+        {line.slice(parsed.highlights[0]?.end ?? line.length)}
+      </span>
+    )
+  }
+  if (!parsed.exercise) return <span key={i} {...props}>{line}</span>
+  const ex = parsed.exercise
+  // Separate the numeric value from its unit label so the label
+  // gets reveal-unit styling (dimmed) matching "reps x" and "sets". The
+  // number and its unit are one handle, so either can be grabbed.
+  const value = (field: ValueField, n: React.ReactNode, label: string) => {
+    const content = <><span className="num">{n}</span><span className="reveal-unit">{label}</span></>
+    if (parsed.values?.[field] === undefined) return content
+    const on = active?.line === i && active.field === field
+    return (
+      <span className={`reveal-value${on ? ' adjusting' : ''}`} data-line={i} data-field={field}>
+        {content}
+      </span>
+    )
+  }
+  return (
+    <span key={i} {...props}>
+      {ex.name}
+      {'  '}
+      {value('weight', weightNumber(ex, unit), unit)}
+      {'  '}
+      {value('reps', ex.reps, 'reps')}<span className="reveal-unit"> x </span>
+      {value('sets', ex.sets, 'sets')}
+    </span>
+  )
+}
+
 function renderRevealOverlay(
   text: string, bodyweightKg: number, unit: WeightUnit,
   active: { line: number; field: ValueField } | null,
+  lifted: { start: number; count: number } | null,
 ): React.ReactNode[] {
-  const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
-
-  lines.forEach((line, i) => {
+  text.split('\n').forEach((line, i) => {
     if (i > 0) nodes.push('\n')
-    const parsed = parseLine(line, bodyweightKg)
-    if (parsed.bodyweightEntry !== undefined) {
-      // Show bodyweight entry lines as-is with the number orange
-      nodes.push(
-        <span key={i}>
-          {line.slice(0, parsed.highlights[0]?.start ?? line.length)}
-          <span className="num">{line.slice(parsed.highlights[0]?.start, parsed.highlights[0]?.end)}</span>
-          {line.slice(parsed.highlights[0]?.end ?? line.length)}
-        </span>
-      )
-    } else if (parsed.exercise) {
-      const ex = parsed.exercise
-      // Separate the numeric value from its unit label so the label
-      // gets reveal-unit styling (dimmed) matching "reps x" and "sets". The
-      // number and its unit are one handle, so either can be grabbed.
-      const value = (field: ValueField, n: React.ReactNode, label: string) => {
-        const content = <><span className="num">{n}</span><span className="reveal-unit">{label}</span></>
-        if (parsed.values?.[field] === undefined) return content
-        const on = active?.line === i && active.field === field
-        return (
-          <span className={`reveal-value${on ? ' adjusting' : ''}`} data-line={i} data-field={field}>
-            {content}
-          </span>
-        )
-      }
-      nodes.push(
-        <span key={i}>
-          {ex.name}
-          {'  '}
-          {value('weight', weightNumber(ex, unit), unit)}
-          {'  '}
-          {value('reps', ex.reps, 'reps')}<span className="reveal-unit"> x </span>
-          {value('sets', ex.sets, 'sets')}
-        </span>
-      )
-    } else {
-      nodes.push(<span key={i}>{line}</span>)
-    }
+    const isLifted = lifted !== null && i >= lifted.start && i < lifted.start + lifted.count
+    nodes.push(renderRevealLine(line, i, bodyweightKg, unit, active, isLifted))
   })
-
   return nodes
 }
 
@@ -219,14 +225,15 @@ function renderOverlay(
 
 interface LineBox { top: number; height: number }
 
-/** Px box of every logical line, relative to the editor. */
-function measureLines(overlay: HTMLElement): LineBox[] {
+/** Px box of every logical line, relative to the editor. The note's overlay
+ *  tags its lines data-line, the eye's data-rline. */
+function measureLines(overlay: HTMLElement, selector = '[data-line]'): LineBox[] {
   const cs = getComputedStyle(overlay)
   const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.65
   const base = overlay.getBoundingClientRect().top
   const boxes: LineBox[] = []
   let next = 0
-  overlay.querySelectorAll<HTMLElement>('[data-line]').forEach(span => {
+  overlay.querySelectorAll<HTMLElement>(selector).forEach(span => {
     const rects = [...span.getClientRects()]
     let top = next
     let rows = 1
@@ -340,6 +347,10 @@ const DRAG_SLOP = 4
 const ADJUST_SLOP = 4
 /** Finger travel per step while adjusting. */
 const STEP_PX = 42
+/** Pace of the value catching up when the finger outruns it — one step at a time, never a skip. */
+const CATCH_UP_MS = 30
+/** How long the trash stays armed after its first tap. */
+const TRASH_ARM_MS = 4000
 
 interface Press {
   line: number
@@ -353,9 +364,16 @@ interface Press {
 interface Adjust {
   line: number
   field: ValueField
-  base: string                       // the line as it was when the drag began
-  steps: number
   at: { left: number; top: number }  // the value's top centre, editor-relative
+}
+
+/** The steps behind an adjust: where the value is, and where the finger is. */
+interface Stepping {
+  line: number
+  field: ValueField
+  base: string      // the line as it was when the drag began
+  cur: number       // steps applied so far
+  target: number    // steps the finger has travelled
 }
 
 interface DragState {
@@ -392,6 +410,15 @@ export function Editor({
   valueRef.current = value
   const revealRef = useRef(reveal)
   revealRef.current = reveal
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+  const revealOverlayRef = useRef<HTMLDivElement>(null)
+  const stepping = useRef<Stepping | null>(null)
+  const catchUp = useRef(0)
+  // Every line's box in the eye's view, for its grip and icons.
+  const [rowBoxes, setRowBoxes] = useState<LineBox[]>([])
+  const [armedTrash, setArmedTrash] = useState<number | null>(null)
+  const rowControls = reveal && !readOnly
 
   const lines = value.split('\n')
   // The grip sits on the hovered line (mouse), else the caret's line while the
@@ -400,7 +427,8 @@ export function Editor({
   const gripLine = drag ? drag.start
     : readOnly || reveal ? null
     : hoverLine ?? (focused ? caretLine : null)
-  const showGrip = gripLine !== null && gripLine < lines.length &&
+  // In the eye's view every line has its own grip instead.
+  const showGrip = !reveal && gripLine !== null && gripLine < lines.length &&
     (drag !== null || lines[gripLine].trim() !== '')
 
   useEffect(() => {
@@ -418,9 +446,24 @@ export function Editor({
 
   // The line being swapped stays shaded while the picker is up.
   useLayoutEffect(() => {
-    if (swapLine === null || !overlayRef.current) { setMarkBox(null); return }
-    setMarkBox(measureLines(overlayRef.current)[swapLine] ?? null)
-  }, [swapLine, value, layoutTick])
+    const el = reveal ? revealOverlayRef.current : overlayRef.current
+    if (swapLine === null || !el) { setMarkBox(null); return }
+    setMarkBox(measureLines(el, reveal ? '[data-rline]' : '[data-line]')[swapLine] ?? null)
+  }, [swapLine, value, layoutTick, reveal])
+
+  // The eye's view lays the note out afresh, so its rows are measured off it.
+  useLayoutEffect(() => {
+    if (!rowControls || drag || !revealOverlayRef.current) return
+    setRowBoxes(measureLines(revealOverlayRef.current, '[data-rline]'))
+  }, [rowControls, drag, value, layoutTick, weightUnit, bodyweightKg])
+
+  // An armed trash disarms on its own, and whenever the note changes under it.
+  useEffect(() => {
+    if (armedTrash === null) return
+    const t = setTimeout(() => setArmedTrash(null), TRASH_ARM_MS)
+    return () => clearTimeout(t)
+  }, [armedTrash])
+  useEffect(() => { setArmedTrash(null) }, [value, reveal])
 
   // The swap icon rides at the end of the caret's line whenever that line is an
   // exercise — no tap to summon it. It steps aside for an inline suggestion,
@@ -434,17 +477,28 @@ export function Editor({
     setSwapAt(lineEnd(overlayRef.current, caretLine))
   }, [showSwap, caretLine, value, layoutTick])
 
-  const handleGripDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (gripLine === null || !overlayRef.current) return
+  // `line` is given by the eye's grips, one per line; the note's single grip
+  // leaves it out and picks up whatever line is under the press.
+  const handleGripDown = (e: React.PointerEvent<HTMLDivElement>, line?: number) => {
+    if (line === undefined && (gripLine === null || !overlayRef.current)) return
+    if (line !== undefined && !revealOverlayRef.current) return
     e.preventDefault()   // keep the textarea's focus, and its keyboard, up
     e.currentTarget.setPointerCapture(e.pointerId)
-    // Pick up the line actually under the press, not the one state last
-    // pointed the grip at — the two can differ while the grip slides over.
-    const boxes = measureLines(overlayRef.current)
-    const y = e.clientY - overlayRef.current.getBoundingClientRect().top
-    const pressed = boxes.findIndex(b => y >= b.top && y < b.top + b.height)
+    let start: number
+    let boxes: LineBox[]
+    if (line !== undefined) {
+      boxes = measureLines(revealOverlayRef.current!, '[data-rline]')
+      start = line
+    } else {
+      // Pick up the line actually under the press, not the one state last
+      // pointed the grip at — the two can differ while the grip slides over.
+      boxes = measureLines(overlayRef.current!)
+      const y = e.clientY - overlayRef.current!.getBoundingClientRect().top
+      const pressed = boxes.findIndex(b => y >= b.top && y < b.top + b.height)
+      start = pressed >= 0 ? pressed : gripLine!
+    }
     setDrag({
-      ...blockRange(lines, pressed >= 0 ? pressed : gripLine),
+      ...blockRange(lines, start),
       pointerId: e.pointerId,
       originY: e.clientY,
       boxes,
@@ -525,11 +579,48 @@ export function Editor({
     }
   }, [])
 
+  // The value walks toward the finger one step at a time, so a quick drag
+  // still shows every value on the way instead of jumping past them.
+  const stepOnce = () => {
+    catchUp.current = 0
+    const s = stepping.current
+    if (!s || s.cur === s.target) return
+    s.cur += Math.sign(s.target - s.cur)
+    // Stepped from the line as it was at the start, so a step that can't move
+    // (a rep count at 1) holds still rather than drifting.
+    const next = stepLine(s.base, s.field, s.cur)
+    const out = valueRef.current.split('\n')
+    if (out[s.line] !== next) {
+      navigator.vibrate?.(4)
+      out[s.line] = next
+      valueRef.current = out.join('\n')
+      onChangeRef.current(valueRef.current)
+    }
+    if (s.cur !== s.target) catchUp.current = window.setTimeout(stepOnce, CATCH_UP_MS)
+  }
+
+  // Letting go lands on wherever the finger got to.
+  const finishStepping = () => {
+    clearTimeout(catchUp.current)
+    catchUp.current = 0
+    const s = stepping.current
+    stepping.current = null
+    if (!s || s.cur === s.target) return
+    const out = valueRef.current.split('\n')
+    out[s.line] = stepLine(s.base, s.field, s.target)
+    valueRef.current = out.join('\n')
+    onChangeRef.current(valueRef.current)
+  }
+
+  useEffect(() => () => clearTimeout(catchUp.current), [])
+
   // Turning the eye off mid-press drops it.
   useEffect(() => {
     if (reveal) return
     press.current = null
+    finishStepping()
     setAdjust(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reveal])
 
   const endPress = () => { press.current = null }
@@ -555,42 +646,45 @@ export function Editor({
   const handleValueMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const p = press.current
     if (!p || e.pointerId !== p.pointerId) return
-    if (!adjust) {
+    if (!stepping.current) {
       const dx = e.clientX - p.x
       const dy = e.clientY - p.y
       if (Math.hypot(dx, dy) < ADJUST_SLOP || !wrapRef.current) return
       navigator.vibrate?.(8)
       const r = p.el.getBoundingClientRect()
       const base = wrapRef.current.getBoundingClientRect()
-      setAdjust({
+      stepping.current = {
         line: p.line,
         field: p.field,
         base: valueRef.current.split('\n')[p.line] ?? '',
-        steps: 0,
+        cur: 0,
+        target: 0,
+      }
+      setAdjust({
+        line: p.line,
+        field: p.field,
         at: { left: r.left + r.width / 2 - base.left, top: r.top - base.top },
       })
       return
     }
+    const s = stepping.current
+    if (!s) return
     // Whole steps only: each one takes the full distance, the first included.
-    const steps = Math.trunc((p.y - e.clientY) / STEP_PX)
-    if (steps === adjust.steps) return
-    // Stepped from the line as it was at the start, so a step that can't move
-    // (a rep count at 1) holds still rather than drifting.
-    const next = stepLine(adjust.base, adjust.field, steps, weightUnit)
-    const out = value.split('\n')
-    if (out[adjust.line] !== next) {
-      navigator.vibrate?.(4)
-      out[adjust.line] = next
-      onChange(out.join('\n'))
-    }
-    setAdjust({ ...adjust, steps })
+    s.target = Math.trunc((p.y - e.clientY) / STEP_PX)
+    if (!catchUp.current) stepOnce()
   }
 
   const handleValueUp = (e: React.PointerEvent<HTMLDivElement>) => {
     const p = press.current
     if (!p || e.pointerId !== p.pointerId) return
     endPress()
+    finishStepping()
     setAdjust(null)
+  }
+
+  const removeLine = (i: number) => {
+    setArmedTrash(null)
+    onChange(lines.filter((_, k) => k !== i).join('\n'))
   }
 
   // Auto-resize textarea to content
@@ -673,10 +767,11 @@ export function Editor({
         onPointerDown={reveal ? handleValueDown : undefined}
         onPointerMove={reveal ? handleValueMove : undefined}
         onPointerUp={reveal ? handleValueUp : undefined}
-        onPointerCancel={reveal ? () => { endPress(); setAdjust(null) } : undefined}
+        onPointerCancel={reveal ? () => { endPress(); finishStepping(); setAdjust(null) } : undefined}
         onContextMenu={reveal ? e => e.preventDefault() : undefined}
+        ref={revealOverlayRef}
       >
-        {renderRevealOverlay(value, bodyweightKg, weightUnit, adjust)}
+        {renderRevealOverlay(value, bodyweightKg, weightUnit, adjust, reveal && dragging ? drag : null)}
         {value.endsWith('\n') || value === '' ? '​' : ''}
       </div>
 
@@ -745,12 +840,78 @@ export function Editor({
       )}
 
       {ghost && drag && (
-        <div className="line-ghost" aria-hidden="true" style={{ top: ghost.top, height: ghost.height }}>
+        <div className={`line-ghost${reveal ? ' reveal' : ''}`} aria-hidden="true" style={{ top: ghost.top, height: ghost.height }}>
           {lines.slice(drag.start, drag.start + drag.count).map((line, i) => (
-            <div key={i}>{renderLine(line, parseLine(line, bodyweightKg), false)}</div>
+            <div key={i}>
+              {reveal
+                ? renderRevealLine(line, drag.start + i, bodyweightKg, weightUnit, null)
+                : renderLine(line, parseLine(line, bodyweightKg), false)}
+            </div>
           ))}
         </div>
       )}
+
+      {/* The eye's row controls, always up: a grip before every line to move
+          it, and for each exercise a swap and a trash on the right edge. */}
+      {rowControls && lines.map((line, i) => {
+        const box = rowBoxes[i]
+        if (!box || line.trim() === '') return null
+        const held = drag?.start === i
+        // The grip stays mounted through its own drag — it holds the capture.
+        if (dragging && !held) return null
+        return (
+          <div
+            key={`grip${i}`}
+            className={`line-grip${held && drag?.active ? ' dragging' : ''}`}
+            style={{ top: held && ghost ? ghost.top : box.top }}
+            onPointerDown={e => handleGripDown(e, i)}
+            onPointerMove={handleGripMove}
+            onPointerUp={handleGripUp}
+            onPointerCancel={() => setDrag(null)}
+            onMouseDown={e => e.preventDefault()}
+            onTouchStart={e => e.stopPropagation()}
+            onTouchMove={e => e.stopPropagation()}
+            onTouchEnd={e => e.stopPropagation()}
+            role="button"
+            aria-label="Drag to move line"
+          >
+            <GripVertical size={16} strokeWidth={2.25} />
+          </div>
+        )
+      })}
+
+      {rowControls && !dragging && lines.map((line, i) => {
+        const box = rowBoxes[i]
+        if (!box || !parseLine(line, bodyweightKg).exercise) return null
+        const armed = armedTrash === i
+        return (
+          <div key={`act${i}`} className="row-actions" style={{ top: box.top }}>
+            {onSwapLine && (
+              <button
+                type="button"
+                className="row-action"
+                onPointerDown={tap}
+                onTouchStart={e => e.stopPropagation()}
+                onClick={() => onSwapLine(i)}
+                aria-label="Swap exercise"
+              >
+                <ArrowLeftRight size={15} strokeWidth={2.25} />
+              </button>
+            )}
+            {/* Two taps: the first arms it, red; the second removes the line. */}
+            <button
+              type="button"
+              className={`row-action trash${armed ? ' armed' : ''}`}
+              onPointerDown={tap}
+              onTouchStart={e => e.stopPropagation()}
+              onClick={() => (armed ? removeLine(i) : setArmedTrash(i))}
+              aria-label={armed ? 'Tap again to remove' : 'Remove exercise'}
+            >
+              <Trash2 size={15} strokeWidth={2.25} />
+            </button>
+          </div>
+        )
+      })}
 
       {/* Stays mounted through the drag — it holds the pointer capture. Touch
           is stopped here so the day swipe and history pull never see it. */}
