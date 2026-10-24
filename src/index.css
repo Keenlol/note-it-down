@@ -2494,22 +2494,19 @@ strong, b {
   font-size: 0.64rem;
 }
 
-/* One card per exercise, in the card/list pattern: a surface-1 card holding
-   the name row, then a surface-2 box with the weight and its graph. The
-   history opens under that box and continues it. The 5px bottom padding is
-   the pattern's inner margin-bottom, kept on the card so it holds whether the
-   history is open or not. */
+/* One box per exercise, no header bar: a column of figures on the left, the
+   graph filling the rest, and the history opening underneath. */
 .preset-block {
-  background: var(--surface-1);
+  background: var(--surface-2);
   border-radius: var(--r-card);
-  padding: 0 5px 5px;
   overflow: hidden;
   cursor: pointer;
 }
 
-/* Name row and plot together are the expand hitbox. */
+/* The info column and the graph together are the expand hitbox. */
 .preset-ex-field {
-  display: block;
+  display: flex;
+  align-items: stretch;
   width: 100%;
   padding: 0;
   background: none;
@@ -2520,16 +2517,18 @@ strong, b {
   cursor: pointer;
 }
 
-.preset-ex-head {
+/* Fixed width, so every card's graph starts at the same x. */
+.preset-ex-info {
+  width: 136px;
+  flex-shrink: 0;
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 5px;
-  padding: 7px 2px 6px 7px;
+  padding: 10px 0 10px 12px;
 }
 
 .preset-ex-name {
-  flex: 1;
-  min-width: 0;
   font-size: 0.92rem;
   letter-spacing: -0.015em;
   color: var(--text);
@@ -2538,50 +2537,11 @@ strong, b {
   white-space: nowrap;
 }
 
-/* Reps and sets: a chip each. A changed figure wears the TrendItem badge; a
-   held one gets the same shape, plain. */
-.preset-ex-chip {
-  flex-shrink: 0;
-  display: inline-flex;
-  font-size: 0.68rem;
-  white-space: nowrap;
-}
-
-.preset-ex-chip.is-plain {
-  padding: 0.2em 0.45em;
-  border-radius: var(--r-chip);
-  background: var(--surface-2);
-  color: var(--text-2);
-}
-
-/* The squared-off bottom corners wait for the history to finish closing
-   (its 0.2s grid-row transition) before rounding, so the two never part. */
-.preset-ex-plot {
+/* The latest weight, large, with its change across the window beside it. */
+.preset-ex-lead {
   display: flex;
-  align-items: stretch;
-  background: var(--surface-2);
-  border-radius: var(--r-inner);
-  transition: border-radius 0s 0.2s;
-}
-
-.preset-block.is-open .preset-ex-plot {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  transition-delay: 0s;
-}
-
-/* The latest weight, large, with its change across the window under it.
-   Fixed width so every card's graph starts at the same x. */
-.preset-ex-hero {
-  width: 92px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 8px 0 8px 10px;
-  box-sizing: border-box;
+  align-items: center;
+  gap: 6px;
 }
 
 .preset-ex-weight {
@@ -2601,15 +2561,30 @@ strong, b {
   color: var(--accent-dim);
 }
 
-.preset-ex-plot .bw-graph {
-  flex: 1;
-  min-width: 0;
-  height: 62px;
-  padding: 14px 18px 8px 10px;
+/* Reps × sets under the weight, set like the history row's figures. A
+   changed one takes its trend colour and arrow inline (style, from TrendItem). */
+.preset-ex-rs {
+  font-size: 0.78rem;
+  font-weight: var(--w-note);
+  color: var(--accent);
+  white-space: nowrap;
 }
 
-.preset-ex-plot .bw-graph-nodes {
-  inset: 14px 18px 8px 10px;
+.preset-ex-fig {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.preset-ex-field .bw-graph {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  padding: 16px 18px 12px 10px;
+}
+
+.preset-ex-field .bw-graph-nodes {
+  inset: 16px 18px 12px 10px;
 }
 
 /* Preset tabs reuse the sort-chip look but wrap to multiple rows. */
@@ -2635,12 +2610,6 @@ strong, b {
    panel is short, instead of compressing to fit the visible area. */
 .preset-body > * {
   flex-shrink: 0;
-}
-
-/* The history continues the plot's surface-2 box below it. */
-.preset-block .history-expand-wrap {
-  background: var(--surface-2);
-  border-radius: 0 0 var(--r-inner) var(--r-inner);
 }
 
 /* History flows in the page scroll (no internal scrollbar). */

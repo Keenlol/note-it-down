@@ -3,9 +3,10 @@ import { ArrowDown, ArrowUp } from 'lucide-react'
 // Improvements are green; declines are deliberately neutral grey, not red.
 // A red "you went down" badge pressures people into either not deloading or
 // logging a number they didn't hit — the badge should report, not judge.
-const POS_COLOR = 'rgb(45, 149, 47)'
+// Exported for figures that mark a change inline, without the badge's tint.
+export const POS_COLOR = 'rgb(45, 149, 47)'
 const POS_BG    = 'rgba(45, 149, 47, 0.1)'
-const NEG_COLOR = 'rgb(140, 140, 140)'
+export const NEG_COLOR = 'rgb(140, 140, 140)'
 const NEG_BG    = 'rgba(140, 140, 140, 0.1)'
 
 interface Props {

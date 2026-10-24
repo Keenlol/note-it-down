@@ -409,24 +409,23 @@ closes.
 
 ### Preset cards
 The preset sheet has no metric switch: each exercise card shows every figure
-at once, weighted by how often it moves.
+at once, weighted by how often it moves. A card is one `--surface-2` box with
+no header bar: a fixed-width column of figures (`.preset-ex-info`) on the
+left, the graph filling the rest, and the history opening underneath.
 
-- **Weight leads.** The latest weight is the big figure (`.preset-ex-weight`,
-  `--font-display`, accent), with its change across the window as a
-  `TrendItem` under it, and a step-line `MetricGraph` (`step`) beside it — it
+- **The column reads top to bottom:** the name, then the latest weight as the
+  big figure (`.preset-ex-weight`, `--font-display`, accent) with its change
+  across the window as a `TrendItem` beside it, then reps × sets under it.
+- **Weight leads the graph** too: a step-line `MetricGraph` (`step`) that
   holds level until the session the weight changed.
-- **Reps and sets are chips** in the name row (`FigureChip`). A chip takes the
-  `TrendItem` badge when the figure changed since the session before, and
-  stays plain grey when it held. They get no graph.
+- **Reps and sets get no graph.** They are set like the history row's figures
+  (accent, `--w-note`); one that changed since the session before takes the
+  trend colour and arrow inline (`Figure`, colours exported from `TrendItem`).
 - **Plain bodyweight movements lead with reps** instead (their "weight" is
-  just the day's bodyweight), and drop the reps chip.
+  just the day's bodyweight), so the line under them shows only sets.
 - **Volume is per preset, not per exercise.** It sits in the stat card as a
   small `MetricGraph` (`nodes="last"`) with the latest session's load and its
   change across the window. The ⋮ menu lives in the sheet's title row.
-- The card is the card/list pattern with the inner box split in two: the plot
-  (inside the expand button) and the history (outside it) are both
-  `--surface-2`, and the plot's bottom corners stay square while the history
-  is open — they wait out its 0.2s close before rounding.
 
 ### Ghost / suggestion text
 ```css
@@ -474,7 +473,7 @@ Single-page React 19 + TypeScript app, no backend. All data lives in `localStora
 - `components/Editor.tsx` — textarea with overlay for syntax highlighting (orange numbers) and inline ghost text. Renders trend indicators (↑↓), "New exercise!" badges, and bodyweight hint per line.
 - `components/Heatmap.tsx` — 21-week grid; cell color = volume (reps × sets). Clicking a cell sets `viewDate` in App.
 - `components/ExerciseSheet.tsx` — bottom sheet: exercise catalog with sort, merge mode, per-exercise expandable history, nickname/delete dropdown.
-- `components/PresetSheet.tsx` — bottom sheet: preset tabs, a stat card with the preset's volume per session, one card per exercise (weight + graph, reps/sets chips, expandable history), rename/delete-label/delete-with-exercises dropdown.
+- `components/PresetSheet.tsx` — bottom sheet: preset tabs, a stat card with the preset's volume per session, one card per exercise (name, weight and reps × sets left of a weight graph, expandable history), rename/delete-label/delete-with-exercises dropdown.
 
 ## Settings patterns
 
