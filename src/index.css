@@ -444,6 +444,15 @@ strong, b {
   margin-right: 1px;
 }
 
+/* Which session of the preset this day is — a count, so it takes the
+   accent, and it never gives way to a long name. */
+.preset-nav-session {
+  flex-shrink: 0;
+  margin-left: 6px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
 .today-btn {
   display: inline-flex;
   align-items: center;

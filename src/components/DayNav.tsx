@@ -3,6 +3,7 @@ import { tap } from '../utils/tap'
 
 export interface PresetNav {
   name: string         // header text as written on the viewed day
+  session: number      // which time this preset is being done, counting from 1
   prev: string | null  // nearest older day with this preset
   next: string | null  // nearest newer day (today included)
 }
@@ -39,6 +40,7 @@ export function DayNav({ preset, showToday, onPresetStep, onToday }: Props) {
           <span className="preset-nav-name">
             <span className="preset-nav-hash">#</span>{preset.name}
           </span>
+          <span className="preset-nav-session" aria-label={`session ${preset.session}`}>{preset.session}</span>
           <button
             type="button"
             className="preset-nav-arrow"

@@ -826,7 +826,12 @@ export function App() {
     if (dates.size < 2) return null
     const sorted = [...dates].sort()
     const i = sorted.indexOf(current)
-    return { name: viewedPreset.rawContent, prev: sorted[i - 1] ?? null, next: sorted[i + 1] ?? null }
+    return {
+      name: viewedPreset.rawContent,
+      session: i + 1,
+      prev: sorted[i - 1] ?? null,
+      next: sorted[i + 1] ?? null,
+    }
   }, [viewedPreset, presetDays, todayPresets, viewDate])
 
   const stepPreset = useCallback((date: string) => {
