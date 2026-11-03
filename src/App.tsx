@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Check, Lock, Redo2, Undo2 } from 'lucide-react'
+import { Check, Copy, Lock, Redo2, Undo2 } from 'lucide-react'
 import { Heatmap } from './components/Heatmap'
 import { WEEKS, weekOffsetForDate, historySetCount } from './utils/heatmapWindow'
 import { HeatmapHistory } from './components/HeatmapHistory'
@@ -631,6 +631,21 @@ export function App() {
   const showUndo = historyOn && canUndo(historyDay)
   const showRedo = historyOn && canRedo(historyDay)
 
+  // Copy puts the viewed day's note on the clipboard; its icon turns to a
+  // check for a moment to say it went.
+  const dayText = viewDate ? pastText : todayText
+  const showCopy = dayText.trim() !== ''
+  const [copied, setCopied] = useState(false)
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => { clearTimeout(copiedTimer.current); setCopied(false) }, [viewDate])
+  const copyDay = useCallback(() => {
+    navigator.clipboard?.writeText(dayText).then(() => {
+      setCopied(true)
+      clearTimeout(copiedTimer.current)
+      copiedTimer.current = setTimeout(() => setCopied(false), 1200)
+    }, () => {})
+  }, [dayText])
+
   const stepHistory = useCallback((dir: 'undo' | 'redo') => {
     if (viewDate && lockPast) return
     const day = viewDate ?? todayKey()
@@ -1237,10 +1252,23 @@ export function App() {
               <Check size={18} strokeWidth={2.5} />
             </span>
           )}
-          {/* Up once there is anything to step through. A press here keeps
-              the note's focus, so the keyboard stays up mid-typing. */}
-          {(showUndo || showRedo) && (
+          {/* Copy is up whenever the day has text; undo / redo once there is
+              anything to step through. A press here keeps the note's focus,
+              so the keyboard stays up mid-typing. */}
+          {(showCopy || showUndo || showRedo) && (
             <div className="history-btns">
+              {showCopy && (
+                <button
+                  type="button"
+                  className={`history-btn${copied ? ' copied' : ''}`}
+                  onPointerDown={e => { e.preventDefault(); tap(e) }}
+                  onClick={copyDay}
+                  aria-label={copied ? 'Copied' : 'Copy note'}
+                >
+                  {copied ? <Check size={17} strokeWidth={2.5} /> : <Copy size={16} strokeWidth={2.25} />}
+                </button>
+              )}
+              {(showUndo || showRedo) && (<>
               <button
                 type="button"
                 className="history-btn"
@@ -1261,6 +1289,7 @@ export function App() {
               >
                 <Redo2 size={17} strokeWidth={2.25} />
               </button>
+              </>)}
             </div>
           )}
         </div>

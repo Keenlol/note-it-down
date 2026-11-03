@@ -647,7 +647,7 @@ strong, b {
   opacity: 1;
 }
 
-/* Undo / redo, at the right end of the date's row — drawn like the eye's row
+/* Copy, undo / redo, at the right end of the date's row — drawn like the eye's row
    icons. A disabled one stays in place, dimmer, so the other doesn't shift. */
 .history-btns {
   display: flex;
@@ -674,6 +674,10 @@ strong, b {
 }
 
 .history-btn:active {
+  color: var(--accent);
+}
+
+.history-btn.copied {
   color: var(--accent);
 }
 
